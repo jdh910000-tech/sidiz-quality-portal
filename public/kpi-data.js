@@ -1,4 +1,4 @@
-// kpi-data.js — KPI 고객클레임 현황 데이터 + Supabase 실시간 연동
+// kpi-data.js — KPI 고객클레임 현황 v3
 
 const KPI_DATA = {
   '2025': {
@@ -6,12 +6,10 @@ const KPI_DATA = {
       kr:  [19188, 25611, 26634, 22664, 16594, 15728, 20759, 19984, 18343, 15763, 18826, 18874],
       vn:  [14003, 18428, 20237, 16333, 12583, 10609, 12931, 14754, 15927, 13178, 12220, 15709],
     },
-    // 판정유형별 종합 건수 (차트/KPI카드에 사용)
     judgement: {
       kr:  [340, 503, 479, 401, 359, 373, 423, 546, 539, 506, 528, 381],
       vn:  [183, 255, 289, 319, 339, 291, 262, 280, 328, 271, 331, 273],
     },
-    // 불량 건수 (참고용)
     claims: {
       kr:  [334, 479, 462, 399, 355, 369, 404, 528, 529, 491, 490, 370],
       vn:  [169, 224, 257, 310, 327, 284, 255, 271, 318, 263, 320, 275],
@@ -67,7 +65,10 @@ const KPI_DATA = {
 
 const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 let _kpiComboChart = null;
-let _kpiMonthRange = 12;
+let _kpiMonthRange = 12; // 표시 구분: 12=전체, N=~N월 강조
+
+// 숫자 포맷 헬퍼
+function fmt(v) { return v != null && v !== 0 ? Number(v).toLocaleString() : '-'; }
 
 // ─── Supabase 실시간 업데이트 ───
 async function updateKpiFromSupabase(year) {
@@ -77,12 +78,10 @@ async function updateKpiFromSupabase(year) {
       `select=claim_date,country,category&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31&limit=10000`);
     if (!claims || claims.length === 0) return;
     const data = KPI_DATA[year]; if (!data) return;
-
     const types = ['제조','설계','서비스','고객불만','사양재검토'];
     const jKr = Array(12).fill(0), jVn = Array(12).fill(0);
     const dKr = {}, dVn = {};
     types.forEach(t => { dKr[t] = Array(12).fill(0); dVn[t] = Array(12).fill(0); });
-
     claims.forEach(c => {
       const mi = parseInt(c.claim_date.slice(5,7)) - 1;
       if (mi < 0 || mi > 11) return;
@@ -97,7 +96,6 @@ async function updateKpiFromSupabase(year) {
       else if (cat.includes('사양')) jt = '사양재검토';
       if (jt) { if (isVn) dVn[jt][mi]++; else dKr[jt][mi]++; }
     });
-
     for (let i = 0; i < 12; i++) {
       if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
       if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
@@ -106,7 +104,6 @@ async function updateKpiFromSupabase(year) {
         if (dVn[t][i] > 0 && data.detail_vn[t][i] === 0) data.detail_vn[t][i] = dVn[t][i];
       });
     }
-
     try {
       const sales = await SupabaseClient.supabaseFetch('sales_monthly',
         `select=*&year_month=gte.${year}-01&year_month=lte.${year}-12`);
@@ -117,8 +114,7 @@ async function updateKpiFromSupabase(year) {
         else if (s.sales_count > 0) data.sales.kr[mi] = s.sales_count;
       });
     } catch(e) {}
-    console.log('KPI ' + year + ' Supabase 업데이트 완료');
-  } catch(e) { console.log('KPI 업데이트 실패:', e.message); }
+  } catch(e) {}
 }
 
 // ─── 렌더링 ───
@@ -135,34 +131,22 @@ function renderKpiClaimSection(year) {
 
   const krS = data.sales.kr.slice(0, range);
   const vnS = data.sales.vn.slice(0, range);
-  const krSTotal = krS.reduce((s,v) => s+(v||0), 0);
-  const vnSTotal = vnS.reduce((s,v) => s+(v||0), 0);
-  const totalS = krSTotal + vnSTotal;
+  const totalS = krS.reduce((s,v)=>s+(v||0),0) + vnS.reduce((s,v)=>s+(v||0),0);
 
   const avgIdx = totalS > 0 ? ((totalJ / totalS) * 100).toFixed(2) : '-';
-
-  const types = ['제조','설계','서비스','고객불만','사양재검토'];
-  const tKr = {}, tVn = {};
-  types.forEach(t => {
-    tKr[t] = data.detail_kr[t].slice(0,range).reduce((s,v)=>s+(v||0),0);
-    tVn[t] = data.detail_vn[t].slice(0,range).reduce((s,v)=>s+(v||0),0);
-  });
 
   let lastMonth = 0;
   for (let i = range-1; i >= 0; i--) { if ((data.judgement.kr[i]||0)+(data.judgement.vn[i]||0) > 0) { lastMonth = i; break; } }
   const mc = lastMonth + 1;
 
-  // KPI 카드
+  // KPI 카드: 판정종합, 불량지수, 국내(계), 베트남(계)
   const kpiGrid = document.querySelector('#kpi-claim-kpi .kpi-grid');
   if (kpiGrid) {
-    const mfg = (tKr['제조']||0) + (tVn['제조']||0);
-    const des = (tKr['설계']||0) + (tVn['설계']||0);
-    const mfgR = totalS > 0 ? ((mfg/totalS)*100).toFixed(2)+'%' : '-';
     kpiGrid.innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">판정종합 (${mc}월 누적)</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)">${totalJ.toLocaleString()}</div><div class="kpi-change">국내 ${krJTotal.toLocaleString()} + 베트남 ${vnJTotal.toLocaleString()}</div></div>
+      <div class="kpi-card"><div class="kpi-label">판정종합 (${mc}월 누적)</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)">${fmt(totalJ)}</div><div class="kpi-change">국내 ${fmt(krJTotal)} + 베트남 ${fmt(vnJTotal)}</div></div>
       <div class="kpi-card"><div class="kpi-label">불량지수 (평균)</div><div class="kpi-value" style="color:var(--accent-amber)">${avgIdx}%</div><div class="kpi-change ${parseFloat(avgIdx)>1.5?'up':'down'}">${parseFloat(avgIdx)>1.5?'▲':'▼'} 목표 1.50% 대비</div></div>
-      <div class="kpi-card"><div class="kpi-label">제조 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-rose)">${mfg.toLocaleString()}</div><div class="kpi-change">클레임율 ${mfgR}</div></div>
-      <div class="kpi-card"><div class="kpi-label">설계 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-violet)">${des.toLocaleString()}</div><div class="kpi-change">국내 ${(tKr['설계']||0).toLocaleString()} + 베트남 ${(tVn['설계']||0).toLocaleString()}</div></div>`;
+      <div class="kpi-card"><div class="kpi-label">국내 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-rose)">${fmt(krJTotal)}</div><div class="kpi-change">${mc}월 누적</div></div>
+      <div class="kpi-card"><div class="kpi-label">베트남 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-violet)">${fmt(vnJTotal)}</div><div class="kpi-change">${mc}월 누적</div></div>`;
   }
 
   updateKpiComboChart(data, year, range);
@@ -170,36 +154,41 @@ function renderKpiClaimSection(year) {
   renderKpiJudgementTables(data, year, range);
 }
 
-// ─── 차트 (막대 위에 총 건수 표시) ───
+// ─── 차트: X축 항상 1~12월, 범위 밖은 투명 처리 ───
 function updateKpiComboChart(data, year, range) {
   const ctx = document.getElementById('comboChart'); if (!ctx) return;
   if (_kpiComboChart) _kpiComboChart.destroy();
 
-  const labels = MONTHS.slice(0, range);
-  const krJ = data.judgement.kr.slice(0, range).map(v=>v||0);
-  const vnJ = data.judgement.vn.slice(0, range).map(v=>v||0);
+  // 항상 12개월 데이터, 범위 밖은 0으로
+  const krJ = data.judgement.kr.map((v,i) => i < range ? (v||0) : 0);
+  const vnJ = data.judgement.vn.map((v,i) => i < range ? (v||0) : 0);
 
   const defIdx = [];
-  for (let i = 0; i < range; i++) {
+  for (let i = 0; i < 12; i++) {
+    if (i >= range) { defIdx.push(null); continue; }
     const tc = (data.judgement.kr[i]||0) + (data.judgement.vn[i]||0);
     const ts = (data.sales.kr[i]||0) + (data.sales.vn[i]||0);
     defIdx.push(ts > 0 ? parseFloat(((tc/ts)*100).toFixed(2)) : 0);
   }
 
-  // 총 건수 표시 플러그인
+  // 범위 밖 막대 투명 처리용 배경색 배열
+  const krBg = krJ.map((v,i) => i < range ? 'rgba(45,125,210,0.75)' : 'rgba(45,125,210,0.1)');
+  const vnBg = vnJ.map((v,i) => i < range ? 'rgba(216,87,72,0.7)' : 'rgba(216,87,72,0.1)');
+  const krBd = krJ.map((v,i) => i < range ? 'rgba(45,125,210,1)' : 'rgba(45,125,210,0.15)');
+  const vnBd = vnJ.map((v,i) => i < range ? 'rgba(216,87,72,1)' : 'rgba(216,87,72,0.15)');
+
   const totalLabelPlugin = {
     id: 'totalLabel',
     afterDatasetsDraw(chart) {
       const { ctx: c, data: d, scales: { x, y } } = chart;
-      const krData = d.datasets[0].data;
-      const vnData = d.datasets[1].data;
+      const kr = d.datasets[0].data, vn = d.datasets[1].data;
       c.save();
       c.font = 'bold 11px JetBrains Mono, monospace';
-      c.fillStyle = '#f0f4f8';
       c.textAlign = 'center';
-      for (let i = 0; i < krData.length; i++) {
-        const total = krData[i] + vnData[i];
+      for (let i = 0; i < kr.length; i++) {
+        const total = kr[i] + vn[i];
         if (total === 0) continue;
+        c.fillStyle = i < range ? '#f0f4f8' : 'rgba(160,180,203,0.3)';
         const xPos = x.getPixelForValue(i);
         const yPos = y.getPixelForValue(total);
         c.fillText(total.toLocaleString(), xPos, yPos - 8);
@@ -208,92 +197,115 @@ function updateKpiComboChart(data, year, range) {
     }
   };
 
+  // 범위 표시 플러그인 (범위 밖 영역에 배경)
+  const rangeOverlay = {
+    id: 'rangeOverlay',
+    beforeDraw(chart) {
+      if (range >= 12) return;
+      const { ctx: c, chartArea: { left, right, top, bottom }, scales: { x } } = chart;
+      const startX = x.getPixelForValue(range - 0.5);
+      c.save();
+      c.fillStyle = 'rgba(0,0,0,0.15)';
+      c.fillRect(startX, top, right - startX, bottom - top);
+      c.restore();
+    }
+  };
+
   _kpiComboChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels,
+      labels: MONTHS,
       datasets: [
-        { label: '국내', data: krJ, backgroundColor: 'rgba(45,125,210,0.75)', borderColor: 'rgba(45,125,210,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '베트남', data: vnJ, backgroundColor: 'rgba(216,87,72,0.7)', borderColor: 'rgba(216,87,72,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '불량지수(%)', data: defIdx, type: 'line', borderColor: '#ffb347', backgroundColor: 'rgba(255,179,71,0.1)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#ffb347', pointBorderColor: '#17293f', pointBorderWidth: 2, tension: 0.3, fill: false, order: 1, yAxisID: 'y1' },
-        { label: '목표(1.50%)', data: Array(range).fill(1.50), type: 'line', borderColor: 'rgba(255,107,122,0.7)', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
+        { label: '국내', data: krJ, backgroundColor: krBg, borderColor: krBd, borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
+        { label: '베트남', data: vnJ, backgroundColor: vnBg, borderColor: vnBd, borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
+        { label: '불량지수(%)', data: defIdx, type: 'line', borderColor: '#ffb347', backgroundColor: 'rgba(255,179,71,0.1)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#ffb347', pointBorderColor: '#17293f', pointBorderWidth: 2, tension: 0.3, fill: false, order: 1, yAxisID: 'y1', spanGaps: false },
+        { label: '목표(1.50%)', data: Array(12).fill(1.50), type: 'line', borderColor: 'rgba(255,107,122,0.7)', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
       ]
     },
-    plugins: [totalLabelPlugin],
+    plugins: [totalLabelPlugin, rangeOverlay],
     options: {
       responsive: true, maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 11, family: "'Noto Sans KR'" }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
         tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
-          callbacks: { label: c => c.dataset.yAxisID==='y1' ? c.dataset.label+': '+c.parsed.y+'%' : c.dataset.label+': '+c.parsed.y+'건' } }
+          callbacks: { label: c => c.dataset.yAxisID==='y1' ? c.dataset.label+': '+c.parsed.y+'%' : c.dataset.label+': '+(c.parsed.y||0).toLocaleString()+'건' } }
       },
       scales: {
         x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 11 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 11 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" } }, min: 0 },
+        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 11 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0 },
         y1: { position: 'right', title: { display: true, text: '불량지수(%)', color: '#6b83a0', font: { size: 11 } }, grid: { drawOnChartArea: false }, ticks: { color: '#ffb347', font: { size: 10, family: "'JetBrains Mono'" }, callback: v=>v+'%' }, min: 0, max: 3.5 }
       }
     }
   });
 }
 
-// ─── 메인 테이블 ───
+// ─── 메인 테이블: 항상 1~12월, 범위 밖은 회색 표시 ───
 function renderKpiMainTable(data, year, range) {
   const container = document.getElementById('kpiMainTable'); if (!container) return;
-  const py = String(parseInt(year)-1);
-  const pd = KPI_DATA[py];
+  const py = String(parseInt(year)-1); const pd = KPI_DATA[py];
 
   function avg(arr) { const v=arr.filter(x=>x&&x>0); return v.length>0?Math.round(v.reduce((s,x)=>s+x,0)/v.length):'-'; }
-  function mc(arr) { return arr.slice(0,range).map(v=>`<td>${v||'-'}</td>`).join(''); }
-  function dc(cArr,sArr) { return cArr.slice(0,range).map((c,i)=>{const s=sArr[i]||0;const v=(c&&s>0)?((c/s)*100).toFixed(2)+'%':'-';const cls=(c&&s>0&&(c/s)>0.02)?' class="danger"':'';return`<td${cls}>${v}</td>`;}).join(''); }
+  // 월별 셀: 범위 밖이면 회색 스타일
+  function mc(arr) { return arr.map((v,i) => {
+    const dim = i >= range ? ' style="opacity:0.25"' : '';
+    return `<td${dim}>${fmt(v)}</td>`;
+  }).join(''); }
+  function dc(cArr,sArr) { return cArr.map((c,i) => {
+    const s = sArr[i]||0;
+    const val = (c&&s>0) ? ((c/s)*100).toFixed(2)+'%' : '-';
+    const dim = i >= range ? ' style="opacity:0.25"' : '';
+    const cls = (c&&s>0&&(c/s)>0.02&&i<range) ? ' class="danger"' : '';
+    return `<td${cls}${dim}>${val}</td>`;
+  }).join(''); }
 
-  const mHeaders = MONTHS.slice(0,range).map(m=>`<th>${m}</th>`).join('');
+  const mh = MONTHS.map(m => `<th>${m}</th>`).join('');
+  const rangeLabel = range < 12 ? ` · ~${range}월 강조` : '';
 
-  let h = `<div class="data-table-header"><h3>고객클레임 종합 현황 (${year}년${range<12?' · ~'+range+'월':''})</h3></div>
-  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th>${py}평균</th><th>${year}평균</th>${mHeaders}</tr></thead><tbody>`;
+  let h = `<div class="data-table-header"><h3>고객클레임 종합 현황 (${year}년${rangeLabel})</h3></div>
+  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th>${py}평균</th><th>${year}평균</th>${mh}</tr></thead><tbody>`;
 
-  // 총 매출건수
-  h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>${pd?avg(pd.sales.kr):'-'}</td><td>${avg(data.sales.kr.slice(0,range))}</td>${mc(data.sales.kr)}</tr>`;
-  h+=`<tr><td>베트남</td><td>${pd?avg(pd.sales.vn):'-'}</td><td>${avg(data.sales.vn.slice(0,range))}</td>${mc(data.sales.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>${pd?fmt(avg(pd.sales.kr)):'-'}</td><td>${fmt(avg(data.sales.kr))}</td>${mc(data.sales.kr)}</tr>`;
+  h+=`<tr><td>베트남</td><td>${pd?fmt(avg(pd.sales.vn)):'-'}</td><td>${fmt(avg(data.sales.vn))}</td>${mc(data.sales.vn)}</tr>`;
   const tS=data.sales.kr.map((v,i)=>(v||0)+(data.sales.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td>계</td><td>${pd?avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0))):'-'}</td><td>${avg(tS.slice(0,range))}</td>${mc(tS)}</tr>`;
+  h+=`<tr style="font-weight:600"><td>계</td><td>${pd?fmt(avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)))):'-'}</td><td>${fmt(avg(tS))}</td>${mc(tS)}</tr>`;
 
-  // 판정종합 건수
-  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td>국내</td><td>${pd?avg(pd.judgement.kr):'-'}</td><td>-</td>${mc(data.judgement.kr)}</tr>`;
-  h+=`<tr><td>베트남</td><td>${pd?avg(pd.judgement.vn):'-'}</td><td>-</td>${mc(data.judgement.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td>국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>-</td>${mc(data.judgement.kr)}</tr>`;
+  h+=`<tr><td>베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>-</td>${mc(data.judgement.vn)}</tr>`;
   const tJ=data.judgement.kr.map((v,i)=>(v||0)+(data.judgement.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td>판정 계</td><td>${pd?avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0))):'-'}</td><td>-</td>${mc(tJ)}</tr>`;
+  h+=`<tr style="font-weight:600"><td>판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>-</td>${mc(tJ)}</tr>`;
 
-  // 불량지수
   h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td>국내</td><td>-</td><td>-</td>${dc(data.judgement.kr,data.sales.kr)}</tr>`;
   h+=`<tr><td>베트남</td><td>-</td><td>-</td>${dc(data.judgement.vn,data.sales.vn)}</tr>`;
   h+=`<tr style="font-weight:600"><td>불량 계</td><td>-</td><td>-</td>${dc(tJ,tS)}</tr>`;
-  h+=`<tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td>${Array(range).fill('<td>1.50%</td>').join('')}</tr>`;
+  h+=`<tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td>${Array(12).fill('<td>1.50%</td>').join('')}</tr>`;
   h+='</tbody></table>';
   container.innerHTML = h;
 }
 
-// ─── 판정유형별 테이블 ───
+// ─── 판정유형별 테이블: 항상 1~12월, 범위 밖 회색 ───
 function renderKpiJudgementTables(data, year, range) {
   const krC = document.getElementById('kpiJudgementKr');
   const vnC = document.getElementById('kpiJudgementVn');
   if (!krC||!vnC) return;
-  const py = String(parseInt(year)-1);
-  const pd = KPI_DATA[py];
+  const py = String(parseInt(year)-1); const pd = KPI_DATA[py];
   const types = ['제조','설계','서비스','고객불만','사양재검토'];
 
   function avg(arr) { const v=arr.filter(x=>x&&x>0); return v.length>0?Math.round(v.reduce((s,x)=>s+x,0)/v.length):'-'; }
-  function mc(arr) { return arr.slice(0,range).map(v=>`<td>${v||'-'}</td>`).join(''); }
+  function mc(arr) { return arr.map((v,i) => {
+    const dim = i >= range ? ' style="opacity:0.25"' : '';
+    return `<td${dim}>${fmt(v)}</td>`;
+  }).join(''); }
 
   function build(flag, label, dd, pdd) {
-    const mHeaders = MONTHS.slice(0,range).map(m=>`<th>${m}</th>`).join('');
-    let h = `<div class="data-table-header"><h3>${flag} ${label} — 판정유형별 클레임 건수${range<12?' (~'+range+'월)':''}</h3></div>
-    <table class="data-table"><thead><tr><th style="text-align:left">판정유형</th><th>${py}평균</th>${mHeaders}</tr></thead><tbody>`;
-    let tot = Array(range).fill(0);
+    const mh = MONTHS.map(m=>`<th>${m}</th>`).join('');
+    let h = `<div class="data-table-header"><h3>${flag} ${label} — 판정유형별 클레임 건수</h3></div>
+    <table class="data-table"><thead><tr><th style="text-align:left">판정유형</th><th>${py}평균</th>${mh}</tr></thead><tbody>`;
+    let tot = Array(12).fill(0);
     types.forEach(t => {
       const arr = dd[t]||Array(12).fill(0);
-      arr.slice(0,range).forEach((v,i) => tot[i]+=(v||0));
-      h+=`<tr><td class="row-header">${t}</td><td>${pdd&&pdd[t]?avg(pdd[t]):'-'}</td>${mc(arr)}</tr>`;
+      arr.forEach((v,i) => tot[i]+=(v||0));
+      h+=`<tr><td class="row-header">${t}</td><td>${pdd&&pdd[t]?fmt(avg(pdd[t])):'-'}</td>${mc(arr)}</tr>`;
     });
     h+=`<tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>-</td>${mc(tot.map(v=>v||null))}</tr></tbody></table>`;
     return h;
@@ -308,13 +320,11 @@ async function onKpiYearChange(year) {
   await updateKpiFromSupabase(year);
   renderKpiClaimSection(year);
 }
-
 function onMonthRangeChange(val) {
   _kpiMonthRange = parseInt(val);
   const year = document.getElementById('kpiYearSelect')?.value || '2026';
   renderKpiClaimSection(year);
 }
-
 async function initKpiSection() {
   const year = document.getElementById('kpiYearSelect')?.value || '2026';
   await updateKpiFromSupabase(year);
