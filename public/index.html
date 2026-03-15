@@ -537,44 +537,32 @@ body::before {
   </div>
 
 
-  <!-- KPI Cost -->
+  <!-- KPI Cost — 동적 렌더링 -->
   <div id="kpi-cost-kpi" class="kpi-content" style="display:none">
-    <div class="section-title">실패비용 현황</div>
-    <div class="cost-grid">
-      <div class="cost-card"><div class="cost-label">하자보수비 (월평균)</div><div class="cost-value" style="color:var(--accent-rose)">6,190만</div><div class="cost-sub">목표: 4,480만</div></div>
-      <div class="cost-card"><div class="cost-label">바로스 AS 용역료 (월평균)</div><div class="cost-value" style="color:var(--accent-amber)">9,865만</div><div class="cost-sub">목표: 7,000만</div></div>
-      <div class="cost-card"><div class="cost-label">매출액 대비 비율</div><div class="cost-value" style="color:var(--accent-violet)">1.55%</div><div class="cost-sub">목표: 1.09%</div></div>
-      <div class="cost-card"><div class="cost-label">누적 하자보수비</div><div class="cost-value" style="color:var(--sidiz-blue-bright)">2.48억</div><div class="cost-sub">4개월</div></div>
-      <div class="cost-card"><div class="cost-label">누적 바로스 AS</div><div class="cost-value" style="color:var(--accent-cyan)">3.95억</div><div class="cost-sub">4개월</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:0">실패비용 현황</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select id="costYearSelect" onchange="CostModule.onCostYearChange(this.value)" style="background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:8px;font-size:13px">
+          <option value="2026">2026년</option>
+          <option value="2025">2025년</option>
+          <option value="2024">2024년</option>
+        </select>
+        <select id="costMonthRange" onchange="CostModule.onCostMonthRangeChange(this.value)" style="background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:8px;font-size:13px">
+          <option value="12">전체 (1~12월)</option>
+          <option value="1">~1월</option><option value="2">~2월</option><option value="3">~3월</option>
+          <option value="4">~4월</option><option value="5">~5월</option><option value="6">~6월</option>
+          <option value="7">~7월</option><option value="8">~8월</option><option value="9">~9월</option>
+          <option value="10">~10월</option><option value="11">~11월</option>
+        </select>
+      </div>
     </div>
-
-    <!-- 실패비용 추이 차트: 비용(막대) + 매출액 대비 비율(꺾은선) -->
+    <div id="costKpiCards" class="cost-grid"></div>
     <div class="chart-card" style="margin-bottom:24px;padding:24px">
       <h3 style="margin-bottom:4px">실패비용 추이 (비용 + 매출액 대비 비율)</h3>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 하자보수비+바로스AS 합계(만원) · 꺾은선: 매출액 대비 비율(%) · 점선: 목표 1.09%</p>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 하자보수비+바로스AS 합계(만원) · 꺾은선: 매출액 대비 비율(%) · 점선: 목표</p>
       <canvas id="costComboChart" height="110"></canvas>
     </div>
-
-    <div class="data-table-wrapper">
-      <div class="data-table-header"><h3>하자보수비 및 바로스 용역료 상세 (단위: 원)</h3></div>
-      <table class="data-table">
-        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2025평균</th><th>2026목표</th><th>2026평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th><th>누적</th></tr></thead>
-        <tbody>
-          <tr style="background:rgba(0,87,184,0.03)"><td class="row-header" colspan="2">매출액</td><td>90.1억</td><td>105.0억</td><td>103.9억</td><td>84.2억</td><td>108.9억</td><td>112.6억</td><td>110.0억</td><td>415.8억</td></tr>
-          <tr><td class="row-header" rowspan="5">(판)하자보수비</td><td>제품</td><td>2,340만</td><td>1,850만</td><td>3,236만</td><td>1,872만</td><td>2,993만</td><td>2,996만</td><td>5,083만</td><td>12,945만</td></tr>
-          <tr><td>자재</td><td>2,231만</td><td>1,700만</td><td>1,760만</td><td>1,468만</td><td>1,985만</td><td>1,781만</td><td>1,806만</td><td>7,040만</td></tr>
-          <tr><td>T50RE 헤드 자재</td><td>712만</td><td>350만</td><td>199만</td><td>334만</td><td>127만</td><td>174만</td><td>162만</td><td>797만</td></tr>
-          <tr><td>클레임 보상</td><td>656만</td><td>500만</td><td>555만</td><td>668만</td><td>752만</td><td>331만</td><td>468만</td><td>2,220만</td></tr>
-          <tr style="font-weight:600"><td>계</td><td class="highlight">6,137만</td><td class="success">4,480만</td><td class="danger">6,191만</td><td>4,344만</td><td>6,624만</td><td>5,666만</td><td>8,129만</td><td class="danger">24,763만</td></tr>
-          <tr><td class="row-header" rowspan="4">바로스 AS</td><td>AS 컨택센터</td><td>5,335만</td><td>4,300만</td><td>5,893만</td><td>4,897만</td><td>6,567만</td><td>6,438만</td><td>5,670만</td><td>23,572만</td></tr>
-          <tr><td>AS조치비(무상)</td><td>2,228만</td><td>1,700만</td><td>2,647만</td><td>1,734만</td><td>2,388만</td><td>3,176만</td><td>3,292만</td><td>10,590만</td></tr>
-          <tr><td>AS물류비</td><td>1,292만</td><td>1,000만</td><td>1,324만</td><td>965만</td><td>1,337만</td><td>1,526만</td><td>1,469만</td><td>5,297만</td></tr>
-          <tr style="font-weight:600"><td>계</td><td class="highlight">8,855만</td><td class="success">7,000만</td><td class="danger">9,865만</td><td>7,597만</td><td>10,292만</td><td>11,139만</td><td>10,431만</td><td class="danger">39,459만</td></tr>
-          <tr style="font-weight:700;background:rgba(255,107,122,0.04)"><td class="row-header" colspan="2">소계</td><td>15,013만</td><td class="success">11,490만</td><td class="danger">16,072만</td><td>11,942만</td><td>16,940만</td><td>16,820만</td><td>18,588만</td><td class="danger">64,290만</td></tr>
-          <tr style="font-weight:600"><td class="row-header" colspan="2">매출액 대비 비율</td><td>1.67%</td><td class="success">1.09%</td><td class="danger">1.55%</td><td>1.42%</td><td>1.55%</td><td>1.49%</td><td>1.69%</td><td class="danger">1.55%</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <div id="costDetailTable" class="data-table-wrapper"></div>
   </div>
 </div>
 
@@ -976,6 +964,7 @@ body::before {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="supabase-client.js"></script>
 <script src="kpi-data.js"></script>
+<script src="cost-data.js"></script>
 <script>
 const now = new Date();
 document.getElementById('currentDate').textContent = now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0');
@@ -1313,76 +1302,6 @@ async function showClaimDetail(product, defectType) {
   } catch(e) { body.innerHTML=`<div style="text-align:center;padding:24px;color:var(--accent-rose)">⚠️ 조회 오류: ${e.message}</div>`; }
 }
 
-// Cost Combo Chart - 실패비용(막대) + 매출액 대비 비율(꺾은선)
-function initCostComboChart() {
-  const ctx = document.getElementById('costComboChart');
-  if (!ctx) return;
-  
-  const labels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  const hazaCost = [4344, 6624, 5666, 8129, 0, 0, 0, 0, 0, 0, 0, 0]; // 하자보수비 (만원)
-  const barosCost = [7597, 10292, 11139, 10431, 0, 0, 0, 0, 0, 0, 0, 0]; // 바로스 AS (만원)
-  const totalCost = hazaCost.map((v,i) => v + barosCost[i]);
-  const ratio = [1.42, 1.55, 1.49, 1.69, 0, 0, 0, 0, 0, 0, 0, 0]; // 매출액 대비 비율
-  const targetRatio = Array(12).fill(1.09);
-
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: '하자보수비',
-          data: hazaCost,
-          backgroundColor: 'rgba(255, 107, 122, 0.7)',
-          borderColor: 'rgba(255, 107, 122, 1)',
-          borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y'
-        },
-        {
-          label: '바로스 AS',
-          data: barosCost,
-          backgroundColor: 'rgba(255, 179, 71, 0.7)',
-          borderColor: 'rgba(255, 179, 71, 1)',
-          borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y'
-        },
-        {
-          label: '매출 대비 비율(%)',
-          data: ratio,
-          type: 'line',
-          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)',
-          borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#a78bfa',
-          pointBorderColor: '#17293f', pointBorderWidth: 2,
-          tension: 0.3, fill: false, order: 1, yAxisID: 'y1'
-        },
-        {
-          label: '목표 (1.09%)',
-          data: targetRatio,
-          type: 'line',
-          borderColor: 'rgba(0,196,140,0.7)', borderWidth: 2, borderDash: [6,4],
-          pointRadius: 0, fill: false, order: 2, yAxisID: 'y1'
-        }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 11 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
-        tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
-          callbacks: { label: function(c) { if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%'; return c.dataset.label+': '+c.parsed.y.toLocaleString()+'만원'; } }
-        }
-      },
-      scales: {
-        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 11 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '비용 (만원)', color: '#6b83a0', font: { size: 11 } },
-          grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0 },
-        y1: { position: 'right', title: { display: true, text: '매출 대비 비율 (%)', color: '#6b83a0', font: { size: 11 } },
-          grid: { drawOnChartArea: false }, ticks: { color: '#a78bfa', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v+'%' }, min: 0, max: 3.0 }
-      }
-    }
-  });
-}
-initCostComboChart();
-
 // ─── Supabase 초기 연결 ───
 async function initSupabase() {
   const badge = document.getElementById('connectionBadge');
@@ -1402,6 +1321,7 @@ async function initSupabase() {
     await loadProductAccordion();
     // KPI 고객클레임 현황 초기화
     if (window.KpiModule) await window.KpiModule.initKpiSection();
+    if (window.CostModule) window.CostModule.renderCostSection('2026');
   } catch(e) { console.error('Supabase 연결 실패:', e);
     if(badge) { badge.innerHTML='⚠ 오프라인'; badge.style.background='rgba(255,179,71,0.1)'; badge.style.borderColor='rgba(255,179,71,0.2)'; badge.style.color='var(--accent-amber)'; } }
 }
