@@ -481,7 +481,7 @@ body::before {
     <div class="header-left"><h1>KPI <span>현황</span></h1><p>품질경영위원회 발표 자료 — 고객클레임 및 실패비용</p></div>
     <div style="display:flex;align-items:center;gap:8px">
       <label style="font-size:11px;color:var(--text-muted)">연도:</label>
-      <select id="kpiYearSelect" onchange="onKpiYearChange(this.value)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">
+      <select id="kpiYearSelect" onchange="if(window.KpiModule) window.KpiModule.onKpiYearChange(this.value)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">
         <option value="2026" selected>2026년</option>
         <option value="2025">2025년</option>
       </select>
@@ -496,81 +496,27 @@ body::before {
   <div id="kpi-claim-kpi" class="kpi-content">
     <div class="section-title">고객클레임 현황 (품질경영위원회)</div>
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">불량 합계 (10월 누적)</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)">6,274</div><div class="kpi-change">국내 3,859 + 베트남 2,415</div></div>
-      <div class="kpi-card"><div class="kpi-label">불량지수 (평균)</div><div class="kpi-value" style="color:var(--accent-amber)">1.80%</div><div class="kpi-change up">▲ 목표 1.50% 대비 초과</div></div>
-      <div class="kpi-card"><div class="kpi-label">제조 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-rose)">875</div><div class="kpi-change">클레임율 0.21%</div></div>
-      <div class="kpi-card"><div class="kpi-label">설계 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-violet)">2,979</div><div class="kpi-change">국내 1,987 + 베트남 992</div></div>
+      <div class="kpi-card"><div class="kpi-label">로딩 중...</div><div class="kpi-value">-</div></div>
     </div>
 
-    <!-- Combo Chart: Bar (클레임 건수) + Line (불량지수) -->
+    <!-- Combo Chart -->
     <div class="chart-card" style="margin-bottom:24px;padding:24px">
       <h3 style="margin-bottom:4px">클레임 건수 및 불량지수 추이</h3>
       <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 월별 불량 건수 (국내+베트남) · 꺾은선: 불량지수(%) · 점선: 목표 1.50%</p>
       <canvas id="comboChart" height="110"></canvas>
     </div>
 
-    <!-- Main KPI Table -->
-    <div class="data-table-wrapper">
-      <div class="data-table-header"><h3>고객클레임 종합 현황</h3></div>
-      <table class="data-table">
-        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2025평균</th><th>2026평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th></tr></thead>
-        <tbody>
-          <tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>-</td><td>19,969</td><td>18,717</td><td>19,188</td><td>25,611</td><td>26,634</td><td>22,664</td><td>16,594</td><td>15,728</td><td>20,759</td><td>19,984</td><td>18,343</td></tr>
-          <tr><td>베트남</td><td>-</td><td>14,812</td><td>14,322</td><td>14,003</td><td>18,428</td><td>20,237</td><td>16,333</td><td>12,583</td><td>10,609</td><td>12,931</td><td>14,754</td><td>15,927</td></tr>
-          <tr style="font-weight:600"><td>계</td><td>-</td><td>34,781</td><td>33,039</td><td>33,191</td><td>44,039</td><td>46,871</td><td>38,997</td><td>29,177</td><td>26,337</td><td>33,690</td><td>34,738</td><td>34,270</td></tr>
-          <tr><td class="row-header" rowspan="3">클레임 건수(불량)</td><td>국내</td><td>429</td><td>-</td><td>498</td><td>334</td><td>479</td><td>462</td><td>399</td><td>355</td><td>369</td><td>404</td><td>528</td><td>529</td></tr>
-          <tr><td>베트남</td><td>268</td><td>-</td><td>226</td><td>169</td><td>224</td><td>257</td><td>310</td><td>327</td><td>284</td><td>255</td><td>271</td><td>318</td></tr>
-          <tr style="font-weight:600"><td>불량 계</td><td>697</td><td>-</td><td>724</td><td>503</td><td>703</td><td>719</td><td>709</td><td>682</td><td>653</td><td>659</td><td>799</td><td>847</td></tr>
-          <tr><td class="row-header" rowspan="3">불량지수</td><td>국내</td><td>2.15%</td><td>-</td><td>2.66%</td><td>1.74%</td><td>1.87%</td><td>1.73%</td><td>1.76%</td><td>2.14%</td><td>2.35%</td><td>1.95%</td><td class="danger">2.64%</td><td class="danger">2.88%</td></tr>
-          <tr><td>베트남</td><td>1.81%</td><td>-</td><td>1.58%</td><td>1.21%</td><td>1.22%</td><td>1.27%</td><td>1.90%</td><td>2.60%</td><td>2.68%</td><td>1.97%</td><td>1.84%</td><td>2.00%</td></tr>
-          <tr style="font-weight:600"><td>불량 계</td><td style="color:#7eb8ff">2.00%</td><td style="color:#7eb8ff">-</td><td style="color:#7eb8ff">2.19%</td><td style="color:#7eb8ff">1.52%</td><td style="color:#7eb8ff">1.60%</td><td style="color:#7eb8ff">1.53%</td><td style="color:#7eb8ff">1.82%</td><td style="color:#7eb8ff">2.34%</td><td style="color:#7eb8ff">2.48%</td><td style="color:#7eb8ff">1.96%</td><td style="color:#ff9e7a">2.30%</td><td style="color:#ff9e7a">2.47%</td></tr>
-          <tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td></tr>
-        </tbody>
-      </table>
+    <!-- Main KPI Table (동적 생성) -->
+    <div class="data-table-wrapper" id="kpiMainTable">
+      <div style="text-align:center;padding:30px;color:var(--text-muted)">⏳ KPI 데이터 로딩 중...</div>
     </div>
 
-    <!-- 전월 대비 특이사항 분석 -->
-    <div class="analysis-box">
-      <h4>📌 전월 대비 특이사항 분석 (9월 기준)</h4>
-      <div class="analysis-item"><div class="analysis-dot critical"></div><div><strong>[국내] 불량지수 2.88% — 전월(2.64%) 대비 +0.24%p 상승.</strong> 8~9월 연속 불량지수 상승세이며, 설계 클레임(263건)과 제조 클레임(38건) 모두 높은 수준 유지. 특히 설계 클레임 중 헤드 컬링 하자가 8월 대비 지속되고 있어 개선 효과 모니터링 필요.</div></div>
-      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>[베트남] 불량지수 2.00% — 전월(1.84%) 대비 +0.16%p 상승.</strong> 헤드 관련 클레임이 여전히 높은 수준이나, 7월 정점 대비 감소 추세. 제조 클레임은 42건에서 안정화.</div></div>
-      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>[국내 제조] 9월 31건 — 전월(38건) 대비 소폭 감소.</strong> 오포장(7건), 등판 메쉬 이탈(5건), T25 높낮이 고정 불가(4건)가 주요 이슈.</div></div>
-      <div class="analysis-item"><div class="analysis-dot info"></div><div><strong>[사양재검토] 국내 103건, 베트남 44건 — 전월 대비 국내는 감소(-17건), 베트남은 감소(-4건).</strong> 양 지역 모두 전월 대비 감소 추세이나 국내의 절대 건수가 여전히 높음.</div></div>
-    </div>
-
-    <!-- 판정유형별 클레임 현황 -->
-    <div class="section-title">판정유형별 클레임 현황 (월별)</div>
-
-    <div class="data-table-wrapper">
-      <div class="data-table-header"><h3>🇰🇷 국내 — 판정유형별 클레임 건수</h3></div>
-      <table class="data-table">
-        <thead><tr><th style="text-align:left">판정유형</th><th>2025평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th></tr></thead>
-        <tbody>
-          <tr><td class="row-header">제조</td><td>27</td><td>34</td><td>19</td><td>60</td><td>40</td><td>32</td><td>15</td><td>35</td><td>18</td><td>36</td><td>38</td></tr>
-          <tr><td class="row-header">설계</td><td>199</td><td>213</td><td>144</td><td>212</td><td>188</td><td>185</td><td>155</td><td>165</td><td>211</td><td>266</td><td>263</td></tr>
-          <tr><td class="row-header">서비스</td><td>7</td><td>14</td><td>4</td><td>11</td><td>17</td><td>4</td><td>5</td><td>8</td><td>4</td><td>6</td><td>4</td></tr>
-          <tr><td class="row-header">고객불만</td><td>101</td><td>110</td><td>62</td><td>129</td><td>118</td><td>80</td><td>100</td><td>96</td><td>107</td><td>99</td><td>114</td></tr>
-          <tr><td class="row-header">사양재검토</td><td>102</td><td>144</td><td>111</td><td>91</td><td>116</td><td>100</td><td>84</td><td>69</td><td>83</td><td>139</td><td>120</td></tr>
-          <tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>436</td><td>515</td><td>340</td><td>503</td><td>479</td><td>401</td><td>359</td><td>373</td><td>423</td><td>546</td><td>539</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="data-table-wrapper">
-      <div class="data-table-header"><h3>🇻🇳 베트남 — 판정유형별 클레임 건수</h3></div>
-      <table class="data-table">
-        <thead><tr><th style="text-align:left">판정유형</th><th>2025평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th></tr></thead>
-        <tbody>
-          <tr><td class="row-header">제조</td><td>47</td><td>35</td><td>27</td><td>41</td><td>25</td><td>95</td><td>139</td><td>79</td><td>25</td><td>49</td><td>39</td></tr>
-          <tr><td class="row-header">설계</td><td>99</td><td>73</td><td>46</td><td>56</td><td>69</td><td>72</td><td>89</td><td>121</td><td>138</td><td>140</td><td>161</td></tr>
-          <tr><td class="row-header">서비스</td><td>8</td><td>7</td><td>8</td><td>19</td><td>30</td><td>5</td><td>3</td><td>5</td><td>1</td><td>3</td><td>3</td></tr>
-          <tr><td class="row-header">고객불만</td><td>65</td><td>67</td><td>61</td><td>76</td><td>86</td><td>64</td><td>70</td><td>59</td><td>57</td><td>41</td><td>77</td></tr>
-          <tr><td class="row-header">사양재검토</td><td>51</td><td>62</td><td>41</td><td>63</td><td>79</td><td>83</td><td>38</td><td>27</td><td>41</td><td>47</td><td>48</td></tr>
-          <tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>270</td><td>244</td><td>183</td><td>255</td><td>289</td><td>319</td><td>339</td><td>291</td><td>262</td><td>280</td><td>328</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- 판정유형별 테이블 (동적 생성) -->
+    <div class="section-title" style="margin-top:24px">판정유형별 클레임 현황 (월별)</div>
+    <div class="data-table-wrapper" id="kpiJudgementKr" style="margin-bottom:18px"></div>
+    <div class="data-table-wrapper" id="kpiJudgementVn"></div>
   </div>
+
 
   <!-- KPI Cost -->
   <div id="kpi-cost-kpi" class="kpi-content" style="display:none">
@@ -1010,6 +956,7 @@ body::before {
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="supabase-client.js"></script>
+<script src="kpi-data.js"></script>
 <script>
 const now = new Date();
 document.getElementById('currentDate').textContent = now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0');
@@ -1347,134 +1294,6 @@ async function showClaimDetail(product, defectType) {
   } catch(e) { body.innerHTML=`<div style="text-align:center;padding:24px;color:var(--accent-rose)">⚠️ 조회 오류: ${e.message}</div>`; }
 }
 
-// Combo Chart - Claims Count (bar) + Defect Index (line)
-function initComboChart() {
-  const ctx = document.getElementById('comboChart');
-  if (!ctx) return;
-  
-  const labels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  const krClaims = [334, 479, 462, 399, 355, 369, 404, 528, 529, 0, 0, 0];
-  const vnClaims = [169, 224, 257, 310, 327, 284, 255, 271, 318, 0, 0, 0];
-  const totalClaims = krClaims.map((v,i) => v + vnClaims[i]);
-  const defectIndex = [1.52, 1.60, 1.53, 1.82, 2.34, 2.48, 1.96, 2.30, 2.47, 0, 0, 0];
-  const target = Array(12).fill(1.50);
-
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: '국내 클레임',
-          data: krClaims,
-          backgroundColor: 'rgba(45, 125, 210, 0.75)',
-          borderColor: 'rgba(45, 125, 210, 1)',
-          borderWidth: 1,
-          borderRadius: 4,
-          order: 3,
-          yAxisID: 'y'
-        },
-        {
-          label: '베트남 클레임',
-          data: vnClaims,
-          backgroundColor: 'rgba(216, 87, 72, 0.7)',
-          borderColor: 'rgba(216, 87, 72, 1)',
-          borderWidth: 1,
-          borderRadius: 4,
-          order: 3,
-          yAxisID: 'y'
-        },
-        {
-          label: '불량지수(%)',
-          data: defectIndex,
-          type: 'line',
-          borderColor: '#ffb347',
-          backgroundColor: 'rgba(255, 179, 71, 0.1)',
-          borderWidth: 2.5,
-          pointRadius: 5,
-          pointBackgroundColor: '#ffb347',
-          pointBorderColor: '#17293f',
-          pointBorderWidth: 2,
-          tension: 0.3,
-          fill: false,
-          order: 1,
-          yAxisID: 'y1'
-        },
-        {
-          label: '목표 (1.50%)',
-          data: target,
-          type: 'line',
-          borderColor: 'rgba(255, 107, 122, 0.7)',
-          borderWidth: 2,
-          borderDash: [6, 4],
-          pointRadius: 0,
-          fill: false,
-          order: 2,
-          yAxisID: 'y1'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: {
-          position: 'top',
-          align: 'end',
-          labels: {
-            color: '#a0b4cb',
-            font: { size: 11, family: "'Noto Sans KR', sans-serif" },
-            usePointStyle: true,
-            pointStyle: 'rectRounded',
-            padding: 16
-          }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(23, 41, 63, 0.95)',
-          titleColor: '#f0f4f8',
-          bodyColor: '#a0b4cb',
-          borderColor: '#243b5a',
-          borderWidth: 1,
-          cornerRadius: 8,
-          padding: 12,
-          bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
-          callbacks: {
-            label: function(ctx) {
-              if (ctx.dataset.yAxisID === 'y1') return ctx.dataset.label + ': ' + ctx.parsed.y + '%';
-              return ctx.dataset.label + ': ' + ctx.parsed.y + '건';
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          stacked: true,
-          grid: { color: 'rgba(36, 59, 90, 0.3)' },
-          ticks: { color: '#6b83a0', font: { size: 11 } }
-        },
-        y: {
-          stacked: true,
-          position: 'left',
-          title: { display: true, text: '클레임 건수', color: '#6b83a0', font: { size: 11 } },
-          grid: { color: 'rgba(36, 59, 90, 0.3)' },
-          ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono', monospace" } },
-          min: 0
-        },
-        y1: {
-          position: 'right',
-          title: { display: true, text: '불량지수 (%)', color: '#6b83a0', font: { size: 11 } },
-          grid: { drawOnChartArea: false },
-          ticks: { color: '#ffb347', font: { size: 10, family: "'JetBrains Mono', monospace" }, callback: v => v + '%' },
-          min: 0,
-          max: 3.5
-        }
-      }
-    }
-  });
-}
-initComboChart();
-
 // Cost Combo Chart - 실패비용(막대) + 매출액 대비 비율(꺾은선)
 function initCostComboChart() {
   const ctx = document.getElementById('costComboChart');
@@ -1545,17 +1364,6 @@ function initCostComboChart() {
 }
 initCostComboChart();
 
-// KPI 연도 변경
-function onKpiYearChange(year) {
-  console.log('KPI 연도 변경:', year);
-  // 추후 Supabase 실시간 전환 시 해당 연도 데이터로 필터링
-  // 현재는 정적 데이터이므로 알림 표시
-  if (year !== '2026') {
-    alert(year + '년 데이터는 아직 Supabase에 입력되지 않았습니다.\n데이터 업로드 후 자동 전환됩니다.');
-    document.getElementById('kpiYearSelect').value = '2026';
-  }
-}
-
 // ─── Supabase 초기 연결 ───
 async function initSupabase() {
   const badge = document.getElementById('connectionBadge');
@@ -1573,6 +1381,8 @@ async function initSupabase() {
       if(kpiSubs.length>0) kpiSubs[0].textContent = 'Supabase 실시간 · claims 테이블'; }
     // 제품별 아코디언 로드
     await loadProductAccordion();
+    // KPI 고객클레임 현황 초기화
+    if (window.KpiModule) await window.KpiModule.initKpiSection();
   } catch(e) { console.error('Supabase 연결 실패:', e);
     if(badge) { badge.innerHTML='⚠ 오프라인'; badge.style.background='rgba(255,179,71,0.1)'; badge.style.borderColor='rgba(255,179,71,0.2)'; badge.style.color='var(--accent-amber)'; } }
 }
