@@ -376,9 +376,22 @@ body::before {
 
   <!-- Product -->
   <div id="claim-product" class="claim-content" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div><span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div>
+      <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
+    </div>
+
+    <!-- 판정유형(category) 필터 -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <label style="font-size:12px;color:var(--text-muted);font-weight:500">판정유형:</label>
+      <div class="sub-tabs" id="prodCategoryFilter" style="margin-bottom:0">
+        <button class="sub-tab active" onclick="filterProductByCategory('전체',this)">전체</button>
+      </div>
+      <span id="prodFilterCount" style="font-size:11px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
+
     <div class="stats-row" id="productStats">
-      <div class="stat-item"><div class="stat-label">총 클레임</div><div class="stat-value" style="color:var(--sidiz-blue-bright)" id="prodTotalCount">-</div><div class="stat-sub">로딩 중...</div></div>
+      <div class="stat-item"><div class="stat-label">총 클레임</div><div class="stat-value" style="color:var(--sidiz-blue-bright)" id="prodTotalCount">-</div><div class="stat-sub" id="prodTotalSub">로딩 중...</div></div>
       <div class="stat-item"><div class="stat-label">국내</div><div class="stat-value" style="color:var(--accent-cyan)" id="prodKrCount">-</div><div class="stat-sub">국내 건수</div></div>
       <div class="stat-item"><div class="stat-label">베트남</div><div class="stat-value" style="color:var(--accent-amber)" id="prodVnCount">-</div><div class="stat-sub">베트남 건수</div></div>
     </div>
@@ -1076,74 +1089,215 @@ function setQuickDate(range) {
 }
 
 // ─── 제품별 클레임 — Supabase claims(회수일) 실시간 ───
+let _allProductClaims = [];
+let _currentCategoryFilter = '전체';
+let _productCharts = {}; // Chart.js 인스턴스 저장
+
 async function loadProductAccordion() {
   try {
     const claims = await SupabaseClient.fetchClaims('select=*&order=claim_date.desc&limit=5000');
-    if (!claims || claims.length === 0) { document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">📭 claims 테이블에 데이터가 없습니다.</div>'; return; }
+    if (!claims || claims.length === 0) {
+      document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">📭 claims 테이블에 데이터가 없습니다.</div>';
+      return;
+    }
+    _allProductClaims = claims;
     
-    // 통계
-    const krCnt = claims.filter(c=>c.country==='국내').length;
-    const vnCnt = claims.filter(c=>c.country==='베트남').length;
-    document.getElementById('prodTotalCount').textContent = claims.length.toLocaleString();
-    document.getElementById('prodKrCount').textContent = krCnt.toLocaleString();
-    document.getElementById('prodVnCount').textContent = vnCnt.toLocaleString();
-    document.querySelector('#prodTotalCount').parentElement.querySelector('.stat-sub').textContent = 'Supabase 실시간';
+    // 카테고리 필터 탭 생성
+    const categories = [...new Set(claims.map(c => c.category).filter(Boolean))].sort();
+    const filterContainer = document.getElementById('prodCategoryFilter');
+    filterContainer.innerHTML = '<button class="sub-tab active" onclick="filterProductByCategory(\'전체\',this)">전체</button>' +
+      categories.map(cat => `<button class="sub-tab" onclick="filterProductByCategory('${cat}',this)">${cat}</button>`).join('');
     
-    // item별 그룹핑
-    const byItem = {};
-    claims.forEach(c => { const item = c.item || '미분류'; if(!byItem[item]) byItem[item] = []; byItem[item].push(c); });
-    
-    // 건수 내림차순 정렬
-    const sorted = Object.entries(byItem).sort((a,b) => b[1].length - a[1].length);
-    
-    let html = '';
-    sorted.forEach(([item, itemClaims], i) => {
-      const count = itemClaims.length;
-      const krN = itemClaims.filter(c=>c.country==='국내').length;
-      const vnN = itemClaims.filter(c=>c.country==='베트남').length;
-      const regionFlag = vnN > krN ? '🇻🇳' : '🇰🇷';
-      
-      // defect_type별 집계
-      const defects = {};
-      itemClaims.forEach(c => { const dt = c.defect_type || '미분류'; defects[dt] = (defects[dt]||0)+1; });
-      const defectSorted = Object.entries(defects).sort((a,b)=>b[1]-a[1]);
-      const maxD = defectSorted[0]?.[1] || 1;
-      
-      // 월별 집계
-      const monthly = {};
-      itemClaims.forEach(c => { const m = c.claim_date?.slice(0,7) || '미분류'; monthly[m]=(monthly[m]||0)+1; });
-      const monthSorted = Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0]));
-      const maxM = Math.max(...monthSorted.map(m=>m[1]), 1);
-      
-      html += `<div class="accordion-item" id="acc-${i}">
-        <div class="accordion-header" onclick="toggleAccordion(${i})">
-          <div class="accordion-header-left">
-            <span style="font-size:18px">${regionFlag}</span>
-            <div><div class="accordion-product-name">${item} <span style="font-size:11px;color:var(--text-muted);font-weight:400">국내${krN} / 베트남${vnN}</span></div></div>
-          </div>
-          <div class="accordion-meta">
-            <span class="accordion-product-count blue">${count}건</span>
-            <span class="accordion-arrow">▼</span>
-          </div>
-        </div>
-        <div class="accordion-body">
-          <div style="margin-bottom:16px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">월별 건수</div>
-            ${monthSorted.map(([m,v]) => `<div class="mini-bar-row"><div class="mini-bar-label">${m.slice(5)}월</div><div class="mini-bar-track"><div class="mini-bar-fill brand" style="width:${v/maxM*100}%"><span>${v}</span></div></div></div>`).join('')}
-          </div>
-          <div>
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">하자유형별 건수</div>
-            ${defectSorted.map(([dt,v]) => `<div class="mini-bar-row"><div class="mini-bar-label" style="width:60px">${dt}</div><div class="mini-bar-track"><div class="mini-bar-fill brand" style="width:${v/maxD*100}%"><span>${v}</span></div></div></div>`).join('')}
-          </div>
-        </div>
-      </div>`;
-    });
-    
-    document.getElementById('productAccordion').innerHTML = html;
+    renderProductAccordion(claims);
   } catch(e) {
     console.error('제품별 로딩 오류:', e);
-    document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-rose)">⚠️ 데이터 로딩 실패: ' + e.message + '</div>';
+    document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-rose)">⚠️ 로딩 실패: ' + e.message + '</div>';
   }
+}
+
+function filterProductByCategory(cat, btn) {
+  _currentCategoryFilter = cat;
+  // 탭 활성화
+  document.querySelectorAll('#prodCategoryFilter .sub-tab').forEach(t => t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  
+  const filtered = cat === '전체' ? _allProductClaims : _allProductClaims.filter(c => c.category === cat);
+  document.getElementById('prodFilterCount').textContent = cat === '전체' ? '' : `(${filtered.length}건 필터됨)`;
+  renderProductAccordion(filtered);
+}
+
+function renderProductAccordion(claims) {
+  // 통계 업데이트
+  const krCnt = claims.filter(c => c.country === '국내').length;
+  const vnCnt = claims.filter(c => c.country === '베트남').length;
+  document.getElementById('prodTotalCount').textContent = claims.length.toLocaleString();
+  document.getElementById('prodKrCount').textContent = krCnt.toLocaleString();
+  document.getElementById('prodVnCount').textContent = vnCnt.toLocaleString();
+  document.getElementById('prodTotalSub').textContent = 'Supabase 실시간' + (_currentCategoryFilter !== '전체' ? ' · ' + _currentCategoryFilter : '');
+  
+  // 기존 차트 정리
+  Object.values(_productCharts).forEach(c => c.destroy());
+  _productCharts = {};
+  
+  // item별 그룹핑
+  const byItem = {};
+  claims.forEach(c => { const item = c.item || '미분류'; if (!byItem[item]) byItem[item] = []; byItem[item].push(c); });
+  const sorted = Object.entries(byItem).sort((a, b) => b[1].length - a[1].length);
+  
+  if (sorted.length === 0) {
+    document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">해당 판정유형에 데이터가 없습니다.</div>';
+    return;
+  }
+  
+  // 전체 월 범위 계산 (모든 claims에서)
+  const allMonths = [...new Set(claims.map(c => c.claim_date?.slice(0, 7)).filter(Boolean))].sort();
+  
+  let html = '';
+  sorted.forEach(([item, itemClaims], i) => {
+    const count = itemClaims.length;
+    const krN = itemClaims.filter(c => c.country === '국내').length;
+    const vnN = itemClaims.filter(c => c.country === '베트남').length;
+    const regionFlag = vnN > krN ? '🇻🇳' : '🇰🇷';
+    
+    // defect_type별 월별 매트릭스 집계
+    const defectMonthly = {};
+    itemClaims.forEach(c => {
+      const dt = c.defect_type || '미분류';
+      const m = c.claim_date?.slice(0, 7) || '미분류';
+      if (!defectMonthly[dt]) defectMonthly[dt] = { total: 0, months: {} };
+      defectMonthly[dt].total++;
+      defectMonthly[dt].months[m] = (defectMonthly[dt].months[m] || 0) + 1;
+    });
+    const defectSorted = Object.entries(defectMonthly).sort((a, b) => b[1].total - a[1].total);
+    
+    // 월별 총 건수 (차트용)
+    const monthlyTotals = {};
+    itemClaims.forEach(c => { const m = c.claim_date?.slice(0, 7) || '미분류'; monthlyTotals[m] = (monthlyTotals[m] || 0) + 1; });
+    
+    // 상태 판단 (최근 2개월 추이로 간단 판단)
+    const recentMonths = allMonths.slice(-2);
+    function getStatus(dt) {
+      const d = defectMonthly[dt];
+      if (!d || recentMonths.length < 2) return 'new';
+      const prev = d.months[recentMonths[0]] || 0;
+      const curr = d.months[recentMonths[1]] || 0;
+      if (curr === 0 && prev > 0) return 'done';
+      if (curr > prev) return 'progress';
+      return 'new';
+    }
+    
+    // 월 헤더 (짧은 형태)
+    const monthHeaders = allMonths.map(m => `<th>${parseInt(m.slice(5))}월</th>`).join('');
+    
+    html += `<div class="accordion-item" id="acc-${i}">
+      <div class="accordion-header" onclick="toggleAccordionProduct(${i},'${item.replace(/'/g,"\\'")}')">
+        <div class="accordion-header-left">
+          <span style="font-size:18px">${regionFlag}</span>
+          <div><div class="accordion-product-name">${item} <span style="font-size:11px;color:var(--text-muted);font-weight:400">국내${krN} / 베트남${vnN}</span></div></div>
+        </div>
+        <div class="accordion-meta">
+          <span class="accordion-product-count blue">${count}건</span>
+          <span class="accordion-arrow">▼</span>
+        </div>
+      </div>
+      <div class="accordion-body">
+        <!-- 월별 추이 차트 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">📊 월별 클레임 건수 추이</div>
+          <div style="height:180px;position:relative"><canvas id="prodChart-${i}" height="180"></canvas></div>
+        </div>
+        
+        <!-- 하자유형별 월별 테이블 -->
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">하자유형별 월별 건수</div>
+          <div style="overflow-x:auto">
+          <table class="data-table" style="font-size:11px">
+            <thead><tr><th style="text-align:left">유형</th><th>상태</th>${monthHeaders}<th style="font-weight:700">합계</th></tr></thead>
+            <tbody>
+              ${defectSorted.map(([dt, d]) => {
+                const status = getStatus(dt);
+                const statusLabel = status === 'done' ? '개선완료' : status === 'progress' ? '증가중' : '신규';
+                return `<tr>
+                  <td style="text-align:left;font-weight:500">${dt}</td>
+                  <td><span class="tag ${status}">${statusLabel}</span></td>
+                  ${allMonths.map(m => `<td>${d.months[m] || '-'}</td>`).join('')}
+                  <td style="font-weight:700;color:var(--sidiz-blue-bright)">${d.total}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+  
+  document.getElementById('productAccordion').innerHTML = html;
+}
+
+function toggleAccordionProduct(i, item) {
+  const el = document.getElementById('acc-' + i);
+  el.classList.toggle('open');
+  
+  // 차트가 아직 안 그려졌으면 그리기
+  const chartId = 'prodChart-' + i;
+  if (el.classList.contains('open') && !_productCharts[chartId]) {
+    setTimeout(() => renderProductMonthlyChart(chartId, item), 100);
+  }
+}
+
+function renderProductMonthlyChart(chartId, item) {
+  const ctx = document.getElementById(chartId);
+  if (!ctx) return;
+  
+  const filtered = (_currentCategoryFilter === '전체' ? _allProductClaims : _allProductClaims.filter(c => c.category === _currentCategoryFilter))
+    .filter(c => c.item === item);
+  
+  // 월별 국내/베트남 집계
+  const months = [...new Set(filtered.map(c => c.claim_date?.slice(0, 7)).filter(Boolean))].sort();
+  const krByMonth = {}; const vnByMonth = {};
+  filtered.forEach(c => {
+    const m = c.claim_date?.slice(0, 7);
+    if (!m) return;
+    if (c.country === '베트남') vnByMonth[m] = (vnByMonth[m] || 0) + 1;
+    else krByMonth[m] = (krByMonth[m] || 0) + 1;
+  });
+  
+  const labels = months.map(m => parseInt(m.slice(5)) + '월');
+  
+  _productCharts[chartId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '국내',
+          data: months.map(m => krByMonth[m] || 0),
+          backgroundColor: 'rgba(45, 125, 210, 0.75)',
+          borderColor: 'rgba(45, 125, 210, 1)',
+          borderWidth: 1, borderRadius: 4
+        },
+        {
+          label: '베트남',
+          data: months.map(m => vnByMonth[m] || 0),
+          backgroundColor: 'rgba(216, 87, 72, 0.7)',
+          borderColor: 'rgba(216, 87, 72, 1)',
+          borderWidth: 1, borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 10 }, usePointStyle: true, padding: 12 } },
+        tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 10 }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10 } } },
+        y: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" } }, beginAtZero: true }
+      }
+    }
+  });
 }
 
 function toggleAccordion(i) { document.getElementById('acc-'+i).classList.toggle('open'); }
