@@ -333,7 +333,7 @@ body::before {
     </div>
     <div class="header-right">
       <a href="upload.html" style="padding:5px 12px;background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);border-radius:20px;font-size:11px;color:var(--sidiz-blue-bright);font-weight:500;text-decoration:none;transition:all 0.2s" onmouseover="this.style.background='rgba(0,87,184,0.2)'" onmouseout="this.style.background='rgba(0,87,184,0.1)'">📤 데이터 업로드</a>
-      <span class="header-badge" id="connectionBadge">● LIVE</span>
+      <span class="header-badge" id="connectionBadge">● 연결 중...</span>
       <span class="header-date" id="currentDate"></span>
     </div>
   </div>
@@ -376,14 +376,14 @@ body::before {
 
   <!-- Product -->
   <div id="claim-product" class="claim-content" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div><span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일</span></div>
-    <div class="stats-row">
-      <div class="stat-item"><div class="stat-label">국내 총 불량</div><div class="stat-value" style="color:var(--sidiz-blue-bright)">3,859</div><div class="stat-sub">10개월 누적</div></div>
-      <div class="stat-item"><div class="stat-label">베트남 총 불량</div><div class="stat-value" style="color:var(--accent-cyan)">2,415</div><div class="stat-sub">10개월 누적</div></div>
-      <div class="stat-item"><div class="stat-label">평균 불량지수</div><div class="stat-value" style="color:var(--accent-amber)">1.80%</div><div class="stat-sub">목표 1.50%</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div><span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span></div>
+    <div class="stats-row" id="productStats">
+      <div class="stat-item"><div class="stat-label">총 클레임</div><div class="stat-value" style="color:var(--sidiz-blue-bright)" id="prodTotalCount">-</div><div class="stat-sub">로딩 중...</div></div>
+      <div class="stat-item"><div class="stat-label">국내</div><div class="stat-value" style="color:var(--accent-cyan)" id="prodKrCount">-</div><div class="stat-sub">국내 건수</div></div>
+      <div class="stat-item"><div class="stat-label">베트남</div><div class="stat-value" style="color:var(--accent-amber)" id="prodVnCount">-</div><div class="stat-sub">베트남 건수</div></div>
     </div>
 
-    <div class="accordion" id="productAccordion"></div>
+    <div class="accordion" id="productAccordion"><div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ Supabase에서 데이터를 불러오는 중...</div></div>
   </div>
 
   <!-- Receipt Date -->
@@ -391,9 +391,9 @@ body::before {
     <div class="section-title">클레임 현황 (접수일 기준)</div>
     <div class="date-filter">
       <label>기간 선택:</label>
-      <input type="date" class="date-input" id="dateFrom" value="2025-01-01">
+      <input type="date" class="date-input" id="dateFrom" value="2026-01-01">
       <span style="color:var(--text-muted)">~</span>
-      <input type="date" class="date-input" id="dateTo" value="2025-08-31">
+      <input type="date" class="date-input" id="dateTo" value="2026-12-31">
       <button class="date-btn" onclick="applyDateFilter()">조회</button>
       <button class="date-btn" style="background:var(--sidiz-dark2);border:1px solid var(--border)" onclick="setQuickDate('1m')">최근 1개월</button>
       <button class="date-btn" style="background:var(--sidiz-dark2);border:1px solid var(--border)" onclick="setQuickDate('3m')">최근 3개월</button>
@@ -438,7 +438,7 @@ body::before {
           <button onclick="document.getElementById('claimDetail').style.display='none'" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">✕ 닫기</button>
         </div>
         <div id="claimDetailBody" style="padding:16px;color:var(--text-secondary);font-size:12px">
-          <p style="text-align:center;padding:20px;color:var(--text-muted)">📋 카테고리 클릭 후 '접수건 조회' 버튼을 누르면 claims_receipt 테이블에서 실시간 데이터를 조회합니다.</p>
+          <p style="text-align:center;padding:20px;color:var(--text-muted)">📋 카테고리 클릭 후 '접수건 조회' 버튼을 누르면 claims_receipt에서 실시간 조회합니다.</p>
         </div>
       </div>
     </div>
@@ -464,7 +464,16 @@ body::before {
 <!-- ===== KPI ===== -->
 <div id="section-kpi" class="section">
   <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
-  <div class="header"><div class="header-left"><h1>KPI <span>현황</span></h1><p>품질경영위원회 발표 자료 — 고객클레임 및 실패비용</p></div></div>
+  <div class="header">
+    <div class="header-left"><h1>KPI <span>현황</span></h1><p>품질경영위원회 발표 자료 — 고객클레임 및 실패비용</p></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:11px;color:var(--text-muted)">연도:</label>
+      <select id="kpiYearSelect" onchange="onKpiYearChange(this.value)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">
+        <option value="2026" selected>2026년</option>
+        <option value="2025">2025년</option>
+      </select>
+    </div>
+  </div>
   <div class="sub-tabs">
     <button class="sub-tab active" onclick="showKpiTab('claim-kpi',this)">고객 클레임 현황</button>
     <button class="sub-tab" onclick="showKpiTab('cost-kpi',this)">실패비용</button>
@@ -491,7 +500,7 @@ body::before {
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>고객클레임 종합 현황</h3></div>
       <table class="data-table">
-        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2024평균</th><th>2025평균</th><th>12월</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th></tr></thead>
+        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2025평균</th><th>2026평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th></tr></thead>
         <tbody>
           <tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>-</td><td>19,969</td><td>18,717</td><td>19,188</td><td>25,611</td><td>26,634</td><td>22,664</td><td>16,594</td><td>15,728</td><td>20,759</td><td>19,984</td><td>18,343</td></tr>
           <tr><td>베트남</td><td>-</td><td>14,812</td><td>14,322</td><td>14,003</td><td>18,428</td><td>20,237</td><td>16,333</td><td>12,583</td><td>10,609</td><td>12,931</td><td>14,754</td><td>15,927</td></tr>
@@ -522,7 +531,7 @@ body::before {
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>🇰🇷 국내 — 판정유형별 클레임 건수</h3></div>
       <table class="data-table">
-        <thead><tr><th style="text-align:left">판정유형</th><th>2024평균</th><th>12월</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th></tr></thead>
+        <thead><tr><th style="text-align:left">판정유형</th><th>2025평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th></tr></thead>
         <tbody>
           <tr><td class="row-header">제조</td><td>27</td><td>34</td><td>19</td><td>60</td><td>40</td><td>32</td><td>15</td><td>35</td><td>18</td><td>36</td><td>38</td></tr>
           <tr><td class="row-header">설계</td><td>199</td><td>213</td><td>144</td><td>212</td><td>188</td><td>185</td><td>155</td><td>165</td><td>211</td><td>266</td><td>263</td></tr>
@@ -537,7 +546,7 @@ body::before {
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>🇻🇳 베트남 — 판정유형별 클레임 건수</h3></div>
       <table class="data-table">
-        <thead><tr><th style="text-align:left">판정유형</th><th>2024평균</th><th>12월</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th></tr></thead>
+        <thead><tr><th style="text-align:left">판정유형</th><th>2025평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th></tr></thead>
         <tbody>
           <tr><td class="row-header">제조</td><td>47</td><td>35</td><td>27</td><td>41</td><td>25</td><td>95</td><td>139</td><td>79</td><td>25</td><td>49</td><td>39</td></tr>
           <tr><td class="row-header">설계</td><td>99</td><td>73</td><td>46</td><td>56</td><td>69</td><td>72</td><td>89</td><td>121</td><td>138</td><td>140</td><td>161</td></tr>
@@ -560,10 +569,18 @@ body::before {
       <div class="cost-card"><div class="cost-label">누적 하자보수비</div><div class="cost-value" style="color:var(--sidiz-blue-bright)">2.48억</div><div class="cost-sub">4개월</div></div>
       <div class="cost-card"><div class="cost-label">누적 바로스 AS</div><div class="cost-value" style="color:var(--accent-cyan)">3.95억</div><div class="cost-sub">4개월</div></div>
     </div>
+
+    <!-- 실패비용 추이 차트: 비용(막대) + 매출액 대비 비율(꺾은선) -->
+    <div class="chart-card" style="margin-bottom:24px;padding:24px">
+      <h3 style="margin-bottom:4px">실패비용 추이 (비용 + 매출액 대비 비율)</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 하자보수비+바로스AS 합계(만원) · 꺾은선: 매출액 대비 비율(%) · 점선: 목표 1.09%</p>
+      <canvas id="costComboChart" height="110"></canvas>
+    </div>
+
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>하자보수비 및 바로스 용역료 상세 (단위: 원)</h3></div>
       <table class="data-table">
-        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2024평균</th><th>2025목표</th><th>2025평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>누적</th></tr></thead>
+        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2025평균</th><th>2026목표</th><th>2026평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th><th>누적</th></tr></thead>
         <tbody>
           <tr style="background:rgba(0,87,184,0.03)"><td class="row-header" colspan="2">매출액</td><td>90.1억</td><td>105.0억</td><td>103.9억</td><td>84.2억</td><td>108.9억</td><td>112.6억</td><td>110.0억</td><td>415.8억</td></tr>
           <tr><td class="row-header" rowspan="5">(판)하자보수비</td><td>제품</td><td>2,340만</td><td>1,850만</td><td>3,236만</td><td>1,872만</td><td>2,993만</td><td>2,996만</td><td>5,083만</td><td>12,945만</td></tr>
@@ -1007,341 +1024,131 @@ function showKpiTab(tab,btn) {
   btn.classList.add('active');
 }
 
-// ─── 접수일 기준 조회 — Supabase claims_receipt 테이블 연동 ───
+// ─── 접수일 기준 조회 — Supabase claims_receipt ───
 async function applyDateFilter() {
   const from = document.getElementById('dateFrom').value;
   const to = document.getElementById('dateTo').value;
   if (!from || !to) return;
-  
   const btn = document.querySelector('#claim-receipt .date-btn');
-  const origText = btn.textContent;
-  btn.textContent = '로딩중...';
-  btn.disabled = true;
-  
+  btn.textContent = '로딩중...'; btn.disabled = true;
   try {
     const claims = await SupabaseClient.fetchReceiptByDateRange(from, to);
-    if (claims.length === 0) {
-      alert('해당 기간에 데이터가 없습니다.\n\n데이터 업로드 페이지에서 접수일 기준 클레임 데이터를 먼저 업로드해 주세요.\n(메인 홈 → 📤 데이터 업로드)');
-      return;
-    }
-    updateReceiptStats(claims);
-    updateReceiptTopChart(claims);
-    updateReceiptInsights(claims);
-  } catch (err) {
-    console.error('Supabase 조회 오류:', err);
-    if (err.message.includes('404') || err.message.includes('relation')) {
-      alert('claims_receipt 테이블이 아직 생성되지 않았습니다.\nSupabase SQL Editor에서 테이블 생성 SQL을 먼저 실행해 주세요.');
-    } else {
-      alert('데이터 조회 중 오류: ' + err.message);
-    }
-  } finally {
-    btn.textContent = origText;
-    btn.disabled = false;
-  }
+    if (claims.length === 0) { alert('해당 기간에 접수일 데이터가 없습니다.\n📤 데이터 업로드 페이지에서 접수일 기준 클레임 데이터를 먼저 업로드해 주세요.'); return; }
+    _updateReceiptUI(claims);
+  } catch(e) { alert('조회 오류: ' + e.message); }
+  finally { btn.textContent = '조회'; btn.disabled = false; }
 }
-
-function updateReceiptStats(claims) {
-  const catCounts = {};
-  claims.forEach(c => { const cat = c.category || '기타'; catCounts[cat] = (catCounts[cat] || 0) + 1; });
-  
-  const catMap = {
-    '작동성': { color: 'var(--sidiz-blue-bright)', border: 'var(--sidiz-blue)' },
-    '소음': { color: 'var(--accent-amber)', border: 'var(--accent-amber)' },
-    '파손': { color: 'var(--accent-rose)', border: 'var(--accent-rose)' },
-    '유격': { color: 'var(--accent-violet)', border: 'var(--accent-violet)' },
-    '수평': { color: 'var(--accent-cyan)', border: 'var(--accent-cyan)' },
-  };
+function _updateReceiptUI(claims) {
+  // 카테고리 집계
+  const cats = {}; claims.forEach(c => { const k = c.category||'기타'; cats[k]=(cats[k]||0)+1; });
   const mainCats = ['작동성','소음','파손','유격','수평'];
-  let etcCount = 0;
-  Object.entries(catCounts).forEach(([k,v]) => { if (!mainCats.includes(k)) etcCount += v; });
-  
+  const catColors = {'작동성':'var(--sidiz-blue-bright)','소음':'var(--accent-amber)','파손':'var(--accent-rose)','유격':'var(--accent-violet)','수평':'var(--accent-cyan)'};
+  let etc = 0; Object.entries(cats).forEach(([k,v])=>{ if(!mainCats.includes(k)) etc+=v; });
   const container = document.getElementById('receiptCategories');
-  if (!container) return;
-  
-  let html = '';
-  mainCats.forEach(cat => {
-    const cnt = catCounts[cat] || 0;
-    const m = catMap[cat];
-    html += `<div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategoryLive('${cat}')" onmouseover="this.style.borderColor='${m.border}'" onmouseout="this.style.borderColor='var(--border)'">
-      <div class="stat-label">${cat}</div><div class="stat-value" style="color:${m.color}">${cnt.toLocaleString()}</div>
-      <div style="font-size:10px;color:var(--accent-emerald);margin-top:2px">✓ 실시간 · 클릭하여 상세</div></div>`;
-  });
-  html += `<div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategoryLive('기타')" onmouseover="this.style.borderColor='var(--text-muted)'" onmouseout="this.style.borderColor='var(--border)'">
-    <div class="stat-label">외관/감성/기타</div><div class="stat-value" style="color:var(--text-muted)">${etcCount.toLocaleString()}</div>
-    <div style="font-size:10px;color:var(--accent-emerald);margin-top:2px">✓ 실시간 · 클릭하여 상세</div></div>`;
-  container.innerHTML = html;
-  
-  // 실시간 카테고리 데이터 저장
-  window._liveCategoryData = {};
-  claims.forEach(c => {
-    let cat = c.category || '기타';
-    if (!mainCats.includes(cat)) cat = '기타';
-    if (!window._liveCategoryData[cat]) window._liveCategoryData[cat] = {};
-    const item = c.item || '기타';
-    if (!window._liveCategoryData[cat][item]) window._liveCategoryData[cat][item] = [];
-    window._liveCategoryData[cat][item].push(c);
-  });
-}
-
-function updateReceiptTopChart(claims) {
-  const defectCounts = {};
-  claims.forEach(c => {
-    const key = (c.item || '') + ' ' + (c.defect_type || c.claim_detail || '기타');
-    defectCounts[key] = (defectCounts[key] || 0) + 1;
-  });
-  const sorted = Object.entries(defectCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
-  if (sorted.length === 0) return;
-  const maxVal = sorted[0][1];
-  const chartContainer = document.querySelector('#claim-receipt .bar-chart');
-  if (!chartContainer) return;
-  chartContainer.innerHTML = sorted.map(([name, cnt]) => {
-    const pct = Math.round(cnt / maxVal * 100);
-    return `<div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill brand" style="width:${pct}%"><span>${cnt}건</span></div></div></div>`;
-  }).join('');
-}
-
-function updateReceiptInsights(claims) {
-  const defectCounts = {};
-  claims.forEach(c => { const key = (c.item || '') + ' ' + (c.defect_type || ''); defectCounts[key] = (defectCounts[key] || 0) + 1; });
-  const sorted = Object.entries(defectCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-  const box = document.querySelector('#claim-receipt .analysis-box');
-  if (!box) return;
-  const dots = ['critical','critical','warning','warning','info'];
-  box.innerHTML = `<h4>🔍 클레임 분석 인사이트 (Supabase 실시간 — claims_receipt)</h4>` + 
-    sorted.map(([name, cnt], i) => {
-      const pct = ((cnt / claims.length) * 100).toFixed(1);
-      return `<div class="analysis-item"><div class="analysis-dot ${dots[i]||'info'}"></div><div><strong>${name}</strong> — ${cnt}건 (전체의 ${pct}%). 집중 모니터링이 필요합니다.</div></div>`;
-    }).join('');
-}
-
-// 실시간 카테고리 드릴다운 (claims_receipt 데이터)
-function toggleCategoryLive(cat) {
-  const detail = document.getElementById('categoryDetail');
-  const body = document.getElementById('categoryDetailBody');
-  const title = document.getElementById('categoryDetailTitle');
-  title.textContent = cat + ' — 제품별 건수 (실시간, 접수일 기준)';
-  
-  if (!window._liveCategoryData || !window._liveCategoryData[cat]) {
-    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">데이터가 없습니다. 먼저 날짜 조회를 실행해 주세요.</div>';
-    detail.style.display = 'block';
-    return;
-  }
-  
-  const liveData = window._liveCategoryData[cat];
-  const products = Object.entries(liveData).map(([item, claims]) => {
-    const defects = {};
-    claims.forEach(c => { const dt = c.defect_type || c.claim_detail || '기타'; defects[dt] = (defects[dt] || 0) + 1; });
-    return { product: item, items: Object.entries(defects).map(([name, count]) => ({name,count})).sort((a,b)=>b.count-a.count) };
-  }).sort((a,b) => b.items.reduce((s,x)=>s+x.count,0) - a.items.reduce((s,x)=>s+x.count,0));
-  
-  let html = '<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">제품</th><th style="text-align:left">하자 내용</th><th>건수</th><th>상세</th></tr></thead><tbody>';
-  products.forEach(prod => {
-    const prodTotal = prod.items.reduce((s,x)=>s+x.count,0);
-    prod.items.forEach((item, idx) => {
-      html += '<tr>';
-      if(idx===0) html += `<td class="row-header" rowspan="${prod.items.length}" style="vertical-align:top">${prod.product}<br><span style="font-family:'JetBrains Mono';font-size:13px;color:var(--sidiz-blue-bright);font-weight:700">${prodTotal}건</span></td>`;
-      html += `<td style="text-align:left">${item.name}</td><td style="font-weight:600">${item.count}</td>`;
-      html += `<td><button onclick="showClaimDetailLive('${prod.product.replace(/'/g,"\\'")}','${item.name.replace(/'/g,"\\'")}')" style="background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);color:var(--sidiz-blue-bright);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:500">접수건 조회</button></td>`;
-      html += '</tr>';
+  if(container) {
+    let h=''; mainCats.forEach(cat => {
+      h += `<div class="stat-item" style="cursor:pointer" onclick="toggleCategoryLive('${cat}')"><div class="stat-label">${cat}</div><div class="stat-value" style="color:${catColors[cat]}">${(cats[cat]||0).toLocaleString()}</div><div style="font-size:10px;color:var(--accent-emerald)">✓ 실시간</div></div>`;
     });
-  });
-  html += '</tbody></table>';
-  html += `<div style="padding:6px 14px;font-size:10px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ claims_receipt 실시간 데이터</div>`;
-  body.innerHTML = html;
-  detail.style.display = 'block';
-  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
-}
-
-// 접수건 상세 조회 (claims_receipt)
-async function showClaimDetailLive(product, defectType) {
-  const detail = document.getElementById('claimDetail');
-  const title = document.getElementById('claimDetailTitle');
-  const body = document.getElementById('claimDetailBody');
-  
-  title.textContent = product + ' — ' + defectType + ' (접수건 상세)';
-  body.innerHTML = '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">⏳</div><p style="color:var(--text-secondary);font-size:12px">Supabase claims_receipt에서 조회 중...</p></div>';
-  detail.style.display = 'block';
-  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
-  
-  try {
-    const claims = await SupabaseClient.fetchReceiptByDefect(product, defectType);
-    if (claims.length === 0) {
-      body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:8px">📭</div><p>해당 조건의 접수건이 없습니다.</p></div>';
-      return;
-    }
-    let html = '<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">접수번호</th><th style="text-align:left">접수일</th><th style="text-align:left">제품/모델</th><th style="text-align:left">카테고리</th><th style="text-align:left">하자유형</th><th style="text-align:left">판정유형</th><th style="text-align:left">클레임 상세</th><th style="text-align:left">판정결과</th></tr></thead><tbody>';
-    claims.forEach(c => {
-      html += `<tr>
-        <td style="text-align:left;color:var(--sidiz-blue-bright);font-weight:600">${c.receipt_id || '-'}</td>
-        <td style="text-align:left">${c.receipt_date || '-'}</td>
-        <td style="text-align:left">${c.item || '-'}${c.model ? ' / '+c.model : ''}</td>
-        <td style="text-align:left">${c.category || '-'}</td>
-        <td style="text-align:left">${c.defect_type || '-'}</td>
-        <td style="text-align:left">${c.judgement_type || '-'}</td>
-        <td style="text-align:left;max-width:250px;white-space:normal;line-height:1.5">${c.claim_detail || '-'}</td>
-        <td style="text-align:left">${c.inspection_result || '-'}</td>
-      </tr>`;
-    });
-    html += '</tbody></table>';
-    html += `<div style="padding:8px 14px;font-size:11px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ ${claims.length}건 조회 · claims_receipt 실시간</div>`;
-    body.innerHTML = html;
-  } catch (err) {
-    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--accent-rose)"><div style="font-size:28px;margin-bottom:8px">⚠️</div><p>조회 오류: ${err.message}</p></div>`;
+    h += `<div class="stat-item" style="cursor:pointer" onclick="toggleCategoryLive('기타')"><div class="stat-label">외관/감성/기타</div><div class="stat-value" style="color:var(--text-muted)">${etc.toLocaleString()}</div><div style="font-size:10px;color:var(--accent-emerald)">✓ 실시간</div></div>`;
+    container.innerHTML = h;
   }
+  // 카테고리별 데이터 저장
+  window._liveCatData = {};
+  claims.forEach(c => { let cat = c.category||'기타'; if(!mainCats.includes(cat)) cat='기타'; if(!window._liveCatData[cat]) window._liveCatData[cat]={}; const item=c.item||'기타'; if(!window._liveCatData[cat][item]) window._liveCatData[cat][item]=[]; window._liveCatData[cat][item].push(c); });
+  // TOP10
+  const dc={}; claims.forEach(c=>{ const k=(c.item||'')+' '+(c.defect_type||'기타'); dc[k]=(dc[k]||0)+1; });
+  const sorted=Object.entries(dc).sort((a,b)=>b[1]-a[1]).slice(0,10); const mx=sorted[0]?.[1]||1;
+  const ch=document.querySelector('#claim-receipt .bar-chart');
+  if(ch) ch.innerHTML=sorted.map(([n,v])=>`<div class="bar-row"><div class="bar-label">${n}</div><div class="bar-track"><div class="bar-fill brand" style="width:${Math.round(v/mx*100)}%"><span>${v}건</span></div></div></div>`).join('');
+  // 인사이트
+  const box=document.querySelector('#claim-receipt .analysis-box');
+  if(box) { const dots=['critical','critical','warning','warning','info'];
+    box.innerHTML=`<h4>🔍 클레임 분석 인사이트 (claims_receipt 실시간)</h4>`+sorted.slice(0,5).map(([n,v],i)=>`<div class="analysis-item"><div class="analysis-dot ${dots[i]}"></div><div><strong>${n}</strong> — ${v}건 (${((v/claims.length)*100).toFixed(1)}%)</div></div>`).join(''); }
 }
 function setQuickDate(range) {
   const to = new Date();
   let from = new Date();
   if(range==='1m') from.setMonth(from.getMonth()-1);
   else if(range==='3m') from.setMonth(from.getMonth()-3);
-  else { from = new Date('2025-01-01'); }
+  else { from = new Date('2026-01-01'); }
   document.getElementById('dateFrom').value = from.toISOString().split('T')[0];
   document.getElementById('dateTo').value = to.toISOString().split('T')[0];
 }
 
-// Product Accordion Data - with monthly defect breakdown
-const products = [
-  {
-    name: 'T50 시리즈', region: '국내', totalCount: 412,
-    trend: '▲ 8월 급증', trendDir: 'up',
-    monthly: [{m:'1월',v:144},{m:'2월',v:212},{m:'3월',v:188},{m:'4월',v:185},{m:'5월',v:155},{m:'6월',v:165},{m:'7월',v:211},{m:'8월',v:266}],
-    defects: [
-      {type:'헤드레스트 작동불만(파손)', status:'done', months:[40,37,57,88,0,0,0,0], total:222},
-      {type:'틸팅 레버 작동안됨', status:'done', months:[32,33,46,40,0,0,0,0], total:151},
-      {type:'럼버 흘러내림', status:'done', months:[12,13,12,17,0,0,0,0], total:54},
-      {type:'좌판 소음', status:'new', months:[19,11,0,0,0,0,0,0], total:30},
-      {type:'수평 불만', status:'new', months:[16,11,0,0,0,0,0,0], total:27},
-      {type:'좌판 유격', status:'new', months:[12,11,0,0,0,0,0,0], total:23},
-      {type:'등판 소음', status:'progress', months:[14,6,0,0,0,0,0,0], total:20},
-      {type:'팔걸이 유격', status:'new', months:[8,7,0,0,0,0,0,0], total:15},
-    ]
-  },
-  {
-    name: 'T50 시리즈', region: '베트남', totalCount: 731,
-    trend: '▲ 7~8월 급증', trendDir: 'up',
-    monthly: [{m:'1월',v:46},{m:'2월',v:56},{m:'3월',v:69},{m:'4월',v:72},{m:'5월',v:89},{m:'6월',v:121},{m:'7월',v:138},{m:'8월',v:140}],
-    defects: [
-      {type:'헤드 컬링 하자', status:'progress', months:[46,44,48,43,63,104,127,117], total:592},
-      {type:'그 외 클레임', status:'new', months:[0,12,21,29,26,17,11,23], total:139},
-    ]
-  },
-  {
-    name: '4000G 시리즈', region: '국내', totalCount: 142,
-    trend: '▲ 레버 하자 지속', trendDir: 'up',
-    monthly: [{m:'1월',v:17},{m:'2월',v:15},{m:'3월',v:11},{m:'4월',v:16},{m:'5월',v:14},{m:'6월',v:21},{m:'7월',v:22},{m:'8월',v:26}],
-    defects: [
-      {type:'틸트 레버 하자', status:'progress', months:[17,15,11,16,14,21,22,26], total:142},
-    ]
-  },
-  {
-    name: 'T25 시리즈', region: '국내', totalCount: 29,
-    trend: '→ 안정', trendDir: 'down',
-    monthly: [{m:'1월',v:15},{m:'2월',v:14}],
-    defects: [
-      {type:'높이조절 불가(리머+테이퍼)', status:'new', months:[15,14], total:29},
-    ]
-  },
-  {
-    name: 'T80 시리즈', region: '국내', totalCount: 15,
-    trend: '→ 소량', trendDir: 'down',
-    monthly: [{m:'1월',v:7},{m:'2월',v:8}],
-    defects: [
-      {type:'착좌감 불만', status:'new', months:[4,2], total:6},
-      {type:'수평 불만', status:'done', months:[2,3], total:5},
-      {type:'헤드레스트 고정 불만', status:'done', months:[0,2], total:2},
-      {type:'등판 메쉬 소음', status:'new', months:[2,0], total:2},
-    ]
-  },
-  {
-    name: 'T90 시리즈', region: '국내', totalCount: 16,
-    trend: '→ 소량', trendDir: 'down',
-    monthly: [{m:'1월',v:9},{m:'2월',v:7}],
-    defects: [
-      {type:'높이조절 불가', status:'new', months:[6,3], total:9},
-      {type:'팔걸이 회전 불만', status:'new', months:[0,4], total:4},
-      {type:'오염', status:'new', months:[3,0], total:3},
-    ]
-  },
-  {
-    name: 'T20 시리즈', region: '국내', totalCount: 11,
-    trend: '→ 안정', trendDir: 'down',
-    monthly: [{m:'1월',v:6},{m:'2월',v:5}],
-    defects: [
-      {type:'팔걸이 파손', status:'new', months:[6,5], total:11},
-    ]
-  },
-  {
-    name: 'GC 시리즈', region: '국내', totalCount: 12,
-    trend: '→ 소량', trendDir: 'down',
-    monthly: [{m:'1월',v:5},{m:'2월',v:7}],
-    defects: [
-      {type:'좌판 미싱 헤짐', status:'done', months:[2,6], total:8},
-      {type:'팔걸이 파손', status:'new', months:[2,0], total:2},
-      {type:'헤드 고정 불만', status:'new', months:[2,0], total:2},
-    ]
-  },
-  {
-    name: '종타이', region: '국내', totalCount: 33,
-    trend: '▼ 개선완료', trendDir: 'down',
-    monthly: [{m:'1월',v:23},{m:'2월',v:10}],
-    defects: [
-      {type:'락커 파손', status:'done', months:[23,10], total:33},
-    ]
-  },
-];
-
-function buildAccordion() {
-  const container = document.getElementById('productAccordion');
-  let html = '';
-  products.forEach((p, i) => {
-    const maxM = Math.max(...p.monthly.map(m=>m.v));
-    const regionFlag = p.region === '국내' ? '🇰🇷' : '🇻🇳';
-    const countClass = p.trendDir === 'up' ? 'rose' : 'blue';
-    const monthHeaders = p.monthly.map(m => `<th>${m.m}</th>`).join('');
-    html += `<div class="accordion-item" id="acc-${i}">
-      <div class="accordion-header" onclick="toggleAccordion(${i})">
-        <div class="accordion-header-left">
-          <span style="font-size:18px">${regionFlag}</span>
-          <div><div class="accordion-product-name">${p.name} <span style="font-size:11px;color:var(--text-muted);font-weight:400">${p.region}</span></div></div>
-        </div>
-        <div class="accordion-meta">
-          <span class="accordion-product-count ${countClass}">${p.totalCount}건</span>
-          <span class="accordion-trend ${p.trendDir}">${p.trend}</span>
-          <span class="accordion-arrow">▼</span>
-        </div>
-      </div>
-      <div class="accordion-body">
-        <div style="margin-bottom:16px">
-          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">월별 총 건수 추이</div>
-          ${p.monthly.map(m => `<div class="mini-bar-row"><div class="mini-bar-label">${m.m}</div><div class="mini-bar-track"><div class="mini-bar-fill brand" style="width:${m.v/maxM*100}%"><span>${m.v}</span></div></div></div>`).join('')}
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">하자유형별 월별 건수</div>
-          <div style="overflow-x:auto">
-          <table class="data-table" style="font-size:11px">
-            <thead><tr><th style="text-align:left">유형</th><th>상태</th>${monthHeaders}<th style="font-weight:700">합계</th></tr></thead>
-            <tbody>
-              ${p.defects.map(d => `<tr>
-                <td style="text-align:left">${d.type}</td>
-                <td><span class="tag ${d.status}">${d.status==='done'?'개선완료':d.status==='progress'?'진행중':'신규'}</span></td>
-                ${d.months.map(v => `<td>${v||'-'}</td>`).join('')}
-                <td style="font-weight:700;color:var(--sidiz-blue-bright)">${d.total}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
+// ─── 제품별 클레임 — Supabase claims(회수일) 실시간 ───
+async function loadProductAccordion() {
+  try {
+    const claims = await SupabaseClient.fetchClaims('select=*&order=claim_date.desc&limit=5000');
+    if (!claims || claims.length === 0) { document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">📭 claims 테이블에 데이터가 없습니다.</div>'; return; }
+    
+    // 통계
+    const krCnt = claims.filter(c=>c.country==='국내').length;
+    const vnCnt = claims.filter(c=>c.country==='베트남').length;
+    document.getElementById('prodTotalCount').textContent = claims.length.toLocaleString();
+    document.getElementById('prodKrCount').textContent = krCnt.toLocaleString();
+    document.getElementById('prodVnCount').textContent = vnCnt.toLocaleString();
+    document.querySelector('#prodTotalCount').parentElement.querySelector('.stat-sub').textContent = 'Supabase 실시간';
+    
+    // item별 그룹핑
+    const byItem = {};
+    claims.forEach(c => { const item = c.item || '미분류'; if(!byItem[item]) byItem[item] = []; byItem[item].push(c); });
+    
+    // 건수 내림차순 정렬
+    const sorted = Object.entries(byItem).sort((a,b) => b[1].length - a[1].length);
+    
+    let html = '';
+    sorted.forEach(([item, itemClaims], i) => {
+      const count = itemClaims.length;
+      const krN = itemClaims.filter(c=>c.country==='국내').length;
+      const vnN = itemClaims.filter(c=>c.country==='베트남').length;
+      const regionFlag = vnN > krN ? '🇻🇳' : '🇰🇷';
+      
+      // defect_type별 집계
+      const defects = {};
+      itemClaims.forEach(c => { const dt = c.defect_type || '미분류'; defects[dt] = (defects[dt]||0)+1; });
+      const defectSorted = Object.entries(defects).sort((a,b)=>b[1]-a[1]);
+      const maxD = defectSorted[0]?.[1] || 1;
+      
+      // 월별 집계
+      const monthly = {};
+      itemClaims.forEach(c => { const m = c.claim_date?.slice(0,7) || '미분류'; monthly[m]=(monthly[m]||0)+1; });
+      const monthSorted = Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0]));
+      const maxM = Math.max(...monthSorted.map(m=>m[1]), 1);
+      
+      html += `<div class="accordion-item" id="acc-${i}">
+        <div class="accordion-header" onclick="toggleAccordion(${i})">
+          <div class="accordion-header-left">
+            <span style="font-size:18px">${regionFlag}</span>
+            <div><div class="accordion-product-name">${item} <span style="font-size:11px;color:var(--text-muted);font-weight:400">국내${krN} / 베트남${vnN}</span></div></div>
+          </div>
+          <div class="accordion-meta">
+            <span class="accordion-product-count blue">${count}건</span>
+            <span class="accordion-arrow">▼</span>
           </div>
         </div>
-      </div>
-    </div>`;
-  });
-  container.innerHTML = html;
+        <div class="accordion-body">
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">월별 건수</div>
+            ${monthSorted.map(([m,v]) => `<div class="mini-bar-row"><div class="mini-bar-label">${m.slice(5)}월</div><div class="mini-bar-track"><div class="mini-bar-fill brand" style="width:${v/maxM*100}%"><span>${v}</span></div></div></div>`).join('')}
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">하자유형별 건수</div>
+            ${defectSorted.map(([dt,v]) => `<div class="mini-bar-row"><div class="mini-bar-label" style="width:60px">${dt}</div><div class="mini-bar-track"><div class="mini-bar-fill brand" style="width:${v/maxD*100}%"><span>${v}</span></div></div></div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    });
+    
+    document.getElementById('productAccordion').innerHTML = html;
+  } catch(e) {
+    console.error('제품별 로딩 오류:', e);
+    document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-rose)">⚠️ 데이터 로딩 실패: ' + e.message + '</div>';
+  }
 }
 
-function toggleAccordion(i) {
-  document.getElementById('acc-'+i).classList.toggle('open');
-}
+function toggleAccordion(i) { document.getElementById('acc-'+i).classList.toggle('open'); }
 
-buildAccordion();
+// 페이지 로드 시 자동 호출 (아래 initSupabase에서 호출)
 
 // Receipt - Category drill-down data
 const categoryData = {
@@ -1382,41 +1189,45 @@ const categoryData = {
   ]
 };
 
-function toggleCategory(cat) {
+function toggleCategory(cat) { toggleCategoryLive(cat); }
+
+function toggleCategoryLive(cat) {
   const detail = document.getElementById('categoryDetail');
   const body = document.getElementById('categoryDetailBody');
   const title = document.getElementById('categoryDetailTitle');
-  
-  title.textContent = cat + ' — 제품별 건수 (내림차순)';
-  
-  const data = categoryData[cat] || [];
-  // Sort by total count desc
-  data.sort((a,b) => {
-    const ta = a.items.reduce((s,x)=>s+x.count,0);
-    const tb = b.items.reduce((s,x)=>s+x.count,0);
-    return tb - ta;
-  });
-  
-  let html = '<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">제품</th><th style="text-align:left">하자 내용</th><th>건수</th><th>상세</th></tr></thead><tbody>';
-  data.forEach(prod => {
-    const prodTotal = prod.items.reduce((s,x)=>s+x.count,0);
-    prod.items.forEach((item, idx) => {
-      html += `<tr>`;
-      if(idx===0) html += `<td class="row-header" rowspan="${prod.items.length}" style="vertical-align:top">${prod.product}<br><span style="font-family:'JetBrains Mono';font-size:13px;color:var(--sidiz-blue-bright);font-weight:700">${prodTotal}건</span></td>`;
-      html += `<td style="text-align:left">${item.name}</td><td style="font-weight:600">${item.count}</td>`;
-      html += `<td><button onclick="showClaimDetail('${prod.product}','${item.name}')" style="background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);color:var(--sidiz-blue-bright);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:500">접수건 조회</button></td>`;
-      html += `</tr>`;
-    });
-  });
-  html += '</tbody></table>';
-  body.innerHTML = html;
-  detail.style.display = 'block';
-  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
+  title.textContent = cat + ' — 제품별 건수 (실시간)';
+  if (!window._liveCatData || !window._liveCatData[cat]) {
+    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">데이터가 없습니다. 먼저 날짜 조회를 실행해 주세요.</div>';
+    detail.style.display='block'; return;
+  }
+  const ld = window._liveCatData[cat];
+  const prods = Object.entries(ld).map(([item, claims]) => {
+    const defects = {}; claims.forEach(c=>{ const dt=c.defect_type||c.claim_detail||'기타'; defects[dt]=(defects[dt]||0)+1; });
+    return { product:item, items:Object.entries(defects).map(([n,c])=>({name:n,count:c})).sort((a,b)=>b.count-a.count) };
+  }).sort((a,b)=>b.items.reduce((s,x)=>s+x.count,0)-a.items.reduce((s,x)=>s+x.count,0));
+  let h='<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">제품</th><th style="text-align:left">하자 내용</th><th>건수</th><th>상세</th></tr></thead><tbody>';
+  prods.forEach(p=>{ const tot=p.items.reduce((s,x)=>s+x.count,0);
+    p.items.forEach((it,idx)=>{ h+='<tr>'; if(idx===0) h+=`<td class="row-header" rowspan="${p.items.length}" style="vertical-align:top">${p.product}<br><span style="font-family:'JetBrains Mono';font-size:13px;color:var(--sidiz-blue-bright);font-weight:700">${tot}건</span></td>`;
+      h+=`<td style="text-align:left">${it.name}</td><td style="font-weight:600">${it.count}</td><td><button onclick="showClaimDetail('${p.product.replace(/'/g,"\\'")}','${it.name.replace(/'/g,"\\'")}')" style="background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);color:var(--sidiz-blue-bright);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px">접수건 조회</button></td></tr>`; }); });
+  h+='</tbody></table><div style="padding:6px 14px;font-size:10px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ claims_receipt 실시간</div>';
+  body.innerHTML=h; detail.style.display='block'; detail.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-function showClaimDetail(product, defectType) {
-  // 정적 데이터에서 호출 시 — claims_receipt 테이블로 조회 시도
-  showClaimDetailLive(product, defectType);
+async function showClaimDetail(product, defectType) {
+  const detail = document.getElementById('claimDetail');
+  const title = document.getElementById('claimDetailTitle');
+  const body = document.getElementById('claimDetailBody');
+  title.textContent = product+' — '+defectType+' (접수건 상세)';
+  body.innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">⏳</div><p style="color:var(--text-secondary);font-size:12px">Supabase에서 조회 중...</p></div>';
+  detail.style.display='block'; detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+  try {
+    const claims = await SupabaseClient.fetchReceiptByDefect(product, defectType);
+    if(claims.length===0){ body.innerHTML='<div style="text-align:center;padding:24px;color:var(--text-muted)">📭 해당 조건의 접수건이 없습니다.</div>'; return; }
+    let h='<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">접수번호</th><th style="text-align:left">접수일</th><th style="text-align:left">제품/모델</th><th style="text-align:left">카테고리</th><th style="text-align:left">하자유형</th><th style="text-align:left">판정유형</th><th style="text-align:left">클레임 상세</th><th style="text-align:left">판정결과</th></tr></thead><tbody>';
+    claims.forEach(c=>{ h+=`<tr><td style="text-align:left;color:var(--sidiz-blue-bright);font-weight:600">${c.receipt_id||'-'}</td><td style="text-align:left">${c.receipt_date||'-'}</td><td style="text-align:left">${c.item||'-'}${c.model?' / '+c.model:''}</td><td style="text-align:left">${c.category||'-'}</td><td style="text-align:left">${c.defect_type||'-'}</td><td style="text-align:left">${c.judgement_type||'-'}</td><td style="text-align:left;max-width:250px;white-space:normal">${c.claim_detail||'-'}</td><td style="text-align:left">${c.inspection_result||'-'}</td></tr>`; });
+    h+=`</tbody></table><div style="padding:8px 14px;font-size:11px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ ${claims.length}건 · claims_receipt 실시간</div>`;
+    body.innerHTML=h;
+  } catch(e) { body.innerHTML=`<div style="text-align:center;padding:24px;color:var(--accent-rose)">⚠️ 조회 오류: ${e.message}</div>`; }
 }
 
 // Combo Chart - Claims Count (bar) + Defect Index (line)
@@ -1424,12 +1235,12 @@ function initComboChart() {
   const ctx = document.getElementById('comboChart');
   if (!ctx) return;
   
-  const labels = ['12월','1월','2월','3월','4월','5월','6월','7월','8월','9월'];
-  const krClaims = [498, 334, 479, 462, 399, 355, 369, 404, 528, 529];
-  const vnClaims = [226, 169, 224, 257, 310, 327, 284, 255, 271, 318];
+  const labels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const krClaims = [334, 479, 462, 399, 355, 369, 404, 528, 529, 0, 0, 0];
+  const vnClaims = [169, 224, 257, 310, 327, 284, 255, 271, 318, 0, 0, 0];
   const totalClaims = krClaims.map((v,i) => v + vnClaims[i]);
-  const defectIndex = [2.19, 1.52, 1.60, 1.53, 1.82, 2.34, 2.48, 1.96, 2.30, 2.47];
-  const target = Array(10).fill(1.50);
+  const defectIndex = [1.52, 1.60, 1.53, 1.82, 2.34, 2.48, 1.96, 2.30, 2.47, 0, 0, 0];
+  const target = Array(12).fill(1.50);
 
   new Chart(ctx, {
     type: 'bar',
@@ -1547,72 +1358,108 @@ function initComboChart() {
 }
 initComboChart();
 
-// ─── Supabase 초기 연결 확인 ───
-async function initSupabase() {
-  const badge = document.getElementById('connectionBadge');
-  if (badge) badge.innerHTML = '⏳ 연결 중...';
+// Cost Combo Chart - 실패비용(막대) + 매출액 대비 비율(꺾은선)
+function initCostComboChart() {
+  const ctx = document.getElementById('costComboChart');
+  if (!ctx) return;
   
-  try {
-    // 1) claims (회수일) 건수
-    const claimsCount = await SupabaseClient.supabaseCount('claims');
-    
-    // 2) claims_receipt (접수일) 건수 — 테이블 미생성 시 0
-    let receiptCount = 0;
-    try { receiptCount = await SupabaseClient.supabaseCount('claims_receipt'); } catch(e) {}
-    
-    // 3) sales_monthly 건수
-    let salesCount = 0;
-    try { salesCount = await SupabaseClient.supabaseCount('sales_monthly'); } catch(e) {}
-    
-    console.log(`✅ Supabase 연결: claims=${claimsCount}, claims_receipt=${receiptCount}, sales_monthly=${salesCount}`);
-    
-    if (badge) {
-      const parts = [];
-      if (claimsCount > 0) parts.push(`회수${claimsCount}`);
-      if (receiptCount > 0) parts.push(`접수${receiptCount}`);
-      if (salesCount > 0) parts.push(`매출${salesCount}`);
-      badge.innerHTML = `● LIVE (${parts.length > 0 ? parts.join('·') : claimsCount + '건'})`;
-      badge.style.background = 'rgba(0,196,140,0.1)';
-      badge.style.borderColor = 'rgba(0,196,140,0.2)';
-      badge.style.color = 'var(--accent-emerald)';
-    }
-    
-    // 홈 KPI 업데이트 (회수일 기준 클레임)
-    if (claimsCount > 0) {
-      const kpiVals = document.querySelectorAll('#section-home .kpi-card .kpi-value');
-      if (kpiVals.length > 0) {
-        // 총 건수 = 기존 정적값 유지 (claims 테이블은 회수일 기준이므로)
+  const labels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const hazaCost = [4344, 6624, 5666, 8129, 0, 0, 0, 0, 0, 0, 0, 0]; // 하자보수비 (만원)
+  const barosCost = [7597, 10292, 11139, 10431, 0, 0, 0, 0, 0, 0, 0, 0]; // 바로스 AS (만원)
+  const totalCost = hazaCost.map((v,i) => v + barosCost[i]);
+  const ratio = [1.42, 1.55, 1.49, 1.69, 0, 0, 0, 0, 0, 0, 0, 0]; // 매출액 대비 비율
+  const targetRatio = Array(12).fill(1.09);
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '하자보수비',
+          data: hazaCost,
+          backgroundColor: 'rgba(255, 107, 122, 0.7)',
+          borderColor: 'rgba(255, 107, 122, 1)',
+          borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y'
+        },
+        {
+          label: '바로스 AS',
+          data: barosCost,
+          backgroundColor: 'rgba(255, 179, 71, 0.7)',
+          borderColor: 'rgba(255, 179, 71, 1)',
+          borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y'
+        },
+        {
+          label: '매출 대비 비율(%)',
+          data: ratio,
+          type: 'line',
+          borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)',
+          borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#a78bfa',
+          pointBorderColor: '#17293f', pointBorderWidth: 2,
+          tension: 0.3, fill: false, order: 1, yAxisID: 'y1'
+        },
+        {
+          label: '목표 (1.09%)',
+          data: targetRatio,
+          type: 'line',
+          borderColor: 'rgba(0,196,140,0.7)', borderWidth: 2, borderDash: [6,4],
+          pointRadius: 0, fill: false, order: 2, yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 11 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
+        tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
+          callbacks: { label: function(c) { if(c.dataset.yAxisID==='y1') return c.dataset.label+': '+c.parsed.y+'%'; return c.dataset.label+': '+c.parsed.y.toLocaleString()+'만원'; } }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 11 } } },
+        y: { stacked: true, position: 'left', title: { display: true, text: '비용 (만원)', color: '#6b83a0', font: { size: 11 } },
+          grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0 },
+        y1: { position: 'right', title: { display: true, text: '매출 대비 비율 (%)', color: '#6b83a0', font: { size: 11 } },
+          grid: { drawOnChartArea: false }, ticks: { color: '#a78bfa', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v+'%' }, min: 0, max: 3.0 }
       }
     }
-    
-    // KPI 현황 자동 업데이트 시도 (claims_receipt + sales_monthly)
-    if (receiptCount > 0 && salesCount > 0) {
-      try { await updateKpiFromSupabase(); } catch(e) { console.log('KPI 자동업데이트 스킵:', e.message); }
-    }
-    
-  } catch (err) {
-    console.error('Supabase 연결 실패:', err);
-    if (badge) {
-      badge.innerHTML = '⚠ 오프라인';
-      badge.style.background = 'rgba(255,179,71,0.1)';
-      badge.style.borderColor = 'rgba(255,179,71,0.2)';
-      badge.style.color = 'var(--accent-amber)';
-    }
+  });
+}
+initCostComboChart();
+
+// KPI 연도 변경
+function onKpiYearChange(year) {
+  console.log('KPI 연도 변경:', year);
+  // 추후 Supabase 실시간 전환 시 해당 연도 데이터로 필터링
+  // 현재는 정적 데이터이므로 알림 표시
+  if (year !== '2026') {
+    alert(year + '년 데이터는 아직 Supabase에 입력되지 않았습니다.\n데이터 업로드 후 자동 전환됩니다.');
+    document.getElementById('kpiYearSelect').value = '2026';
   }
 }
 
-// ─── KPI 자동 업데이트 (v_kpi_monthly 뷰 활용) ───
-async function updateKpiFromSupabase() {
-  const kpiData = await SupabaseClient.fetchKpiMonthly();
-  if (!kpiData || kpiData.length === 0) return;
-  
-  console.log('📊 KPI 데이터:', kpiData);
-  // KPI 데이터가 있으면 콘솔에 출력 (추후 UI 반영 확대)
+// ─── Supabase 초기 연결 ───
+async function initSupabase() {
+  const badge = document.getElementById('connectionBadge');
+  try {
+    const cnt = await SupabaseClient.supabaseCount('claims');
+    let rcnt = 0; try { rcnt = await SupabaseClient.supabaseCount('claims_receipt'); } catch(e){}
+    console.log('✅ Supabase:', cnt, '회수일,', rcnt, '접수일');
+    if(badge) { const parts=[]; if(cnt>0) parts.push('회수'+cnt); if(rcnt>0) parts.push('접수'+rcnt);
+      badge.innerHTML = '● LIVE ('+(parts.length>0?parts.join('·'):cnt+'건')+')';
+      badge.style.background='rgba(0,196,140,0.1)'; badge.style.borderColor='rgba(0,196,140,0.2)'; badge.style.color='var(--accent-emerald)'; }
+    // 홈 KPI 카드 업데이트
+    const kpiVals = document.querySelectorAll('#section-home .kpi-card .kpi-value');
+    if(kpiVals.length>0 && cnt>0) { kpiVals[0].textContent = cnt.toLocaleString();
+      const kpiSubs = document.querySelectorAll('#section-home .kpi-card .kpi-change');
+      if(kpiSubs.length>0) kpiSubs[0].textContent = 'Supabase 실시간 · claims 테이블'; }
+    // 제품별 아코디언 로드
+    await loadProductAccordion();
+  } catch(e) { console.error('Supabase 연결 실패:', e);
+    if(badge) { badge.innerHTML='⚠ 오프라인'; badge.style.background='rgba(255,179,71,0.1)'; badge.style.borderColor='rgba(255,179,71,0.2)'; badge.style.color='var(--accent-amber)'; } }
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(initSupabase, 300);
-});
+document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300));
 
 // OKR Year tabs
 function showOkrYear(year, btn) {
