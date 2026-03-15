@@ -501,8 +501,27 @@ body::before {
 
     <!-- Combo Chart -->
     <div class="chart-card" style="margin-bottom:24px;padding:24px">
-      <h3 style="margin-bottom:4px">클레임 건수 및 불량지수 추이</h3>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 월별 불량 건수 (국내+베트남) · 꺾은선: 불량지수(%) · 점선: 목표 1.50%</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <h3>클레임 건수 및 불량지수 추이</h3>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:11px;color:var(--text-muted)">표시 범위:</label>
+          <select id="kpiMonthRange" onchange="if(window.KpiModule) window.KpiModule.onMonthRangeChange(this.value)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer">
+            <option value="12">전체 (1~12월)</option>
+            <option value="1">~1월</option>
+            <option value="2">~2월</option>
+            <option value="3">~3월</option>
+            <option value="4">~4월</option>
+            <option value="5">~5월</option>
+            <option value="6">~6월</option>
+            <option value="7">~7월</option>
+            <option value="8">~8월</option>
+            <option value="9">~9월</option>
+            <option value="10">~10월</option>
+            <option value="11">~11월</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 월별 판정유형별 종합 건수 (국내+베트남) · 꺾은선: 불량지수(%) · 점선: 목표 1.50%</p>
       <canvas id="comboChart" height="110"></canvas>
     </div>
 
