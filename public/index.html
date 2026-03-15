@@ -1157,16 +1157,32 @@ function renderProductAccordion(claims) {
     const krN = itemClaims.filter(c => c.country === '국내').length;
     const vnN = itemClaims.filter(c => c.country === '베트남').length;
     const regionFlag = vnN > krN ? '🇻🇳' : '🇰🇷';
-    // defect_type + inspection_result 조합별 월별 집계
+    // ★ 판정내용 정규화 함수 — 띄어쓰기, 특수문자 차이 무시
+    function normalizeDetail(s) {
+      if (!s) return '미분류';
+      return s.replace(/[\s,.\-·\/\(\)\+]+/g, '').replace(/　/g, '').trim().toLowerCase();
+    }
+    // defect_type + 정규화된 inspection_result 조합별 월별 집계
     const detailMonthly = {};
+    const displayNames = {}; // 정규화 키 → 가장 많이 쓰인 원본 표기
     itemClaims.forEach(c => {
       const dt = c.defect_type || '미분류';
-      const ir = c.inspection_result || c.claim_detail || '미분류';
-      const key = dt + '|||' + ir;
+      const irRaw = c.inspection_result || c.claim_detail || '미분류';
+      const irNorm = normalizeDetail(irRaw);
+      const key = dt + '|||' + irNorm;
       const m = c.claim_date?.slice(0, 7) || '미분류';
-      if (!detailMonthly[key]) detailMonthly[key] = { defect_type: dt, detail: ir, total: 0, months: {} };
+      if (!detailMonthly[key]) detailMonthly[key] = { defect_type: dt, normKey: irNorm, total: 0, months: {} };
       detailMonthly[key].total++;
       detailMonthly[key].months[m] = (detailMonthly[key].months[m] || 0) + 1;
+      // 가장 많이 쓰인 원본 표기를 display name으로 사용
+      if (!displayNames[key]) displayNames[key] = {};
+      displayNames[key][irRaw] = (displayNames[key][irRaw] || 0) + 1;
+    });
+    // display name 결정 (가장 많이 사용된 원본 표기)
+    Object.keys(detailMonthly).forEach(key => {
+      const names = displayNames[key];
+      const best = Object.entries(names).sort((a,b) => b[1] - a[1])[0][0];
+      detailMonthly[key].detail = best;
     });
     const detailSorted = Object.values(detailMonthly).sort((a, b) => b.total - a.total);
     // defect_type별 그룹 (rowspan용)
@@ -1182,18 +1198,18 @@ function renderProductAccordion(claims) {
       const prev = d.months[recentMonths[0]] || 0; const curr = d.months[recentMonths[1]] || 0;
       if (curr === 0 && prev > 0) return 'done'; if (curr > prev) return 'progress'; return 'new';
     }
-    const mh = allMonths.map(m => `<th>${parseInt(m.slice(5))}월</th>`).join('');
+    const mh = allMonths.map(m => `<th style="text-align:center">${parseInt(m.slice(5))}월</th>`).join('');
     let rows = '';
     dgSorted.forEach(([dt, group]) => {
       group.items.forEach((d, idx) => {
         const st = getStatus(d); const sl = st==='done'?'개선완료':st==='progress'?'증가중':'신규';
         const txt = d.detail.length > 35 ? d.detail.slice(0,35)+'...' : d.detail;
         rows += '<tr>';
-        if (idx===0) rows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:top;border-right:1px solid var(--border)">${dt}<br><span style="font-family:\'JetBrains Mono\';font-size:12px;color:var(--sidiz-blue-bright);font-weight:700">${group.total}건</span></td>`;
+        if (idx===0) rows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:top;border-right:1px solid var(--border)">${dt}<br><span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sidiz-blue-bright);font-weight:700">${group.total}건</span></td>`;
         rows += `<td style="text-align:left;font-size:10px;max-width:200px;white-space:normal;line-height:1.4" title="${d.detail.replace(/"/g,'&quot;')}">${txt}</td>`;
-        rows += `<td><span class="tag ${st}">${sl}</span></td>`;
-        rows += allMonths.map(m => `<td>${d.months[m] || '-'}</td>`).join('');
-        rows += `<td style="font-weight:700;color:var(--sidiz-blue-bright)">${d.total}</td></tr>`;
+        rows += `<td style="text-align:center;white-space:nowrap"><span class="tag ${st}" style="display:inline-block;min-width:52px;text-align:center">${sl}</span></td>`;
+        rows += allMonths.map(m => `<td style="text-align:center">${d.months[m] || '-'}</td>`).join('');
+        rows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${d.total}</td></tr>`;
       });
     });
     html += `<div class="accordion-item" id="acc-${i}">
@@ -1203,7 +1219,7 @@ function renderProductAccordion(claims) {
       </div>
       <div class="accordion-body">
         <div style="margin-bottom:20px"><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">📊 월별 클레임 건수 추이</div><div style="height:180px;position:relative"><canvas id="prodChart-${i}" height="180"></canvas></div></div>
-        <div><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">하자유형 — 판정내용별 월별 건수</div><div style="overflow-x:auto"><table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">하자유형</th><th style="text-align:left">판정내용 (상세)</th><th>상태</th>${mh}<th style="font-weight:700">합계</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+        <div><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">하자유형 — 판정내용별 월별 건수</div><div style="overflow-x:auto"><table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">하자유형</th><th style="text-align:left">판정내용 (상세)</th><th style="text-align:center">상태</th>${mh}<th style="text-align:center;font-weight:700">합계</th></tr></thead><tbody>${rows}</tbody></table></div></div>
       </div></div>`;
   });
   document.getElementById('productAccordion').innerHTML = html;
