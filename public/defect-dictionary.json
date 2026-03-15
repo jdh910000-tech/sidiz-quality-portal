@@ -1,0 +1,518 @@
+[
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "헤드 조절 각도 변경 전 사양",
+    "standard_name": "T50 헤드 조절각도 사양변경 전"
+  },
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "암후레임 간섭 높이 조절 불가",
+    "standard_name": "T50 암프레임 간섭 높이조절 불가"
+  },
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "보스 파손 높낮이 기능 불가",
+    "standard_name": "T50 보스 파손 높낮이 기능불가"
+  },
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "구형 틸트 틸팅 레버 좌판 간섭",
+    "standard_name": "T50 구형틸트 레버 좌판 간섭"
+  },
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "구형틸트 1단 유격",
+    "standard_name": "T50 구형틸트 1단 유격"
+  },
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "강도레버 끝까지 돌림",
+    "standard_name": "T50 강도레버 오조작"
+  },
+  {
+    "item": "T50",
+    "defect_type": "기능",
+    "pattern": "컬링 그리스 미도포",
+    "standard_name": "T50 컬링 그리스 미도포"
+  },
+  {
+    "item": "T50",
+    "defect_type": "파손",
+    "pattern": "좌판 골격 파손",
+    "standard_name": "T50 좌판 골격 파손"
+  },
+  {
+    "item": "T50",
+    "defect_type": "파손",
+    "pattern": "좌판골격 파손",
+    "standard_name": "T50 좌판 골격 파손"
+  },
+  {
+    "item": "T50",
+    "defect_type": "파손",
+    "pattern": "좌판 골격파손",
+    "standard_name": "T50 좌판 골격 파손"
+  },
+  {
+    "item": "T50",
+    "defect_type": "파손",
+    "pattern": "고정형 좌판 골격 파손",
+    "standard_name": "T50 좌판 골격 파손"
+  },
+  {
+    "item": "T50",
+    "defect_type": "파손",
+    "pattern": "하부 하우징 파손",
+    "standard_name": "T50 하부 하우징 파손"
+  },
+  {
+    "item": "T50",
+    "defect_type": "소음",
+    "pattern": "VN팔걸이 유격 및 소음",
+    "standard_name": "T50 팔걸이 유격/소음"
+  },
+  {
+    "item": "T50",
+    "defect_type": "소음",
+    "pattern": "팔걸이 유격 및 소음 (VN)",
+    "standard_name": "T50 팔걸이 유격/소음"
+  },
+  {
+    "item": "T50",
+    "defect_type": "소음",
+    "pattern": "팔걸이 유격 및 소음",
+    "standard_name": "T50 팔걸이 유격/소음"
+  },
+  {
+    "item": "T50",
+    "defect_type": "소음",
+    "pattern": "고정형 좌판 하부 소음",
+    "standard_name": "T50 좌판 하부 소음"
+  },
+  {
+    "item": "T50",
+    "defect_type": "소음",
+    "pattern": "VN고정형 좌판 골격 소음",
+    "standard_name": "T50 좌판 골격 소음"
+  },
+  {
+    "item": "T50",
+    "defect_type": "유격",
+    "pattern": "1단 유격 댐퍼 락커 변경 사양",
+    "standard_name": "T50 1단 유격 (락커 변경 전)"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "팔걸이 커버 포스트 유격 불만",
+    "standard_name": "T50 팔걸이 유격 불만"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "회수품 높낮이 정상작동 확인",
+    "standard_name": "T50 높낮이 유격 불만 (정상)"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "조절형 1단 유격 불만",
+    "standard_name": "T50 1단 유격 불만"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "조절형 유격 불만",
+    "standard_name": "T50 유격 불만"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "착좌감 불만",
+    "standard_name": "T50 착좌감 불만"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "회수품 기능 정상",
+    "standard_name": "T50 회수품 정상"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "회수품 팔걸이 기능 정상",
+    "standard_name": "T50 회수품 정상"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "회수품 틸트 중심봉 기능 정상",
+    "standard_name": "T50 회수품 정상"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "회수품 헤드 기능 정상",
+    "standard_name": "T50 회수품 정상"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "단순변심",
+    "standard_name": "T50 단순변심/환불"
+  },
+  {
+    "item": "T50",
+    "defect_type": "고객",
+    "pattern": "4년이상 사용후 수평 불만",
+    "standard_name": "T50 수평 불만"
+  },
+  {
+    "item": "T50",
+    "defect_type": "외관",
+    "pattern": "등판 메쉬 눌림",
+    "standard_name": "T50 등판 메쉬 눌림"
+  },
+  {
+    "item": "T50",
+    "defect_type": "외관",
+    "pattern": "헤드 눌림",
+    "standard_name": "T50 헤드 눌림"
+  },
+  {
+    "item": "T50",
+    "defect_type": "지원",
+    "pattern": "상대물 없어서 확인불가",
+    "standard_name": "T50 상대물 없음 (확인불가)"
+  },
+  {
+    "item": "T50",
+    "defect_type": "지원",
+    "pattern": "상대물없어서 소음 확인불가",
+    "standard_name": "T50 상대물 없음 (확인불가)"
+  },
+  {
+    "item": "T52",
+    "defect_type": "기능",
+    "pattern": "헤드 조절 각도 변경 전 사양",
+    "standard_name": "T52 헤드 조절각도 사양변경 전"
+  },
+  {
+    "item": "T52",
+    "defect_type": "기능",
+    "pattern": "틸팅 레버 작동 불가",
+    "standard_name": "T52 틸팅 레버 작동불가"
+  },
+  {
+    "item": "T52",
+    "defect_type": "기능",
+    "pattern": "틸팅레버 작동불가",
+    "standard_name": "T52 틸팅 레버 작동불가"
+  },
+  {
+    "item": "T52",
+    "defect_type": "유격",
+    "pattern": "구형 틸트 1단 유격",
+    "standard_name": "T52 구형틸트 1단 유격"
+  },
+  {
+    "item": "T52",
+    "defect_type": "유격",
+    "pattern": "구형틸트 1단 유격",
+    "standard_name": "T52 구형틸트 1단 유격"
+  },
+  {
+    "item": "T20",
+    "defect_type": "파손",
+    "pattern": "등판 연결 볼트 파손",
+    "standard_name": "T20 등판 연결 볼트 파손"
+  },
+  {
+    "item": "T20",
+    "defect_type": "지원",
+    "pattern": "틸트 사양변경 교체",
+    "standard_name": "T20 틸트 사양변경"
+  },
+  {
+    "item": "T20",
+    "defect_type": "지원",
+    "pattern": "틸트 락커 파손",
+    "standard_name": "T20 틸트 락커 파손"
+  },
+  {
+    "item": "T20",
+    "defect_type": "지원",
+    "pattern": "사양 변경으로 교체진행",
+    "standard_name": "T20 사양변경 교체"
+  },
+  {
+    "item": "T20",
+    "defect_type": "지원",
+    "pattern": "사양변경 으로 교체",
+    "standard_name": "T20 사양변경 교체"
+  },
+  {
+    "item": "T20",
+    "defect_type": "파손",
+    "pattern": "L팔걸이 기포 파손",
+    "standard_name": "T20 팔걸이 기포 파손"
+  },
+  {
+    "item": "T20",
+    "defect_type": "파손",
+    "pattern": "틸트 락커 파손",
+    "standard_name": "T20 틸트 락커 파손"
+  },
+  {
+    "item": "T20",
+    "defect_type": "지원",
+    "pattern": "상대물 없어서 소음 확인불가",
+    "standard_name": "T20 상대물 없음 (확인불가)"
+  },
+  {
+    "item": "T20 팔걸이",
+    "defect_type": "파손",
+    "pattern": "팔걸이 기포 파손",
+    "standard_name": "T20팔걸이 기포 파손"
+  },
+  {
+    "item": "T20 팔걸이",
+    "defect_type": "파손",
+    "pattern": "팔걸이 L 기포 파손",
+    "standard_name": "T20팔걸이 기포 파손"
+  },
+  {
+    "item": "T20 팔걸이",
+    "defect_type": "파손",
+    "pattern": "팔걸이 R 기포 파손",
+    "standard_name": "T20팔걸이 기포 파손"
+  },
+  {
+    "item": "T20 팔걸이",
+    "defect_type": "파손",
+    "pattern": "R팔걸이 기포 파손",
+    "standard_name": "T20팔걸이 기포 파손"
+  },
+  {
+    "item": "GC1",
+    "defect_type": "파손",
+    "pattern": "봉제 라인 벌어짐",
+    "standard_name": "GC1 봉제라인 벌어짐"
+  },
+  {
+    "item": "GC1",
+    "defect_type": "파손",
+    "pattern": "좌판 봉제라인 벌어짐",
+    "standard_name": "GC1 봉제라인 벌어짐"
+  },
+  {
+    "item": "GC1",
+    "defect_type": "파손",
+    "pattern": "홀크기 수정 전 사양",
+    "standard_name": "GC1 홀크기 사양변경 전"
+  },
+  {
+    "item": "GC1",
+    "defect_type": "파손",
+    "pattern": "좌판 하단 골격 파손",
+    "standard_name": "GC1 좌판 골격 파손"
+  },
+  {
+    "item": "GC1",
+    "defect_type": "파손",
+    "pattern": "하단 골격 파손",
+    "standard_name": "GC1 좌판 골격 파손"
+  },
+  {
+    "item": "S40",
+    "defect_type": "수평",
+    "pattern": "조립시 바닥밀착도 불량",
+    "standard_name": "S40 바닥 밀착도 불량"
+  },
+  {
+    "item": "S40",
+    "defect_type": "수평",
+    "pattern": "제품 조립시 바닥 밀착도 틀어짐",
+    "standard_name": "S40 바닥 밀착도 불량"
+  },
+  {
+    "item": "S40",
+    "defect_type": "수평",
+    "pattern": "바닥 밀착도 1mm 이상 발생",
+    "standard_name": "S40 바닥 밀착도 불량"
+  },
+  {
+    "item": "T80",
+    "defect_type": "소음",
+    "pattern": "틸팅시 내부 스프링 소음",
+    "standard_name": "T80 틸팅 스프링 소음"
+  },
+  {
+    "item": "T80",
+    "defect_type": "소음",
+    "pattern": "틸팅시 소음 , 내부 스프링 그리스 적용 전",
+    "standard_name": "T80 틸팅 스프링 소음"
+  },
+  {
+    "item": "T80",
+    "defect_type": "기능",
+    "pattern": "강도레버 뭉그러짐",
+    "standard_name": "T80 강도레버 파손"
+  },
+  {
+    "item": "T80",
+    "defect_type": "지원",
+    "pattern": "상대물 없어서 유격 확인불가",
+    "standard_name": "T80 상대물 없음 (확인불가)"
+  },
+  {
+    "item": "T80",
+    "defect_type": "지원",
+    "pattern": "오염 원인처 확인 불가",
+    "standard_name": "T80 오염 원인 확인불가"
+  },
+  {
+    "item": "T80",
+    "defect_type": "지원",
+    "pattern": "오염 원인처 확인불가",
+    "standard_name": "T80 오염 원인 확인불가"
+  },
+  {
+    "item": "T20 2세대",
+    "defect_type": "조립",
+    "pattern": "사선조립으로 인서트 헛돔",
+    "standard_name": "T20 2세대 사선조립 인서트 헛돔"
+  },
+  {
+    "item": "T20 2세대",
+    "defect_type": "기능",
+    "pattern": "틸트 락커 씹힘",
+    "standard_name": "T20 2세대 틸트 락커 씹힘"
+  },
+  {
+    "item": "T20 2세대",
+    "defect_type": "기능",
+    "pattern": "틸트 락커씹힘",
+    "standard_name": "T20 2세대 틸트 락커 씹힘"
+  },
+  {
+    "item": "T20 2세대 헤드레스트",
+    "defect_type": "조립",
+    "pattern": "사선 조립으로 인서트 헛돔",
+    "standard_name": "T20 2세대 HR 인서트 헛돔"
+  },
+  {
+    "item": "T20 2세대 헤드레스트",
+    "defect_type": "조립",
+    "pattern": "어댑터 사선 조립으로 인서트 헛돔",
+    "standard_name": "T20 2세대 HR 인서트 헛돔"
+  },
+  {
+    "item": "T20 2세대 헤드레스트",
+    "defect_type": "지원",
+    "pattern": "어댑터 사선 조립으로 인서트 헛돔",
+    "standard_name": "T20 2세대 HR 인서트 헛돔"
+  },
+  {
+    "item": "T90",
+    "defect_type": "이탈",
+    "pattern": "등판 볼트 풀림 본드 도포 전 사양",
+    "standard_name": "T90 등판 볼트 풀림"
+  },
+  {
+    "item": "T90",
+    "defect_type": "이탈",
+    "pattern": "팔걸이 조립 볼트 이탈",
+    "standard_name": "T90 팔걸이 볼트 이탈"
+  },
+  {
+    "item": "T90",
+    "defect_type": "유격",
+    "pattern": "R암패드 고정 볼트 풀림",
+    "standard_name": "T90 암패드 볼트 풀림"
+  },
+  {
+    "item": "GX",
+    "defect_type": "파손",
+    "pattern": "등판 플레이트 연결 볼트 파손",
+    "standard_name": "GX 등판 볼트 파손"
+  },
+  {
+    "item": "GX",
+    "defect_type": "파손",
+    "pattern": "암패드 게이트 부위 내측으로 찢어짐",
+    "standard_name": "GX 암패드 찢어짐"
+  },
+  {
+    "item": "GX",
+    "defect_type": "지원",
+    "pattern": "회수품 소음 확인불가 조립 확인필요",
+    "standard_name": "GX 소음 확인불가"
+  },
+  {
+    "item": "GX",
+    "defect_type": "기능",
+    "pattern": "고정핀 갈림",
+    "standard_name": "GX 고정핀 갈림"
+  },
+  {
+    "item": "T50 air",
+    "defect_type": "기능",
+    "pattern": "락커 뭉그러짐 1단유격",
+    "standard_name": "T50air 락커 파손/유격"
+  },
+  {
+    "item": "T50 air",
+    "defect_type": "이탈",
+    "pattern": "리미트 볼트 이탈",
+    "standard_name": "T50air 리미트 볼트 이탈"
+  },
+  {
+    "item": "코스트코 T50light",
+    "defect_type": "지원",
+    "pattern": "상대물 없어서 소음 확인불가",
+    "standard_name": "코스트코T50 상대물 없음"
+  },
+  {
+    "item": "코스트코 T50light",
+    "defect_type": "지원",
+    "pattern": "상대물 없어서 확인불가",
+    "standard_name": "코스트코T50 상대물 없음"
+  },
+  {
+    "item": "T501FE",
+    "defect_type": "수평",
+    "pattern": "제품 바닥 밀착도 1mm이상",
+    "standard_name": "T501FE 바닥 밀착도 불량"
+  },
+  {
+    "item": "링고 발받침 이지리페어",
+    "defect_type": "파손",
+    "pattern": "조립중 리브 파손",
+    "standard_name": "링고발받침 조립시 파손"
+  },
+  {
+    "item": "링고 발받침 이지리페어",
+    "defect_type": "파손",
+    "pattern": "홀더 파손 구조 변경전",
+    "standard_name": "링고발받침 조립시 파손"
+  },
+  {
+    "item": "링고 발받침 이지리페어",
+    "defect_type": "파손",
+    "pattern": "브라켓 조립중 파손",
+    "standard_name": "링고발받침 조립시 파손"
+  },
+  {
+    "item": "링고 발받침 이지리페어",
+    "defect_type": "파손",
+    "pattern": "브라켓 조립시 파손",
+    "standard_name": "링고발받침 조립시 파손"
+  }
+]
