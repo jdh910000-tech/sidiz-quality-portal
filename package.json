@@ -1,0 +1,9 @@
+{
+  "name": "sidiz-quality-portal",
+  "version": "2.0.0",
+  "private": true,
+  "description": "SIDIZ 품질관리 포털 — Vercel + Supabase",
+  "scripts": {
+    "dev": "npx serve public -l 3000"
+  }
+}

@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIDIZ 품질관리 포털</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sidiz-navy: #1a2744;
+  --sidiz-blue: #0057b8;
+  --sidiz-blue-light: #2d7dd2;
+  --sidiz-blue-bright: #4a9eff;
+  --sidiz-blue-pale: #e8f2ff;
+  --sidiz-dark: #0d1b2a;
+  --sidiz-dark2: #132238;
+  --sidiz-card: #17293f;
+  --sidiz-card-hover: #1d3350;
+  --border: #243b5a;
+  --border-light: #2e4a6e;
+  --text-primary: #f0f4f8;
+  --text-secondary: #a0b4cb;
+  --text-muted: #6b83a0;
+  --accent-cyan: #00c6d7;
+  --accent-emerald: #00c48c;
+  --accent-amber: #ffb347;
+  --accent-rose: #ff6b7a;
+  --accent-violet: #a78bfa;
+  --gradient-brand: linear-gradient(135deg, #0057b8, #00c6d7);
+  --gradient-navy: linear-gradient(135deg, #1a2744, #0057b8);
+  --shadow-lg: 0 20px 40px rgba(0,0,0,0.4);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--sidiz-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 15% 30%, rgba(0,87,184,0.07) 0%, transparent 50%),
+              radial-gradient(ellipse at 85% 70%, rgba(0,198,215,0.04) 0%, transparent 50%);
+  z-index: 0; pointer-events: none;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  position: fixed; left: 0; top: 0; width: 68px; height: 100vh;
+  background: rgba(13,27,42,0.97); backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border); z-index: 100;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 0; transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+}
+.sidebar:hover { width: 240px; }
+
+.sidebar-logo {
+  width: 44px; height: 44px; flex-shrink: 0; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.sidebar-logo svg { width: 40px; height: 40px; }
+
+.sidebar-brand {
+  font-family: 'Outfit', sans-serif; font-size: 10px; font-weight: 600;
+  letter-spacing: 3px; color: var(--text-muted); margin-bottom: 24px;
+  opacity: 0; transition: opacity 0.2s; white-space: nowrap;
+}
+.sidebar:hover .sidebar-brand { opacity: 1; }
+
+.sidebar-nav {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 0 10px; flex: 1; overflow-y: auto;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 10px; border-radius: 10px; cursor: pointer;
+  transition: all 0.2s; white-space: nowrap; overflow: hidden;
+  text-decoration: none; color: var(--text-muted); font-size: 13px;
+}
+.nav-item:hover { background: rgba(0,87,184,0.12); color: var(--text-primary); }
+.nav-item.active { background: rgba(0,87,184,0.2); color: var(--sidiz-blue-bright); }
+
+.nav-icon { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 17px; }
+.nav-label { font-weight: 500; opacity: 0; transition: opacity 0.2s; }
+.sidebar:hover .nav-label { opacity: 1; }
+
+/* ===== MAIN ===== */
+.main { margin-left: 68px; padding: 28px 36px; position: relative; z-index: 1; min-height: 100vh; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+
+.header-left h1 { font-family: 'Outfit', 'Noto Sans KR', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+.header-left h1 span { background: var(--gradient-brand); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-left p { color: var(--text-muted); font-size: 13px; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+.header-badge { padding: 5px 12px; background: rgba(0,196,140,0.1); border: 1px solid rgba(0,196,140,0.2); border-radius: 20px; font-size: 11px; color: var(--accent-emerald); font-weight: 500; }
+.header-date { color: var(--text-muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+/* Section toggle */
+.section { display: none; animation: fadeIn 0.35s ease; }
+.section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== HOME GRID ===== */
+.home-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 28px; }
+
+.portal-card {
+  background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  position: relative; overflow: hidden;
+}
+.portal-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; opacity: 0; transition: opacity 0.3s; }
+.portal-card:hover { border-color: transparent; transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.portal-card:hover::before { opacity: 1; }
+.portal-card:nth-child(1)::before { background: var(--gradient-brand); }
+.portal-card:nth-child(2)::before { background: linear-gradient(135deg, #00c48c, #00c6d7); }
+.portal-card:nth-child(3)::before { background: linear-gradient(135deg, #a78bfa, #0057b8); }
+.portal-card:nth-child(4)::before { background: linear-gradient(135deg, #ff6b7a, #ffb347); }
+.portal-card:nth-child(5)::before { background: linear-gradient(135deg, #ffb347, #ff6b7a); }
+.portal-card:nth-child(6)::before { background: linear-gradient(135deg, #00c6d7, #00c48c); }
+
+.card-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+.card-icon.blue { background: rgba(0,87,184,0.15); }
+.card-icon.emerald { background: rgba(0,196,140,0.12); }
+.card-icon.violet { background: rgba(167,139,250,0.12); }
+.card-icon.rose { background: rgba(255,107,122,0.12); }
+.card-icon.amber { background: rgba(255,179,71,0.12); }
+.card-icon.cyan { background: rgba(0,198,215,0.12); }
+
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+.card-status { display: inline-flex; align-items: center; gap: 5px; margin-top: 14px; padding: 3px 9px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+.card-status.live { background: rgba(0,196,140,0.1); color: var(--accent-emerald); }
+.card-status.live::before { content: ''; width: 5px; height: 5px; background: var(--accent-emerald); border-radius: 50%; animation: pulse 2s infinite; }
+.card-status.dev { background: rgba(255,179,71,0.1); color: var(--accent-amber); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ===== TABS ===== */
+.sub-tabs { display: flex; gap: 3px; background: var(--sidiz-dark2); padding: 3px; border-radius: 10px; margin-bottom: 24px; border: 1px solid var(--border); width: fit-content; }
+.sub-tab { padding: 9px 18px; border-radius: 8px; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.2s; border: none; background: transparent; }
+.sub-tab:hover { color: var(--text-primary); }
+.sub-tab.active { background: var(--sidiz-blue); color: white; }
+
+/* ===== KPI CARDS ===== */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.kpi-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; }
+.kpi-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+.kpi-value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+.kpi-change { font-size: 11px; display: flex; align-items: center; gap: 3px; }
+.kpi-change.up { color: var(--accent-rose); }
+.kpi-change.down { color: var(--accent-emerald); }
+
+/* ===== TABLE ===== */
+.data-table-wrapper { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+.data-table-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.data-table-header h3 { font-size: 14px; font-weight: 600; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th { padding: 10px 14px; text-align: right; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 11px; white-space: nowrap; }
+.data-table th:first-child, .data-table th:nth-child(2) { text-align: left; }
+.data-table td { padding: 9px 14px; text-align: right; border-bottom: 1px solid rgba(36,59,90,0.4); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.data-table td:first-child, .data-table td:nth-child(2) { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
+.data-table tr:hover td { background: rgba(0,87,184,0.04); }
+.row-header { color: var(--text-secondary); font-weight: 600 !important; }
+.highlight { color: var(--sidiz-blue-bright); font-weight: 600; }
+.danger { color: var(--accent-rose); font-weight: 600; }
+.success { color: var(--accent-emerald); font-weight: 600; }
+
+/* ===== IFRAME ===== */
+.iframe-container { width: 100%; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--sidiz-card); }
+.iframe-container iframe { width: 100%; height: 85vh; border: none; }
+
+/* ===== SECTION TITLE ===== */
+.section-title { font-size: 16px; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+.section-title::before { content: ''; width: 3px; height: 18px; background: var(--gradient-brand); border-radius: 2px; }
+
+.back-btn { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 12px; cursor: pointer; margin-bottom: 14px; padding: 5px 10px; border-radius: 8px; transition: all 0.2s; border: none; background: transparent; }
+.back-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+
+/* ===== TAGS ===== */
+.tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.tag.done { background: rgba(0,196,140,0.12); color: var(--accent-emerald); }
+.tag.new { background: rgba(255,107,122,0.12); color: var(--accent-rose); }
+.tag.progress { background: rgba(255,179,71,0.12); color: var(--accent-amber); }
+
+/* ===== ACCORDION ===== */
+.accordion { margin-bottom: 24px; }
+.accordion-item { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; transition: all 0.2s; }
+.accordion-item:hover { border-color: var(--border-light); }
+
+.accordion-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; cursor: pointer; user-select: none; transition: background 0.2s;
+}
+.accordion-header:hover { background: rgba(0,87,184,0.05); }
+
+.accordion-header-left { display: flex; align-items: center; gap: 14px; }
+.accordion-product-name { font-size: 14px; font-weight: 600; }
+.accordion-product-count { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
+.accordion-product-count.blue { color: var(--sidiz-blue-bright); }
+.accordion-product-count.rose { color: var(--accent-rose); }
+
+.accordion-meta { display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--text-muted); }
+.accordion-trend { display: flex; align-items: center; gap: 3px; }
+.accordion-trend.up { color: var(--accent-rose); }
+.accordion-trend.down { color: var(--accent-emerald); }
+
+.accordion-arrow { font-size: 12px; color: var(--text-muted); transition: transform 0.3s; }
+.accordion-item.open .accordion-arrow { transform: rotate(180deg); }
+
+.accordion-body { display: none; padding: 0 18px 18px; }
+.accordion-item.open .accordion-body { display: block; }
+
+.mini-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.mini-bar-label { font-size: 11px; color: var(--text-secondary); width: 44px; text-align: right; flex-shrink: 0; }
+.mini-bar-track { flex: 1; height: 22px; background: rgba(255,255,255,0.03); border-radius: 5px; overflow: hidden; }
+.mini-bar-fill { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 8px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.mini-bar-fill span { font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.mini-bar-fill.brand { background: var(--gradient-brand); }
+.mini-bar-fill.rose { background: linear-gradient(135deg, #ff6b7a, #ffb347); }
+.mini-bar-fill.emerald { background: linear-gradient(135deg, #00c48c, #00c6d7); }
+.mini-bar-fill.violet { background: linear-gradient(135deg, #a78bfa, #0057b8); }
+
+/* ===== ANALYSIS BOX ===== */
+.analysis-box { background: linear-gradient(135deg, rgba(0,87,184,0.08), rgba(0,198,215,0.05)); border: 1px solid rgba(0,87,184,0.2); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+.analysis-box h4 { font-size: 13px; font-weight: 600; color: var(--sidiz-blue-bright); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.analysis-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(0,87,184,0.1); font-size: 12px; line-height: 1.7; color: var(--text-secondary); }
+.analysis-item:last-child { border-bottom: none; }
+.analysis-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.analysis-dot.critical { background: var(--accent-rose); }
+.analysis-dot.warning { background: var(--accent-amber); }
+.analysis-dot.info { background: var(--sidiz-blue-bright); }
+
+/* Date picker area */
+.date-filter { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.date-filter label { font-size: 12px; color: var(--text-muted); }
+.date-input { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--sidiz-dark2); color: var(--text-primary); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+.date-input:focus { outline: none; border-color: var(--sidiz-blue); }
+.date-btn { padding: 7px 16px; border-radius: 8px; border: none; background: var(--sidiz-blue); color: white; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.date-btn:hover { background: var(--sidiz-blue-light); }
+
+/* Stats row */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-item { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.stat-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* BAR CHART */
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { font-size: 11px; color: var(--text-secondary); width: auto; min-width: 140px; text-align: left; }
+.bar-track { flex: 1; height: 26px; background: rgba(255,255,255,0.03); border-radius: 5px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 8px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.bar-fill span { font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: white; }
+.bar-fill.brand { background: var(--gradient-brand); }
+
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+.chart-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.chart-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+
+/* Placeholder */
+.placeholder-section { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 55vh; text-align: center; }
+.placeholder-icon { width: 72px; height: 72px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 18px; }
+.placeholder-section h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.placeholder-section p { color: var(--text-muted); font-size: 13px; max-width: 380px; line-height: 1.7; }
+
+/* Cost cards */
+.cost-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+.cost-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; text-align: center; }
+.cost-label { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
+.cost-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.cost-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+@media (max-width: 1200px) {
+  .home-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-row { grid-template-columns: 1fr; }
+  .cost-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="url(#g1)"/>
+      <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="white" font-family="Outfit,sans-serif" font-weight="800" font-size="14">QC</text>
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="40" y2="40"><stop stop-color="#0057b8"/><stop offset="1" stop-color="#00c6d7"/></linearGradient></defs>
+    </svg>
+  </div>
+  <div class="sidebar-brand">QUALITY PORTAL</div>
+  <div class="sidebar-nav">
+    <a class="nav-item active" onclick="showSection('home')"><div class="nav-icon">🏠</div><span class="nav-label">메인 홈</span></a>
+    <a class="nav-item" onclick="showSection('claim')"><div class="nav-icon">📋</div><span class="nav-label">고객클레임 현황</span></a>
+    <a class="nav-item" onclick="showSection('kpi')"><div class="nav-icon">📊</div><span class="nav-label">KPI 현황</span></a>
+    <a class="nav-item" onclick="showSection('closing')"><div class="nav-icon">💰</div><span class="nav-label">월 마감</span></a>
+    <a class="nav-item" onclick="showSection('lab')"><div class="nav-icon">🔬</div><span class="nav-label">시디즈 시험소</span></a>
+    <a class="nav-item" onclick="showSection('as')"><div class="nav-icon">🔧</div><span class="nav-label">AS판정 현황</span></a>
+    <a class="nav-item" onclick="showSection('inspect')"><div class="nav-icon">✅</div><span class="nav-label">인수검사 현황</span></a>
+    <a class="nav-item" onclick="showSection('cert')"><div class="nav-icon">📜</div><span class="nav-label">인증현황</span></a>
+    <a class="nav-item" onclick="showSection('team')"><div class="nav-icon">👥</div><span class="nav-label">인원현황</span></a>
+    <a class="nav-item" onclick="showSection('okr')"><div class="nav-icon">🎯</div><span class="nav-label">팀 목표</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ===== HOME ===== -->
+<div id="section-home" class="section active">
+  <div class="header">
+    <div class="header-left">
+      <h1>SIDIZ <span>품질관리 포털</span></h1>
+      <p>Quality Management Portal — 시디즈 품질관리팀 업무 통합 허브</p>
+    </div>
+    <div class="header-right">
+      <a href="upload.html" style="padding:5px 12px;background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);border-radius:20px;font-size:11px;color:var(--sidiz-blue-bright);font-weight:500;text-decoration:none;transition:all 0.2s" onmouseover="this.style.background='rgba(0,87,184,0.2)'" onmouseout="this.style.background='rgba(0,87,184,0.1)'">📤 데이터 업로드</a>
+      <span class="header-badge" id="connectionBadge">● LIVE</span>
+      <span class="header-date" id="currentDate"></span>
+    </div>
+  </div>
+  <div class="home-grid">
+    <div class="portal-card" onclick="showSection('claim')"><div class="card-icon blue">📋</div><div class="card-title">고객클레임 현황</div><div class="card-desc">일/월별 클레임, 제품별 추이, 접수일 기준 분석 대시보드</div><div class="card-status live">운영 중</div></div>
+    <div class="portal-card" onclick="showSection('kpi')"><div class="card-icon emerald">📊</div><div class="card-title">KPI 현황</div><div class="card-desc">품질경영위원회 자료, 고객클레임 KPI, 실패비용 분석</div><div class="card-status live">운영 중</div></div>
+    <div class="portal-card" onclick="showSection('lab')"><div class="card-icon violet">🔬</div><div class="card-title">시디즈 시험소</div><div class="card-desc">시험소 업무 현황 및 시험 진행 상태 모니터링</div><div class="card-status live">운영 중</div></div>
+    <div class="portal-card" onclick="showSection('closing')"><div class="card-icon amber">💰</div><div class="card-title">월 마감</div><div class="card-desc">클레임 비용 정산 및 월별 마감 현황 관리</div><div class="card-status dev">개발 예정</div></div>
+    <div class="portal-card" onclick="showSection('as')"><div class="card-icon rose">🔧</div><div class="card-title">AS판정 현황</div><div class="card-desc">AS 판정 결과 및 유형별 분류 현황</div><div class="card-status dev">개발 예정</div></div>
+    <div class="portal-card" onclick="showSection('inspect')"><div class="card-icon amber">✅</div><div class="card-title">인수검사 현황</div><div class="card-desc">자재 및 제품 인수검사 결과 현황</div><div class="card-status dev">개발 예정</div></div>
+    <div class="portal-card" onclick="showSection('cert')"><div class="card-icon cyan">📜</div><div class="card-title">인증현황</div><div class="card-desc">제품 인증 및 규격 관리 현황</div><div class="card-status dev">개발 예정</div></div>
+    <div class="portal-card" onclick="showSection('team')"><div class="card-icon blue">👥</div><div class="card-title">인원현황</div><div class="card-desc">품질관리팀 조직 구조도 및 인원별 담당 역할</div><div class="card-status live">운영 중</div></div>
+    <div class="portal-card" onclick="showSection('okr')"><div class="card-icon emerald">🎯</div><div class="card-title">팀 목표</div><div class="card-desc">연도별 OKR 기반 팀 목표 관리 — 계획 및 결과 매칭</div><div class="card-status live">운영 중</div></div>
+  </div>
+  <div class="section-title">최근 현황 요약 (누적)</div>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">총 클레임 건수 (불량)</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)">6,274</div><div class="kpi-change">10개월 누적 국내+베트남</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 불량지수</div><div class="kpi-value" style="color:var(--accent-amber)">1.80%</div><div class="kpi-change up">▲ 목표 1.5% 대비 초과</div></div>
+    <div class="kpi-card"><div class="kpi-label">월평균 하자보수비</div><div class="kpi-value" style="color:var(--accent-rose)">1.61억</div><div class="kpi-change up">목표 1.15억 대비 초과</div></div>
+    <div class="kpi-card"><div class="kpi-label">총 매출건수</div><div class="kpi-value" style="color:var(--accent-emerald)">347,807</div><div class="kpi-change">국내+베트남 누적</div></div>
+  </div>
+</div>
+
+<!-- ===== CLAIM ===== -->
+<div id="section-claim" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header"><div class="header-left"><h1>고객클레임 <span>현황</span></h1><p>일별·월별 클레임 모니터링 및 제품별 분석</p></div></div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="showClaimTab('daily',this)">일 클레임 현황</button>
+    <button class="sub-tab" onclick="showClaimTab('monthly',this)">월 클레임 현황</button>
+    <button class="sub-tab" onclick="showClaimTab('product',this)">제품별 클레임</button>
+    <button class="sub-tab" onclick="showClaimTab('receipt',this)">클레임 현황(접수일)</button>
+  </div>
+
+  <!-- Daily -->
+  <div id="claim-daily" class="claim-content"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="section-title" style="margin-bottom:0">일 클레임 현황</div><span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일</span></div><div class="iframe-container"><iframe src="https://claim-dashboard-xodr.vercel.app/" title="일 클레임 현황"></iframe></div></div>
+
+  <!-- Monthly -->
+  <div id="claim-monthly" class="claim-content" style="display:none"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="section-title" style="margin-bottom:0">월 클레임 현황</div><span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일</span></div><div class="iframe-container"><iframe src="https://claim-dashboard-xodr.vercel.app/" title="월 클레임 현황" loading="lazy"></iframe></div></div>
+
+  <!-- Product -->
+  <div id="claim-product" class="claim-content" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div><span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일</span></div>
+    <div class="stats-row">
+      <div class="stat-item"><div class="stat-label">국내 총 불량</div><div class="stat-value" style="color:var(--sidiz-blue-bright)">3,859</div><div class="stat-sub">10개월 누적</div></div>
+      <div class="stat-item"><div class="stat-label">베트남 총 불량</div><div class="stat-value" style="color:var(--accent-cyan)">2,415</div><div class="stat-sub">10개월 누적</div></div>
+      <div class="stat-item"><div class="stat-label">평균 불량지수</div><div class="stat-value" style="color:var(--accent-amber)">1.80%</div><div class="stat-sub">목표 1.50%</div></div>
+    </div>
+
+    <div class="accordion" id="productAccordion"></div>
+  </div>
+
+  <!-- Receipt Date -->
+  <div id="claim-receipt" class="claim-content" style="display:none">
+    <div class="section-title">클레임 현황 (접수일 기준)</div>
+    <div class="date-filter">
+      <label>기간 선택:</label>
+      <input type="date" class="date-input" id="dateFrom" value="2025-01-01">
+      <span style="color:var(--text-muted)">~</span>
+      <input type="date" class="date-input" id="dateTo" value="2025-08-31">
+      <button class="date-btn" onclick="applyDateFilter()">조회</button>
+      <button class="date-btn" style="background:var(--sidiz-dark2);border:1px solid var(--border)" onclick="setQuickDate('1m')">최근 1개월</button>
+      <button class="date-btn" style="background:var(--sidiz-dark2);border:1px solid var(--border)" onclick="setQuickDate('3m')">최근 3개월</button>
+      <button class="date-btn" style="background:var(--sidiz-dark2);border:1px solid var(--border)" onclick="setQuickDate('all')">전체</button>
+    </div>
+
+    <!-- Analysis Box -->
+    <div class="analysis-box">
+      <h4>🔍 클레임 분석 인사이트</h4>
+      <div class="analysis-item"><div class="analysis-dot critical"></div><div><strong>T50 헤드레스트 작동불만(파손)</strong> — 작동성 유형 중 최다 건수(77건). 7~8월 급증 추이로 <strong style="color:var(--accent-rose)">헤드 컬링 하자가 지속 증가</strong>하고 있으므로 설계 개선 효과 모니터링이 필요합니다.</div></div>
+      <div class="analysis-item"><div class="analysis-dot critical"></div><div><strong>T50 틸팅 레버 작동안됨</strong> — 65건으로 2위. 4000G 레버 하자와 연관성이 있으며 개선 완료 제품의 필드 적용 확인이 필요합니다.</div></div>
+      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>베트남 설계 클레임 급증</strong> — 6월 이후 베트남 헤드 관련 클레임이 월 100건 이상으로 급증(7월 127건, 8월 117건). 베트남 생산 라인 점검이 시급합니다.</div></div>
+      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>소음 클레임 확대</strong> — T50 좌판 소음(30건), 4000G 틸팅 시 소음(30건), 등판 소음(20건) 등 소음 카테고리 복합 발생. 메커니즘 구조 재검토가 필요합니다.</div></div>
+      <div class="analysis-item"><div class="analysis-dot info"></div><div><strong>T25 높이조절 불가(리머+테이퍼)</strong> — 29건 발생 중이며 리머 치수 불량(2.7mm)이 원인으로 <strong style="color:var(--accent-amber)">기준 3.00~4.00mm 대비 미달</strong> 상태입니다.</div></div>
+    </div>
+
+    <div class="stats-row" id="receiptCategories">
+      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('작동성')" onmouseover="this.style.borderColor='var(--sidiz-blue)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">작동성</div><div class="stat-value" style="color:var(--sidiz-blue-bright)">478</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('소음')" onmouseover="this.style.borderColor='var(--accent-amber)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">소음</div><div class="stat-value" style="color:var(--accent-amber)">102</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('파손')" onmouseover="this.style.borderColor='var(--accent-rose)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">파손</div><div class="stat-value" style="color:var(--accent-rose)">83</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('유격')" onmouseover="this.style.borderColor='var(--accent-violet)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">유격</div><div class="stat-value" style="color:var(--accent-violet)">49</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('수평')" onmouseover="this.style.borderColor='var(--accent-cyan)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">수평</div><div class="stat-value" style="color:var(--accent-cyan)">39</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('기타')" onmouseover="this.style.borderColor='var(--text-muted)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">외관/감성/기타</div><div class="stat-value" style="color:var(--text-muted)">236</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+    </div>
+
+    <!-- Expandable category detail -->
+    <div id="categoryDetail" style="display:none;margin-bottom:24px">
+      <div class="data-table-wrapper">
+        <div class="data-table-header">
+          <h3 id="categoryDetailTitle">작동성 — 제품별 건수 (내림차순)</h3>
+          <button onclick="document.getElementById('categoryDetail').style.display='none'" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">✕ 닫기</button>
+        </div>
+        <div id="categoryDetailBody"></div>
+      </div>
+    </div>
+
+    <!-- Expandable claim detail (접수번호별) -->
+    <div id="claimDetail" style="display:none;margin-bottom:24px">
+      <div class="data-table-wrapper">
+        <div class="data-table-header">
+          <h3 id="claimDetailTitle">접수건 상세 내역</h3>
+          <button onclick="document.getElementById('claimDetail').style.display='none'" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">✕ 닫기</button>
+        </div>
+        <div id="claimDetailBody" style="padding:16px;color:var(--text-secondary);font-size:12px">
+          <p style="text-align:center;padding:20px;color:var(--text-muted)">📋 카테고리 클릭 후 '접수건 조회' 버튼을 누르면 claims_receipt 테이블에서 실시간 데이터를 조회합니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px">
+      <h3>상위 클레임 유형 TOP 10 (접수일 기준)</h3>
+      <div class="bar-chart" style="margin-top:12px">
+        <div class="bar-row"><div class="bar-label">T50 헤드레스트 작동불만</div><div class="bar-track"><div class="bar-fill brand" style="width:100%"><span>77건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T50 틸팅 레버 작동안됨</div><div class="bar-track"><div class="bar-fill brand" style="width:84%"><span>65건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T50 럼버 흘러내림</div><div class="bar-track"><div class="bar-fill brand" style="width:48%"><span>37건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">중심봉 기능 불만</div><div class="bar-track"><div class="bar-fill brand" style="width:44%"><span>34건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">종타이 락커 파손</div><div class="bar-track"><div class="bar-fill brand" style="width:43%"><span>33건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T50 좌판 소음</div><div class="bar-track"><div class="bar-fill brand" style="width:39%"><span>30건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T25 높이조절 불가</div><div class="bar-track"><div class="bar-fill brand" style="width:38%"><span>29건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T50 좌판 골격소음</div><div class="bar-track"><div class="bar-fill brand" style="width:36%"><span>28건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T50 수평 불만</div><div class="bar-track"><div class="bar-fill brand" style="width:34%"><span>26건</span></div></div></div>
+        <div class="bar-row"><div class="bar-label">T50 좌판 유격</div><div class="bar-track"><div class="bar-fill brand" style="width:30%"><span>23건</span></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== KPI ===== -->
+<div id="section-kpi" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header"><div class="header-left"><h1>KPI <span>현황</span></h1><p>품질경영위원회 발표 자료 — 고객클레임 및 실패비용</p></div></div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="showKpiTab('claim-kpi',this)">고객 클레임 현황</button>
+    <button class="sub-tab" onclick="showKpiTab('cost-kpi',this)">실패비용</button>
+  </div>
+
+  <!-- KPI Claim -->
+  <div id="kpi-claim-kpi" class="kpi-content">
+    <div class="section-title">고객클레임 현황 (품질경영위원회)</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">불량 합계 (10월 누적)</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)">6,274</div><div class="kpi-change">국내 3,859 + 베트남 2,415</div></div>
+      <div class="kpi-card"><div class="kpi-label">불량지수 (평균)</div><div class="kpi-value" style="color:var(--accent-amber)">1.80%</div><div class="kpi-change up">▲ 목표 1.50% 대비 초과</div></div>
+      <div class="kpi-card"><div class="kpi-label">제조 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-rose)">875</div><div class="kpi-change">클레임율 0.21%</div></div>
+      <div class="kpi-card"><div class="kpi-label">설계 클레임 (계)</div><div class="kpi-value" style="color:var(--accent-violet)">2,979</div><div class="kpi-change">국내 1,987 + 베트남 992</div></div>
+    </div>
+
+    <!-- Combo Chart: Bar (클레임 건수) + Line (불량지수) -->
+    <div class="chart-card" style="margin-bottom:24px;padding:24px">
+      <h3 style="margin-bottom:4px">클레임 건수 및 불량지수 추이</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">막대: 월별 불량 건수 (국내+베트남) · 꺾은선: 불량지수(%) · 점선: 목표 1.50%</p>
+      <canvas id="comboChart" height="110"></canvas>
+    </div>
+
+    <!-- Main KPI Table -->
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>고객클레임 종합 현황</h3></div>
+      <table class="data-table">
+        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2024평균</th><th>2025평균</th><th>12월</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th></tr></thead>
+        <tbody>
+          <tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>-</td><td>19,969</td><td>18,717</td><td>19,188</td><td>25,611</td><td>26,634</td><td>22,664</td><td>16,594</td><td>15,728</td><td>20,759</td><td>19,984</td><td>18,343</td></tr>
+          <tr><td>베트남</td><td>-</td><td>14,812</td><td>14,322</td><td>14,003</td><td>18,428</td><td>20,237</td><td>16,333</td><td>12,583</td><td>10,609</td><td>12,931</td><td>14,754</td><td>15,927</td></tr>
+          <tr style="font-weight:600"><td>계</td><td>-</td><td>34,781</td><td>33,039</td><td>33,191</td><td>44,039</td><td>46,871</td><td>38,997</td><td>29,177</td><td>26,337</td><td>33,690</td><td>34,738</td><td>34,270</td></tr>
+          <tr><td class="row-header" rowspan="3">클레임 건수(불량)</td><td>국내</td><td>429</td><td>-</td><td>498</td><td>334</td><td>479</td><td>462</td><td>399</td><td>355</td><td>369</td><td>404</td><td>528</td><td>529</td></tr>
+          <tr><td>베트남</td><td>268</td><td>-</td><td>226</td><td>169</td><td>224</td><td>257</td><td>310</td><td>327</td><td>284</td><td>255</td><td>271</td><td>318</td></tr>
+          <tr style="font-weight:600"><td>불량 계</td><td>697</td><td>-</td><td>724</td><td>503</td><td>703</td><td>719</td><td>709</td><td>682</td><td>653</td><td>659</td><td>799</td><td>847</td></tr>
+          <tr><td class="row-header" rowspan="3">불량지수</td><td>국내</td><td>2.15%</td><td>-</td><td>2.66%</td><td>1.74%</td><td>1.87%</td><td>1.73%</td><td>1.76%</td><td>2.14%</td><td>2.35%</td><td>1.95%</td><td class="danger">2.64%</td><td class="danger">2.88%</td></tr>
+          <tr><td>베트남</td><td>1.81%</td><td>-</td><td>1.58%</td><td>1.21%</td><td>1.22%</td><td>1.27%</td><td>1.90%</td><td>2.60%</td><td>2.68%</td><td>1.97%</td><td>1.84%</td><td>2.00%</td></tr>
+          <tr style="font-weight:600"><td>불량 계</td><td style="color:#7eb8ff">2.00%</td><td style="color:#7eb8ff">-</td><td style="color:#7eb8ff">2.19%</td><td style="color:#7eb8ff">1.52%</td><td style="color:#7eb8ff">1.60%</td><td style="color:#7eb8ff">1.53%</td><td style="color:#7eb8ff">1.82%</td><td style="color:#7eb8ff">2.34%</td><td style="color:#7eb8ff">2.48%</td><td style="color:#7eb8ff">1.96%</td><td style="color:#ff9e7a">2.30%</td><td style="color:#ff9e7a">2.47%</td></tr>
+          <tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td><td>1.50%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 전월 대비 특이사항 분석 -->
+    <div class="analysis-box">
+      <h4>📌 전월 대비 특이사항 분석 (9월 기준)</h4>
+      <div class="analysis-item"><div class="analysis-dot critical"></div><div><strong>[국내] 불량지수 2.88% — 전월(2.64%) 대비 +0.24%p 상승.</strong> 8~9월 연속 불량지수 상승세이며, 설계 클레임(263건)과 제조 클레임(38건) 모두 높은 수준 유지. 특히 설계 클레임 중 헤드 컬링 하자가 8월 대비 지속되고 있어 개선 효과 모니터링 필요.</div></div>
+      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>[베트남] 불량지수 2.00% — 전월(1.84%) 대비 +0.16%p 상승.</strong> 헤드 관련 클레임이 여전히 높은 수준이나, 7월 정점 대비 감소 추세. 제조 클레임은 42건에서 안정화.</div></div>
+      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>[국내 제조] 9월 31건 — 전월(38건) 대비 소폭 감소.</strong> 오포장(7건), 등판 메쉬 이탈(5건), T25 높낮이 고정 불가(4건)가 주요 이슈.</div></div>
+      <div class="analysis-item"><div class="analysis-dot info"></div><div><strong>[사양재검토] 국내 103건, 베트남 44건 — 전월 대비 국내는 감소(-17건), 베트남은 감소(-4건).</strong> 양 지역 모두 전월 대비 감소 추세이나 국내의 절대 건수가 여전히 높음.</div></div>
+    </div>
+
+    <!-- 판정유형별 클레임 현황 -->
+    <div class="section-title">판정유형별 클레임 현황 (월별)</div>
+
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>🇰🇷 국내 — 판정유형별 클레임 건수</h3></div>
+      <table class="data-table">
+        <thead><tr><th style="text-align:left">판정유형</th><th>2024평균</th><th>12월</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th></tr></thead>
+        <tbody>
+          <tr><td class="row-header">제조</td><td>27</td><td>34</td><td>19</td><td>60</td><td>40</td><td>32</td><td>15</td><td>35</td><td>18</td><td>36</td><td>38</td></tr>
+          <tr><td class="row-header">설계</td><td>199</td><td>213</td><td>144</td><td>212</td><td>188</td><td>185</td><td>155</td><td>165</td><td>211</td><td>266</td><td>263</td></tr>
+          <tr><td class="row-header">서비스</td><td>7</td><td>14</td><td>4</td><td>11</td><td>17</td><td>4</td><td>5</td><td>8</td><td>4</td><td>6</td><td>4</td></tr>
+          <tr><td class="row-header">고객불만</td><td>101</td><td>110</td><td>62</td><td>129</td><td>118</td><td>80</td><td>100</td><td>96</td><td>107</td><td>99</td><td>114</td></tr>
+          <tr><td class="row-header">사양재검토</td><td>102</td><td>144</td><td>111</td><td>91</td><td>116</td><td>100</td><td>84</td><td>69</td><td>83</td><td>139</td><td>120</td></tr>
+          <tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>436</td><td>515</td><td>340</td><td>503</td><td>479</td><td>401</td><td>359</td><td>373</td><td>423</td><td>546</td><td>539</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>🇻🇳 베트남 — 판정유형별 클레임 건수</h3></div>
+      <table class="data-table">
+        <thead><tr><th style="text-align:left">판정유형</th><th>2024평균</th><th>12월</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th></tr></thead>
+        <tbody>
+          <tr><td class="row-header">제조</td><td>47</td><td>35</td><td>27</td><td>41</td><td>25</td><td>95</td><td>139</td><td>79</td><td>25</td><td>49</td><td>39</td></tr>
+          <tr><td class="row-header">설계</td><td>99</td><td>73</td><td>46</td><td>56</td><td>69</td><td>72</td><td>89</td><td>121</td><td>138</td><td>140</td><td>161</td></tr>
+          <tr><td class="row-header">서비스</td><td>8</td><td>7</td><td>8</td><td>19</td><td>30</td><td>5</td><td>3</td><td>5</td><td>1</td><td>3</td><td>3</td></tr>
+          <tr><td class="row-header">고객불만</td><td>65</td><td>67</td><td>61</td><td>76</td><td>86</td><td>64</td><td>70</td><td>59</td><td>57</td><td>41</td><td>77</td></tr>
+          <tr><td class="row-header">사양재검토</td><td>51</td><td>62</td><td>41</td><td>63</td><td>79</td><td>83</td><td>38</td><td>27</td><td>41</td><td>47</td><td>48</td></tr>
+          <tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>270</td><td>244</td><td>183</td><td>255</td><td>289</td><td>319</td><td>339</td><td>291</td><td>262</td><td>280</td><td>328</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- KPI Cost -->
+  <div id="kpi-cost-kpi" class="kpi-content" style="display:none">
+    <div class="section-title">실패비용 현황</div>
+    <div class="cost-grid">
+      <div class="cost-card"><div class="cost-label">하자보수비 (월평균)</div><div class="cost-value" style="color:var(--accent-rose)">6,190만</div><div class="cost-sub">목표: 4,480만</div></div>
+      <div class="cost-card"><div class="cost-label">바로스 AS 용역료 (월평균)</div><div class="cost-value" style="color:var(--accent-amber)">9,865만</div><div class="cost-sub">목표: 7,000만</div></div>
+      <div class="cost-card"><div class="cost-label">매출액 대비 비율</div><div class="cost-value" style="color:var(--accent-violet)">1.55%</div><div class="cost-sub">목표: 1.09%</div></div>
+      <div class="cost-card"><div class="cost-label">누적 하자보수비</div><div class="cost-value" style="color:var(--sidiz-blue-bright)">2.48억</div><div class="cost-sub">4개월</div></div>
+      <div class="cost-card"><div class="cost-label">누적 바로스 AS</div><div class="cost-value" style="color:var(--accent-cyan)">3.95억</div><div class="cost-sub">4개월</div></div>
+    </div>
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>하자보수비 및 바로스 용역료 상세 (단위: 원)</h3></div>
+      <table class="data-table">
+        <thead><tr><th style="text-align:left" colspan="2">구분</th><th>2024평균</th><th>2025목표</th><th>2025평균</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>누적</th></tr></thead>
+        <tbody>
+          <tr style="background:rgba(0,87,184,0.03)"><td class="row-header" colspan="2">매출액</td><td>90.1억</td><td>105.0억</td><td>103.9억</td><td>84.2억</td><td>108.9억</td><td>112.6억</td><td>110.0억</td><td>415.8억</td></tr>
+          <tr><td class="row-header" rowspan="5">(판)하자보수비</td><td>제품</td><td>2,340만</td><td>1,850만</td><td>3,236만</td><td>1,872만</td><td>2,993만</td><td>2,996만</td><td>5,083만</td><td>12,945만</td></tr>
+          <tr><td>자재</td><td>2,231만</td><td>1,700만</td><td>1,760만</td><td>1,468만</td><td>1,985만</td><td>1,781만</td><td>1,806만</td><td>7,040만</td></tr>
+          <tr><td>T50RE 헤드 자재</td><td>712만</td><td>350만</td><td>199만</td><td>334만</td><td>127만</td><td>174만</td><td>162만</td><td>797만</td></tr>
+          <tr><td>클레임 보상</td><td>656만</td><td>500만</td><td>555만</td><td>668만</td><td>752만</td><td>331만</td><td>468만</td><td>2,220만</td></tr>
+          <tr style="font-weight:600"><td>계</td><td class="highlight">6,137만</td><td class="success">4,480만</td><td class="danger">6,191만</td><td>4,344만</td><td>6,624만</td><td>5,666만</td><td>8,129만</td><td class="danger">24,763만</td></tr>
+          <tr><td class="row-header" rowspan="4">바로스 AS</td><td>AS 컨택센터</td><td>5,335만</td><td>4,300만</td><td>5,893만</td><td>4,897만</td><td>6,567만</td><td>6,438만</td><td>5,670만</td><td>23,572만</td></tr>
+          <tr><td>AS조치비(무상)</td><td>2,228만</td><td>1,700만</td><td>2,647만</td><td>1,734만</td><td>2,388만</td><td>3,176만</td><td>3,292만</td><td>10,590만</td></tr>
+          <tr><td>AS물류비</td><td>1,292만</td><td>1,000만</td><td>1,324만</td><td>965만</td><td>1,337만</td><td>1,526만</td><td>1,469만</td><td>5,297만</td></tr>
+          <tr style="font-weight:600"><td>계</td><td class="highlight">8,855만</td><td class="success">7,000만</td><td class="danger">9,865만</td><td>7,597만</td><td>10,292만</td><td>11,139만</td><td>10,431만</td><td class="danger">39,459만</td></tr>
+          <tr style="font-weight:700;background:rgba(255,107,122,0.04)"><td class="row-header" colspan="2">소계</td><td>15,013만</td><td class="success">11,490만</td><td class="danger">16,072만</td><td>11,942만</td><td>16,940만</td><td>16,820만</td><td>18,588만</td><td class="danger">64,290만</td></tr>
+          <tr style="font-weight:600"><td class="row-header" colspan="2">매출액 대비 비율</td><td>1.67%</td><td class="success">1.09%</td><td class="danger">1.55%</td><td>1.42%</td><td>1.55%</td><td>1.49%</td><td>1.69%</td><td class="danger">1.55%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 월 마감 ===== -->
+<div id="section-closing" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,179,71,0.1)">💰</div><h2>월 마감</h2><p>클레임에 대한 비용 정산 및 월별 마감 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
+
+<!-- ===== LAB ===== -->
+<div id="section-lab" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header"><div class="header-left"><h1>시디즈 <span>시험소</span></h1><p>시험소 업무 현황 및 시험 진행 상태 모니터링</p></div></div>
+  <div class="iframe-container"><iframe src="https://script.google.com/macros/s/AKfycbzH-unHLRm-eJO2MO60qoyIPHQjBbfkdlrqDuXu9ndZ55oRyilNB7IJo8QMzXQkI-aD/exec" title="시디즈 시험소" loading="lazy"></iframe></div>
+</div>
+
+<!-- ===== AS / INSPECT / CERT ===== -->
+<div id="section-as" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,107,122,0.1)">🔧</div><h2>AS판정 현황</h2><p>AS 판정 결과 및 유형별 분류 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
+<div id="section-inspect" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,179,71,0.1)">✅</div><h2>인수검사 현황</h2><p>자재 및 제품 인수검사 결과를 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
+<div id="section-cert" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(0,198,215,0.1)">📜</div><h2>인증현황</h2><p>제품 인증 및 규격 관리 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
+
+<!-- ===== TEAM ===== -->
+<div id="section-team" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header"><div class="header-left"><h1>인원현황 <span>조직도</span></h1><p>품질관리팀 구성원 및 담당 역할</p></div></div>
+
+  <style>
+    .org-chart { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; }
+    .org-leader { 
+      background: linear-gradient(135deg, #0057b8, #2d7dd2); 
+      border-radius: 14px; padding: 20px 36px; text-align: center; position: relative;
+      box-shadow: 0 8px 24px rgba(0,87,184,0.3); border: 1px solid rgba(74,158,255,0.3);
+    }
+    .org-leader .org-name { font-size: 18px; font-weight: 700; color: white; }
+    .org-leader .org-role { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .org-leader .org-title { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 4px; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+    
+    .org-connector { width: 2px; height: 32px; background: var(--border-light); }
+    .org-hline { height: 2px; background: var(--border-light); align-self: stretch; margin: 0 80px; }
+    
+    .org-groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; margin-top: 0; }
+    .org-group { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    .org-group-connector { width: 2px; height: 20px; background: var(--border-light); }
+    
+    .org-group-header {
+      background: var(--sidiz-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 20px; text-align: center; width: 100%;
+      border-top: 3px solid var(--sidiz-blue);
+    }
+    .org-group-header.inspection { border-top-color: var(--accent-emerald); }
+    .org-group-header.as { border-top-color: var(--accent-rose); }
+    .org-group-header.lab { border-top-color: var(--accent-violet); }
+    .org-group-header.office { border-top-color: var(--accent-amber); }
+    
+    .org-group-name { font-size: 14px; font-weight: 700; }
+    .org-group-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    
+    .org-members { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 8px; }
+    .org-member {
+      background: var(--sidiz-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+      transition: all 0.2s; cursor: default;
+    }
+    .org-member:hover { border-color: var(--border-light); background: var(--sidiz-card-hover); }
+    
+    .org-avatar { 
+      width: 32px; height: 32px; border-radius: 8px; 
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .org-avatar.inspection { background: rgba(0,196,140,0.12); }
+    .org-avatar.as { background: rgba(255,107,122,0.12); }
+    .org-avatar.lab { background: rgba(167,139,250,0.12); }
+    .org-avatar.office { background: rgba(255,179,71,0.12); }
+    
+    .org-member-info { flex: 1; }
+    .org-member-name { font-size: 12px; font-weight: 600; }
+    .org-member-duty { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+    .org-member-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+    
+    .org-edit-notice {
+      margin-top: 24px; padding: 14px 20px; background: rgba(0,87,184,0.05);
+      border: 1px dashed rgba(0,87,184,0.2); border-radius: 10px;
+      font-size: 11px; color: var(--text-muted); text-align: center;
+    }
+
+    @media (max-width: 1100px) { .org-groups { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+
+  <div class="org-chart">
+    <!-- 팀장 -->
+    <div class="org-leader">
+      <div class="org-title">TEAM LEADER</div>
+      <div class="org-name">이명호 총괄팀장</div>
+      <div class="org-role">품질관리팀 총괄</div>
+    </div>
+    <div class="org-connector"></div>
+    <div class="org-hline"></div>
+  </div>
+
+  <!-- 4개 파트 -->
+  <div class="org-groups">
+    <!-- 인수검사 -->
+    <div class="org-group">
+      <div class="org-group-connector"></div>
+      <div class="org-group-header inspection">
+        <div class="org-group-name">인수검사</div>
+        <div class="org-group-desc">입고 자재 · 제품 품질 검증</div>
+      </div>
+      <div class="org-members">
+        <div class="org-member"><div class="org-avatar inspection">👤</div><div class="org-member-info"><div class="org-member-name">김기태 <span class="org-member-badge" style="background:rgba(0,196,140,0.12);color:var(--accent-emerald)">반장</span></div><div class="org-member-duty">제품/자재 인수검사</div></div></div>
+        <div class="org-member"><div class="org-avatar inspection">👤</div><div class="org-member-info"><div class="org-member-name">김민수</div><div class="org-member-duty">제품/자재 인수검사</div></div></div>
+      </div>
+    </div>
+
+    <!-- AS판정 -->
+    <div class="org-group">
+      <div class="org-group-connector"></div>
+      <div class="org-group-header as">
+        <div class="org-group-name">AS판정</div>
+        <div class="org-group-desc">클레임 판정 · 원인 분석</div>
+      </div>
+      <div class="org-members">
+        <div class="org-member"><div class="org-avatar as">👤</div><div class="org-member-info"><div class="org-member-name">신희창</div><div class="org-member-duty">클레임 판정</div></div></div>
+        <div class="org-member"><div class="org-avatar as">👤</div><div class="org-member-info"><div class="org-member-name">김철우</div><div class="org-member-duty">클레임 판정</div></div></div>
+      </div>
+    </div>
+
+    <!-- 시험실 -->
+    <div class="org-group">
+      <div class="org-group-connector"></div>
+      <div class="org-group-header lab">
+        <div class="org-group-name">시험실</div>
+        <div class="org-group-desc">제품 시험 · 인증 관리</div>
+      </div>
+      <div class="org-members">
+        <div class="org-member"><div class="org-avatar lab">👤</div><div class="org-member-info"><div class="org-member-name">이창규 <span class="org-member-badge" style="background:rgba(167,139,250,0.12);color:var(--accent-violet)">반장</span></div><div class="org-member-duty">시험 운영</div></div></div>
+        <div class="org-member"><div class="org-avatar lab">👤</div><div class="org-member-info"><div class="org-member-name">원동민</div><div class="org-member-duty">시험 실무</div></div></div>
+      </div>
+    </div>
+
+    <!-- 사무실 -->
+    <div class="org-group">
+      <div class="org-group-connector"></div>
+      <div class="org-group-header office">
+        <div class="org-group-name">사무실</div>
+        <div class="org-group-desc">클레임 관리 · KPI · 기획</div>
+      </div>
+      <div class="org-members">
+        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">백광열 <span class="org-member-badge" style="background:rgba(255,179,71,0.12);color:var(--accent-amber)">직장</span></div><div class="org-member-duty">사외 협력사 관리</div></div></div>
+        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">김대승</div><div class="org-member-duty">공정관리 · 사내 협력사 관리</div></div></div>
+        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">김종운</div><div class="org-member-duty">사외 클레임 관리</div></div></div>
+        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">황인우</div><div class="org-member-duty">KPI · 품질기획 · 데이터 분석</div></div></div>
+        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">진대현</div><div class="org-member-duty">KPI · 품질기획 · 데이터 분석</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="org-edit-notice">
+    📋 품질관리팀 총 12명 (총괄팀장 1 · 인수검사 2 · AS판정 2 · 시험실 2 · 사무실 5)
+  </div>
+</div>
+
+<!-- ===== OKR 팀 목표 ===== -->
+<div id="section-okr" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header"><div class="header-left"><h1>팀 목표 <span>OKR</span></h1><p>연도별 목표(Objective) 및 핵심결과(Key Result) 관리</p></div></div>
+
+  <style>
+    .okr-year-tabs { display: flex; gap: 6px; margin-bottom: 24px; }
+    .okr-year-tab {
+      padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border); background: var(--sidiz-card);
+      color: var(--text-muted); transition: all 0.2s;
+    }
+    .okr-year-tab:hover { border-color: var(--sidiz-blue); color: var(--text-primary); }
+    .okr-year-tab.active { background: var(--sidiz-blue); border-color: var(--sidiz-blue); color: white; }
+    .okr-add-year {
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1px dashed var(--border); background: transparent;
+      color: var(--text-muted); transition: all 0.2s;
+    }
+    .okr-add-year:hover { border-color: var(--accent-emerald); color: var(--accent-emerald); }
+
+    .okr-year-content { display: none; }
+    .okr-year-content.active { display: block; }
+
+    .okr-objective {
+      background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 16px; overflow: hidden; transition: all 0.2s;
+    }
+    .okr-objective:hover { border-color: var(--border-light); }
+
+    .okr-obj-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px; cursor: pointer; user-select: none;
+    }
+    .okr-obj-header:hover { background: rgba(0,87,184,0.03); }
+
+    .okr-obj-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .okr-obj-badge {
+      width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; font-family: 'JetBrains Mono', monospace; flex-shrink: 0;
+    }
+    .okr-obj-badge.o1 { background: rgba(0,87,184,0.15); color: var(--sidiz-blue-bright); }
+    .okr-obj-badge.o2 { background: rgba(0,196,140,0.12); color: var(--accent-emerald); }
+    .okr-obj-badge.o3 { background: rgba(167,139,250,0.12); color: var(--accent-violet); }
+    .okr-obj-badge.o4 { background: rgba(255,179,71,0.12); color: var(--accent-amber); }
+
+    .okr-obj-title { font-size: 15px; font-weight: 600; }
+    .okr-obj-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .okr-progress-mini { display: flex; align-items: center; gap: 8px; }
+    .okr-progress-bar { width: 80px; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .okr-progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+    .okr-progress-text { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; min-width: 36px; }
+
+    .okr-obj-arrow { font-size: 12px; color: var(--text-muted); transition: transform 0.3s; margin-left: 12px; }
+    .okr-objective.open .okr-obj-arrow { transform: rotate(180deg); }
+
+    .okr-obj-body { display: none; padding: 0 20px 20px; }
+    .okr-objective.open .okr-obj-body { display: block; }
+
+    .okr-kr { cursor: pointer; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; overflow: hidden; transition: all 0.2s; }
+
+    .okr-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .okr-summary-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; text-align: center; }
+    .okr-summary-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+    .okr-summary-value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .okr-kr:hover { border-color: var(--border-light); }
+    .okr-kr-header { display: grid; grid-template-columns: 40px 1fr 100px 60px; gap: 12px; align-items: center; padding: 12px 14px; }
+    .okr-kr.open .okr-kr-header { border-bottom: 1px solid rgba(36,59,90,0.3); }
+    .okr-kr-detail { display: none; padding: 16px 14px 16px 54px; background: rgba(0,0,0,0.15); }
+    .okr-kr.open .okr-kr-detail { display: block; }
+    .okr-kr-arrow { font-size: 10px; color: var(--text-muted); transition: transform 0.3s; text-align: center; }
+    .okr-kr.open .okr-kr-arrow { transform: rotate(180deg); }
+    .okr-perf-section { margin-top: 12px; }
+    .okr-perf-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .okr-perf-entry { padding: 10px 14px; background: var(--sidiz-card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; font-size: 12px; }
+    .okr-perf-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .okr-perf-entry-date { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .okr-perf-entry-text { color: var(--text-secondary); line-height: 1.6; }
+    .okr-perf-empty { text-align: center; padding: 16px; color: var(--text-muted); font-size: 11px; border: 1px dashed var(--border); border-radius: 8px; }
+  </style>
+
+  <!-- Year Tabs -->
+  <div class="okr-year-tabs">
+    <button class="okr-year-tab active" onclick="showOkrYear(2025, this)">2025</button>
+    <button class="okr-year-tab" onclick="showOkrYear(2026, this)">2026</button>
+    <button class="okr-add-year" onclick="addOkrYear()">+ 연도 추가</button>
+  </div>
+
+  <!-- 2025 OKR -->
+  <div id="okr-2025" class="okr-year-content active">
+    <div class="okr-summary">
+      <div class="okr-summary-card"><div class="okr-summary-label">Objectives</div><div class="okr-summary-value" style="color:var(--sidiz-blue-bright)">4</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">Key Results</div><div class="okr-summary-value" style="color:var(--accent-cyan)">12</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">평균 달성률</div><div class="okr-summary-value" style="color:var(--accent-amber)">62%</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">완료</div><div class="okr-summary-value" style="color:var(--accent-emerald)">5/12</div></div>
+    </div>
+
+    <!-- O1 -->
+    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+      <div class="okr-obj-header">
+        <div class="okr-obj-left">
+          <div class="okr-obj-badge o1">O1</div>
+          <div><div class="okr-obj-title">고객 클레임 불량지수 1.5% 이하 달성</div><div class="okr-obj-sub">클레임 감소 및 품질 개선을 통한 고객 만족도 향상</div></div>
+        </div>
+        <div class="okr-progress-mini">
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:55%;background:var(--gradient-brand)"></div></div>
+          <div class="okr-progress-text" style="color:var(--sidiz-blue-bright)">55%</div>
+          <span class="okr-obj-arrow">▼</span>
+        </div>
+      </div>
+      <div class="okr-obj-body">
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR1</div>
+            <div><div class="okr-kr-plan">월평균 불량지수 1.5% 이하 유지</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:45%;background:var(--accent-amber)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 1.80% — 목표 대비 +0.30%p 초과</div>
+            <div class="okr-perf-section">
+              <div class="okr-perf-title">📌 성과 내용</div>
+              <div class="okr-perf-empty">성과 내용을 입력해 주세요. (추후 데이터 입력 예정)</div>
+            </div>
+          </div>
+        </div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR2</div>
+            <div><div class="okr-kr-plan">T50 헤드 컬링 하자 월 50건 이하로 감소</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:35%;background:var(--accent-rose)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">8월 기준 112건 — 감소 추세이나 목표 미달</div>
+            <div class="okr-perf-section">
+              <div class="okr-perf-title">📌 성과 내용</div>
+              <div class="okr-perf-empty">성과 내용을 입력해 주세요.</div>
+            </div>
+          </div>
+        </div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR3</div>
+            <div><div class="okr-kr-plan">4000G 레버 하자 개선안 적용 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:70%;background:var(--gradient-brand)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">개선안 설계 완료, 양산 적용 진행 중</div>
+            <div class="okr-perf-section">
+              <div class="okr-perf-title">📌 성과 내용</div>
+              <div class="okr-perf-empty">성과 내용을 입력해 주세요.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- O2 -->
+    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+      <div class="okr-obj-header">
+        <div class="okr-obj-left">
+          <div class="okr-obj-badge o2">O2</div>
+          <div><div class="okr-obj-title">실패비용 매출 대비 1.09% 이하 달성</div><div class="okr-obj-sub">하자보수비 및 AS 용역료 절감</div></div>
+        </div>
+        <div class="okr-progress-mini">
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:40%;background:linear-gradient(135deg,#00c48c,#00c6d7)"></div></div>
+          <div class="okr-progress-text" style="color:var(--accent-emerald)">40%</div>
+          <span class="okr-obj-arrow">▼</span>
+        </div>
+      </div>
+      <div class="okr-obj-body">
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR1</div><div><div class="okr-kr-plan">월평균 하자보수비 4,480만원 이하</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:30%;background:var(--accent-rose)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 6,191만원 — 목표 대비 38% 초과</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR2</div><div><div class="okr-kr-plan">바로스 AS 용역료 월 7,000만원 이하</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:35%;background:var(--accent-rose)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 9,865만원</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR3</div><div><div class="okr-kr-plan">T50RE 헤드 자재비 월 350만원 이하</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 199만원 — 목표 달성</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+      </div>
+    </div>
+
+    <!-- O3 -->
+    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+      <div class="okr-obj-header">
+        <div class="okr-obj-left">
+          <div class="okr-obj-badge o3">O3</div>
+          <div><div class="okr-obj-title">품질관리 시스템 디지털 전환</div><div class="okr-obj-sub">수기 업무 자동화 및 데이터 기반 의사결정 체계 구축</div></div>
+        </div>
+        <div class="okr-progress-mini">
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:75%;background:linear-gradient(135deg,#a78bfa,#0057b8)"></div></div>
+          <div class="okr-progress-text" style="color:var(--accent-violet)">75%</div>
+          <span class="okr-obj-arrow">▼</span>
+        </div>
+      </div>
+      <div class="okr-obj-body">
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR1</div><div><div class="okr-kr-plan">클레임 자동화 대시보드 구축 (Supabase + Vercel)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">일/월 클레임 대시보드 운영 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR2</div><div><div class="okr-kr-plan">품질관리 통합 포털 구축</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:65%;background:var(--gradient-brand)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">프로토타입 완성, 세부 기능 구현 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR3</div><div><div class="okr-kr-plan">시험소 일정 관리 시스템 구축 (Google Apps Script)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">웹 대시보드 운영 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+      </div>
+    </div>
+
+    <!-- O4 -->
+    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+      <div class="okr-obj-header">
+        <div class="okr-obj-left">
+          <div class="okr-obj-badge o4">O4</div>
+          <div><div class="okr-obj-title">제조/설계 클레임 선제 대응 체계 확립</div><div class="okr-obj-sub">반복 하자 근본 원인 분석 및 개선 프로세스 정착</div></div>
+        </div>
+        <div class="okr-progress-mini">
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:60%;background:linear-gradient(135deg,#ffb347,#ff6b7a)"></div></div>
+          <div class="okr-progress-text" style="color:var(--accent-amber)">60%</div>
+          <span class="okr-obj-arrow">▼</span>
+        </div>
+      </div>
+      <div class="okr-obj-body">
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR1</div><div><div class="okr-kr-plan">상위 5개 반복 하자 개선안 도출 및 적용</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:60%;background:var(--gradient-brand)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">3/5건 개선완료 (헤드레스트, 틸팅레버, 락커)</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR2</div><div><div class="okr-kr-plan">베트남 공장 품질 협력 체계 강화 (월 1회 품질 회의)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">월별 정기 회의 운영 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR3</div><div><div class="okr-kr-plan">제조 클레임율 0.15% 이하 유지</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:50%;background:var(--accent-amber)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 0.21% — 감소 추세</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2026 OKR -->
+  <div id="okr-2026" class="okr-year-content">
+    <div class="okr-summary">
+      <div class="okr-summary-card"><div class="okr-summary-label">Objectives</div><div class="okr-summary-value" style="color:var(--sidiz-blue-bright)">-</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">Key Results</div><div class="okr-summary-value" style="color:var(--accent-cyan)">-</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">평균 달성률</div><div class="okr-summary-value" style="color:var(--accent-amber)">-</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">완료</div><div class="okr-summary-value" style="color:var(--accent-emerald)">-</div></div>
+    </div>
+    <div style="text-align:center;padding:40px;color:var(--text-muted)">
+      <div style="font-size:36px;margin-bottom:12px">📝</div>
+      <p style="font-size:14px;font-weight:500;margin-bottom:6px">2026년 OKR을 작성해 주세요</p>
+      <p style="font-size:12px">Objective(목표)와 Key Result(핵심결과)를 등록하면 이곳에 표시됩니다.</p>
+    </div>
+  </div>
+</div>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="supabase-client.js"></script>
+<script>
+const now = new Date();
+document.getElementById('currentDate').textContent = now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0');
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const map={home:0,claim:1,kpi:2,closing:3,lab:4,as:5,inspect:6,cert:7,team:8,okr:9};
+  document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function showClaimTab(tab,btn) {
+  document.querySelectorAll('#section-claim .claim-content').forEach(c=>c.style.display='none');
+  document.getElementById('claim-'+tab).style.display='block';
+  document.querySelectorAll('#section-claim .sub-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function showKpiTab(tab,btn) {
+  document.querySelectorAll('#section-kpi .kpi-content').forEach(c=>c.style.display='none');
+  document.getElementById('kpi-'+tab).style.display='block';
+  document.querySelectorAll('#section-kpi .sub-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ─── 접수일 기준 조회 — Supabase claims_receipt 테이블 연동 ───
+async function applyDateFilter() {
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  if (!from || !to) return;
+  
+  const btn = document.querySelector('#claim-receipt .date-btn');
+  const origText = btn.textContent;
+  btn.textContent = '로딩중...';
+  btn.disabled = true;
+  
+  try {
+    const claims = await SupabaseClient.fetchReceiptByDateRange(from, to);
+    if (claims.length === 0) {
+      alert('해당 기간에 데이터가 없습니다.\n\n데이터 업로드 페이지에서 접수일 기준 클레임 데이터를 먼저 업로드해 주세요.\n(메인 홈 → 📤 데이터 업로드)');
+      return;
+    }
+    updateReceiptStats(claims);
+    updateReceiptTopChart(claims);
+    updateReceiptInsights(claims);
+  } catch (err) {
+    console.error('Supabase 조회 오류:', err);
+    if (err.message.includes('404') || err.message.includes('relation')) {
+      alert('claims_receipt 테이블이 아직 생성되지 않았습니다.\nSupabase SQL Editor에서 테이블 생성 SQL을 먼저 실행해 주세요.');
+    } else {
+      alert('데이터 조회 중 오류: ' + err.message);
+    }
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+
+function updateReceiptStats(claims) {
+  const catCounts = {};
+  claims.forEach(c => { const cat = c.category || '기타'; catCounts[cat] = (catCounts[cat] || 0) + 1; });
+  
+  const catMap = {
+    '작동성': { color: 'var(--sidiz-blue-bright)', border: 'var(--sidiz-blue)' },
+    '소음': { color: 'var(--accent-amber)', border: 'var(--accent-amber)' },
+    '파손': { color: 'var(--accent-rose)', border: 'var(--accent-rose)' },
+    '유격': { color: 'var(--accent-violet)', border: 'var(--accent-violet)' },
+    '수평': { color: 'var(--accent-cyan)', border: 'var(--accent-cyan)' },
+  };
+  const mainCats = ['작동성','소음','파손','유격','수평'];
+  let etcCount = 0;
+  Object.entries(catCounts).forEach(([k,v]) => { if (!mainCats.includes(k)) etcCount += v; });
+  
+  const container = document.getElementById('receiptCategories');
+  if (!container) return;
+  
+  let html = '';
+  mainCats.forEach(cat => {
+    const cnt = catCounts[cat] || 0;
+    const m = catMap[cat];
+    html += `<div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategoryLive('${cat}')" onmouseover="this.style.borderColor='${m.border}'" onmouseout="this.style.borderColor='var(--border)'">
+      <div class="stat-label">${cat}</div><div class="stat-value" style="color:${m.color}">${cnt.toLocaleString()}</div>
+      <div style="font-size:10px;color:var(--accent-emerald);margin-top:2px">✓ 실시간 · 클릭하여 상세</div></div>`;
+  });
+  html += `<div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategoryLive('기타')" onmouseover="this.style.borderColor='var(--text-muted)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div class="stat-label">외관/감성/기타</div><div class="stat-value" style="color:var(--text-muted)">${etcCount.toLocaleString()}</div>
+    <div style="font-size:10px;color:var(--accent-emerald);margin-top:2px">✓ 실시간 · 클릭하여 상세</div></div>`;
+  container.innerHTML = html;
+  
+  // 실시간 카테고리 데이터 저장
+  window._liveCategoryData = {};
+  claims.forEach(c => {
+    let cat = c.category || '기타';
+    if (!mainCats.includes(cat)) cat = '기타';
+    if (!window._liveCategoryData[cat]) window._liveCategoryData[cat] = {};
+    const item = c.item || '기타';
+    if (!window._liveCategoryData[cat][item]) window._liveCategoryData[cat][item] = [];
+    window._liveCategoryData[cat][item].push(c);
+  });
+}
+
+function updateReceiptTopChart(claims) {
+  const defectCounts = {};
+  claims.forEach(c => {
+    const key = (c.item || '') + ' ' + (c.defect_type || c.claim_detail || '기타');
+    defectCounts[key] = (defectCounts[key] || 0) + 1;
+  });
+  const sorted = Object.entries(defectCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  if (sorted.length === 0) return;
+  const maxVal = sorted[0][1];
+  const chartContainer = document.querySelector('#claim-receipt .bar-chart');
+  if (!chartContainer) return;
+  chartContainer.innerHTML = sorted.map(([name, cnt]) => {
+    const pct = Math.round(cnt / maxVal * 100);
+    return `<div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill brand" style="width:${pct}%"><span>${cnt}건</span></div></div></div>`;
+  }).join('');
+}
+
+function updateReceiptInsights(claims) {
+  const defectCounts = {};
+  claims.forEach(c => { const key = (c.item || '') + ' ' + (c.defect_type || ''); defectCounts[key] = (defectCounts[key] || 0) + 1; });
+  const sorted = Object.entries(defectCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  const box = document.querySelector('#claim-receipt .analysis-box');
+  if (!box) return;
+  const dots = ['critical','critical','warning','warning','info'];
+  box.innerHTML = `<h4>🔍 클레임 분석 인사이트 (Supabase 실시간 — claims_receipt)</h4>` + 
+    sorted.map(([name, cnt], i) => {
+      const pct = ((cnt / claims.length) * 100).toFixed(1);
+      return `<div class="analysis-item"><div class="analysis-dot ${dots[i]||'info'}"></div><div><strong>${name}</strong> — ${cnt}건 (전체의 ${pct}%). 집중 모니터링이 필요합니다.</div></div>`;
+    }).join('');
+}
+
+// 실시간 카테고리 드릴다운 (claims_receipt 데이터)
+function toggleCategoryLive(cat) {
+  const detail = document.getElementById('categoryDetail');
+  const body = document.getElementById('categoryDetailBody');
+  const title = document.getElementById('categoryDetailTitle');
+  title.textContent = cat + ' — 제품별 건수 (실시간, 접수일 기준)';
+  
+  if (!window._liveCategoryData || !window._liveCategoryData[cat]) {
+    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">데이터가 없습니다. 먼저 날짜 조회를 실행해 주세요.</div>';
+    detail.style.display = 'block';
+    return;
+  }
+  
+  const liveData = window._liveCategoryData[cat];
+  const products = Object.entries(liveData).map(([item, claims]) => {
+    const defects = {};
+    claims.forEach(c => { const dt = c.defect_type || c.claim_detail || '기타'; defects[dt] = (defects[dt] || 0) + 1; });
+    return { product: item, items: Object.entries(defects).map(([name, count]) => ({name,count})).sort((a,b)=>b.count-a.count) };
+  }).sort((a,b) => b.items.reduce((s,x)=>s+x.count,0) - a.items.reduce((s,x)=>s+x.count,0));
+  
+  let html = '<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">제품</th><th style="text-align:left">하자 내용</th><th>건수</th><th>상세</th></tr></thead><tbody>';
+  products.forEach(prod => {
+    const prodTotal = prod.items.reduce((s,x)=>s+x.count,0);
+    prod.items.forEach((item, idx) => {
+      html += '<tr>';
+      if(idx===0) html += `<td class="row-header" rowspan="${prod.items.length}" style="vertical-align:top">${prod.product}<br><span style="font-family:'JetBrains Mono';font-size:13px;color:var(--sidiz-blue-bright);font-weight:700">${prodTotal}건</span></td>`;
+      html += `<td style="text-align:left">${item.name}</td><td style="font-weight:600">${item.count}</td>`;
+      html += `<td><button onclick="showClaimDetailLive('${prod.product.replace(/'/g,"\\'")}','${item.name.replace(/'/g,"\\'")}')" style="background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);color:var(--sidiz-blue-bright);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:500">접수건 조회</button></td>`;
+      html += '</tr>';
+    });
+  });
+  html += '</tbody></table>';
+  html += `<div style="padding:6px 14px;font-size:10px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ claims_receipt 실시간 데이터</div>`;
+  body.innerHTML = html;
+  detail.style.display = 'block';
+  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// 접수건 상세 조회 (claims_receipt)
+async function showClaimDetailLive(product, defectType) {
+  const detail = document.getElementById('claimDetail');
+  const title = document.getElementById('claimDetailTitle');
+  const body = document.getElementById('claimDetailBody');
+  
+  title.textContent = product + ' — ' + defectType + ' (접수건 상세)';
+  body.innerHTML = '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">⏳</div><p style="color:var(--text-secondary);font-size:12px">Supabase claims_receipt에서 조회 중...</p></div>';
+  detail.style.display = 'block';
+  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
+  
+  try {
+    const claims = await SupabaseClient.fetchReceiptByDefect(product, defectType);
+    if (claims.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:8px">📭</div><p>해당 조건의 접수건이 없습니다.</p></div>';
+      return;
+    }
+    let html = '<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">접수번호</th><th style="text-align:left">접수일</th><th style="text-align:left">제품/모델</th><th style="text-align:left">카테고리</th><th style="text-align:left">하자유형</th><th style="text-align:left">판정유형</th><th style="text-align:left">클레임 상세</th><th style="text-align:left">판정결과</th></tr></thead><tbody>';
+    claims.forEach(c => {
+      html += `<tr>
+        <td style="text-align:left;color:var(--sidiz-blue-bright);font-weight:600">${c.receipt_id || '-'}</td>
+        <td style="text-align:left">${c.receipt_date || '-'}</td>
+        <td style="text-align:left">${c.item || '-'}${c.model ? ' / '+c.model : ''}</td>
+        <td style="text-align:left">${c.category || '-'}</td>
+        <td style="text-align:left">${c.defect_type || '-'}</td>
+        <td style="text-align:left">${c.judgement_type || '-'}</td>
+        <td style="text-align:left;max-width:250px;white-space:normal;line-height:1.5">${c.claim_detail || '-'}</td>
+        <td style="text-align:left">${c.inspection_result || '-'}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    html += `<div style="padding:8px 14px;font-size:11px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ ${claims.length}건 조회 · claims_receipt 실시간</div>`;
+    body.innerHTML = html;
+  } catch (err) {
+    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--accent-rose)"><div style="font-size:28px;margin-bottom:8px">⚠️</div><p>조회 오류: ${err.message}</p></div>`;
+  }
+}
+function setQuickDate(range) {
+  const to = new Date();
+  let from = new Date();
+  if(range==='1m') from.setMonth(from.getMonth()-1);
+  else if(range==='3m') from.setMonth(from.getMonth()-3);
+  else { from = new Date('2025-01-01'); }
+  document.getElementById('dateFrom').value = from.toISOString().split('T')[0];
+  document.getElementById('dateTo').value = to.toISOString().split('T')[0];
+}
+
+// Product Accordion Data - with monthly defect breakdown
+const products = [
+  {
+    name: 'T50 시리즈', region: '국내', totalCount: 412,
+    trend: '▲ 8월 급증', trendDir: 'up',
+    monthly: [{m:'1월',v:144},{m:'2월',v:212},{m:'3월',v:188},{m:'4월',v:185},{m:'5월',v:155},{m:'6월',v:165},{m:'7월',v:211},{m:'8월',v:266}],
+    defects: [
+      {type:'헤드레스트 작동불만(파손)', status:'done', months:[40,37,57,88,0,0,0,0], total:222},
+      {type:'틸팅 레버 작동안됨', status:'done', months:[32,33,46,40,0,0,0,0], total:151},
+      {type:'럼버 흘러내림', status:'done', months:[12,13,12,17,0,0,0,0], total:54},
+      {type:'좌판 소음', status:'new', months:[19,11,0,0,0,0,0,0], total:30},
+      {type:'수평 불만', status:'new', months:[16,11,0,0,0,0,0,0], total:27},
+      {type:'좌판 유격', status:'new', months:[12,11,0,0,0,0,0,0], total:23},
+      {type:'등판 소음', status:'progress', months:[14,6,0,0,0,0,0,0], total:20},
+      {type:'팔걸이 유격', status:'new', months:[8,7,0,0,0,0,0,0], total:15},
+    ]
+  },
+  {
+    name: 'T50 시리즈', region: '베트남', totalCount: 731,
+    trend: '▲ 7~8월 급증', trendDir: 'up',
+    monthly: [{m:'1월',v:46},{m:'2월',v:56},{m:'3월',v:69},{m:'4월',v:72},{m:'5월',v:89},{m:'6월',v:121},{m:'7월',v:138},{m:'8월',v:140}],
+    defects: [
+      {type:'헤드 컬링 하자', status:'progress', months:[46,44,48,43,63,104,127,117], total:592},
+      {type:'그 외 클레임', status:'new', months:[0,12,21,29,26,17,11,23], total:139},
+    ]
+  },
+  {
+    name: '4000G 시리즈', region: '국내', totalCount: 142,
+    trend: '▲ 레버 하자 지속', trendDir: 'up',
+    monthly: [{m:'1월',v:17},{m:'2월',v:15},{m:'3월',v:11},{m:'4월',v:16},{m:'5월',v:14},{m:'6월',v:21},{m:'7월',v:22},{m:'8월',v:26}],
+    defects: [
+      {type:'틸트 레버 하자', status:'progress', months:[17,15,11,16,14,21,22,26], total:142},
+    ]
+  },
+  {
+    name: 'T25 시리즈', region: '국내', totalCount: 29,
+    trend: '→ 안정', trendDir: 'down',
+    monthly: [{m:'1월',v:15},{m:'2월',v:14}],
+    defects: [
+      {type:'높이조절 불가(리머+테이퍼)', status:'new', months:[15,14], total:29},
+    ]
+  },
+  {
+    name: 'T80 시리즈', region: '국내', totalCount: 15,
+    trend: '→ 소량', trendDir: 'down',
+    monthly: [{m:'1월',v:7},{m:'2월',v:8}],
+    defects: [
+      {type:'착좌감 불만', status:'new', months:[4,2], total:6},
+      {type:'수평 불만', status:'done', months:[2,3], total:5},
+      {type:'헤드레스트 고정 불만', status:'done', months:[0,2], total:2},
+      {type:'등판 메쉬 소음', status:'new', months:[2,0], total:2},
+    ]
+  },
+  {
+    name: 'T90 시리즈', region: '국내', totalCount: 16,
+    trend: '→ 소량', trendDir: 'down',
+    monthly: [{m:'1월',v:9},{m:'2월',v:7}],
+    defects: [
+      {type:'높이조절 불가', status:'new', months:[6,3], total:9},
+      {type:'팔걸이 회전 불만', status:'new', months:[0,4], total:4},
+      {type:'오염', status:'new', months:[3,0], total:3},
+    ]
+  },
+  {
+    name: 'T20 시리즈', region: '국내', totalCount: 11,
+    trend: '→ 안정', trendDir: 'down',
+    monthly: [{m:'1월',v:6},{m:'2월',v:5}],
+    defects: [
+      {type:'팔걸이 파손', status:'new', months:[6,5], total:11},
+    ]
+  },
+  {
+    name: 'GC 시리즈', region: '국내', totalCount: 12,
+    trend: '→ 소량', trendDir: 'down',
+    monthly: [{m:'1월',v:5},{m:'2월',v:7}],
+    defects: [
+      {type:'좌판 미싱 헤짐', status:'done', months:[2,6], total:8},
+      {type:'팔걸이 파손', status:'new', months:[2,0], total:2},
+      {type:'헤드 고정 불만', status:'new', months:[2,0], total:2},
+    ]
+  },
+  {
+    name: '종타이', region: '국내', totalCount: 33,
+    trend: '▼ 개선완료', trendDir: 'down',
+    monthly: [{m:'1월',v:23},{m:'2월',v:10}],
+    defects: [
+      {type:'락커 파손', status:'done', months:[23,10], total:33},
+    ]
+  },
+];
+
+function buildAccordion() {
+  const container = document.getElementById('productAccordion');
+  let html = '';
+  products.forEach((p, i) => {
+    const maxM = Math.max(...p.monthly.map(m=>m.v));
+    const regionFlag = p.region === '국내' ? '🇰🇷' : '🇻🇳';
+    const countClass = p.trendDir === 'up' ? 'rose' : 'blue';
+    const monthHeaders = p.monthly.map(m => `<th>${m.m}</th>`).join('');
+    html += `<div class="accordion-item" id="acc-${i}">
+      <div class="accordion-header" onclick="toggleAccordion(${i})">
+        <div class="accordion-header-left">
+          <span style="font-size:18px">${regionFlag}</span>
+          <div><div class="accordion-product-name">${p.name} <span style="font-size:11px;color:var(--text-muted);font-weight:400">${p.region}</span></div></div>
+        </div>
+        <div class="accordion-meta">
+          <span class="accordion-product-count ${countClass}">${p.totalCount}건</span>
+          <span class="accordion-trend ${p.trendDir}">${p.trend}</span>
+          <span class="accordion-arrow">▼</span>
+        </div>
+      </div>
+      <div class="accordion-body">
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">월별 총 건수 추이</div>
+          ${p.monthly.map(m => `<div class="mini-bar-row"><div class="mini-bar-label">${m.m}</div><div class="mini-bar-track"><div class="mini-bar-fill brand" style="width:${m.v/maxM*100}%"><span>${m.v}</span></div></div></div>`).join('')}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">하자유형별 월별 건수</div>
+          <div style="overflow-x:auto">
+          <table class="data-table" style="font-size:11px">
+            <thead><tr><th style="text-align:left">유형</th><th>상태</th>${monthHeaders}<th style="font-weight:700">합계</th></tr></thead>
+            <tbody>
+              ${p.defects.map(d => `<tr>
+                <td style="text-align:left">${d.type}</td>
+                <td><span class="tag ${d.status}">${d.status==='done'?'개선완료':d.status==='progress'?'진행중':'신규'}</span></td>
+                ${d.months.map(v => `<td>${v||'-'}</td>`).join('')}
+                <td style="font-weight:700;color:var(--sidiz-blue-bright)">${d.total}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function toggleAccordion(i) {
+  document.getElementById('acc-'+i).classList.toggle('open');
+}
+
+buildAccordion();
+
+// Receipt - Category drill-down data
+const categoryData = {
+  '작동성': [
+    {product:'T50', items:[{name:'헤드레스트 작동불만(파손)',count:77},{name:'틸팅 레버 작동안됨',count:65},{name:'럼버 흘러내림',count:37},{name:'중심봉 기능 불만',count:34},{name:'팔걸이 높이조절 불가',count:1},{name:'뎁스 뻑뻑함',count:1},{name:'헤드 고정 불만',count:2}]},
+    {product:'T80', items:[{name:'헤드레스트 고정 불만',count:2},{name:'리머 가공 문제 높이조절 불가',count:2}]},
+    {product:'T90', items:[{name:'높이조절 불가',count:9},{name:'팔걸이 회전 불만',count:4}]},
+    {product:'T25', items:[{name:'높이조절 불가(리머+테이퍼)',count:29}]},
+    {product:'GC', items:[{name:'헤드 고정 불만',count:2},{name:'좌판 쿨링 기능 불만',count:1}]},
+    {product:'S틸트', items:[{name:'리머문제 높이조절 불가',count:2}]},
+    {product:'T55', items:[{name:'헤드 고정 불만',count:1}]},
+  ],
+  '소음': [
+    {product:'T50', items:[{name:'좌판 소음',count:30},{name:'리머+테이퍼 소음',count:22},{name:'등판 소음',count:8},{name:'럼버 소음',count:8},{name:'틸팅 시 소음',count:8},{name:'스트럭쳐 소음',count:4}]},
+    {product:'캐스터', items:[{name:'캐스터 소음',count:13}]},
+    {product:'T80', items:[{name:'등판 메쉬 소음',count:2},{name:'리머+테이퍼 소음',count:2}]},
+    {product:'4000G', items:[{name:'틸팅 시 소음',count:30}]},
+  ],
+  '파손': [
+    {product:'종타이', items:[{name:'락커 파손',count:33}]},
+    {product:'T20', items:[{name:'팔걸이 파손',count:11},{name:'스트럭처 파손',count:2}]},
+    {product:'T50', items:[{name:'등판 스트럭쳐 파손',count:6},{name:'암버튼 파손',count:5},{name:'메쉬 찢김',count:3}]},
+    {product:'GC', items:[{name:'좌판 미싱 헤짐',count:8},{name:'팔걸이 파손',count:2}]},
+  ],
+  '유격': [
+    {product:'T50', items:[{name:'좌판 유격',count:23},{name:'팔걸이 유격',count:15},{name:'틸트 1단 유격',count:8}]},
+  ],
+  '수평': [
+    {product:'T50', items:[{name:'수평 불만',count:26},{name:'리머+테이퍼로 인한 수평',count:11}]},
+    {product:'T80', items:[{name:'수평 불만',count:5}]},
+    {product:'아이블', items:[{name:'수평불만',count:4}]},
+  ],
+  '기타': [
+    {product:'고객 부주의', items:[{name:'고객 부주의',count:12}]},
+    {product:'T50', items:[{name:'착좌감 불만',count:7},{name:'외관 주름',count:8}]},
+    {product:'T80', items:[{name:'착좌감 불만',count:6}]},
+    {product:'기타', items:[{name:'기타(회수품 정상)',count:23},{name:'고객 오주문',count:4}]},
+  ]
+};
+
+function toggleCategory(cat) {
+  const detail = document.getElementById('categoryDetail');
+  const body = document.getElementById('categoryDetailBody');
+  const title = document.getElementById('categoryDetailTitle');
+  
+  title.textContent = cat + ' — 제품별 건수 (내림차순)';
+  
+  const data = categoryData[cat] || [];
+  // Sort by total count desc
+  data.sort((a,b) => {
+    const ta = a.items.reduce((s,x)=>s+x.count,0);
+    const tb = b.items.reduce((s,x)=>s+x.count,0);
+    return tb - ta;
+  });
+  
+  let html = '<table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">제품</th><th style="text-align:left">하자 내용</th><th>건수</th><th>상세</th></tr></thead><tbody>';
+  data.forEach(prod => {
+    const prodTotal = prod.items.reduce((s,x)=>s+x.count,0);
+    prod.items.forEach((item, idx) => {
+      html += `<tr>`;
+      if(idx===0) html += `<td class="row-header" rowspan="${prod.items.length}" style="vertical-align:top">${prod.product}<br><span style="font-family:'JetBrains Mono';font-size:13px;color:var(--sidiz-blue-bright);font-weight:700">${prodTotal}건</span></td>`;
+      html += `<td style="text-align:left">${item.name}</td><td style="font-weight:600">${item.count}</td>`;
+      html += `<td><button onclick="showClaimDetail('${prod.product}','${item.name}')" style="background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);color:var(--sidiz-blue-bright);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:500">접수건 조회</button></td>`;
+      html += `</tr>`;
+    });
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+  detail.style.display = 'block';
+  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function showClaimDetail(product, defectType) {
+  // 정적 데이터에서 호출 시 — claims_receipt 테이블로 조회 시도
+  showClaimDetailLive(product, defectType);
+}
+
+// Combo Chart - Claims Count (bar) + Defect Index (line)
+function initComboChart() {
+  const ctx = document.getElementById('comboChart');
+  if (!ctx) return;
+  
+  const labels = ['12월','1월','2월','3월','4월','5월','6월','7월','8월','9월'];
+  const krClaims = [498, 334, 479, 462, 399, 355, 369, 404, 528, 529];
+  const vnClaims = [226, 169, 224, 257, 310, 327, 284, 255, 271, 318];
+  const totalClaims = krClaims.map((v,i) => v + vnClaims[i]);
+  const defectIndex = [2.19, 1.52, 1.60, 1.53, 1.82, 2.34, 2.48, 1.96, 2.30, 2.47];
+  const target = Array(10).fill(1.50);
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '국내 클레임',
+          data: krClaims,
+          backgroundColor: 'rgba(45, 125, 210, 0.75)',
+          borderColor: 'rgba(45, 125, 210, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 3,
+          yAxisID: 'y'
+        },
+        {
+          label: '베트남 클레임',
+          data: vnClaims,
+          backgroundColor: 'rgba(216, 87, 72, 0.7)',
+          borderColor: 'rgba(216, 87, 72, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 3,
+          yAxisID: 'y'
+        },
+        {
+          label: '불량지수(%)',
+          data: defectIndex,
+          type: 'line',
+          borderColor: '#ffb347',
+          backgroundColor: 'rgba(255, 179, 71, 0.1)',
+          borderWidth: 2.5,
+          pointRadius: 5,
+          pointBackgroundColor: '#ffb347',
+          pointBorderColor: '#17293f',
+          pointBorderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          order: 1,
+          yAxisID: 'y1'
+        },
+        {
+          label: '목표 (1.50%)',
+          data: target,
+          type: 'line',
+          borderColor: 'rgba(255, 107, 122, 0.7)',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          order: 2,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#a0b4cb',
+            font: { size: 11, family: "'Noto Sans KR', sans-serif" },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+            padding: 16
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(23, 41, 63, 0.95)',
+          titleColor: '#f0f4f8',
+          bodyColor: '#a0b4cb',
+          borderColor: '#243b5a',
+          borderWidth: 1,
+          cornerRadius: 8,
+          padding: 12,
+          bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.dataset.yAxisID === 'y1') return ctx.dataset.label + ': ' + ctx.parsed.y + '%';
+              return ctx.dataset.label + ': ' + ctx.parsed.y + '건';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { color: 'rgba(36, 59, 90, 0.3)' },
+          ticks: { color: '#6b83a0', font: { size: 11 } }
+        },
+        y: {
+          stacked: true,
+          position: 'left',
+          title: { display: true, text: '클레임 건수', color: '#6b83a0', font: { size: 11 } },
+          grid: { color: 'rgba(36, 59, 90, 0.3)' },
+          ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono', monospace" } },
+          min: 0
+        },
+        y1: {
+          position: 'right',
+          title: { display: true, text: '불량지수 (%)', color: '#6b83a0', font: { size: 11 } },
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#ffb347', font: { size: 10, family: "'JetBrains Mono', monospace" }, callback: v => v + '%' },
+          min: 0,
+          max: 3.5
+        }
+      }
+    }
+  });
+}
+initComboChart();
+
+// ─── Supabase 초기 연결 확인 ───
+async function initSupabase() {
+  const badge = document.getElementById('connectionBadge');
+  if (badge) badge.innerHTML = '⏳ 연결 중...';
+  
+  try {
+    // 1) claims (회수일) 건수
+    const claimsCount = await SupabaseClient.supabaseCount('claims');
+    
+    // 2) claims_receipt (접수일) 건수 — 테이블 미생성 시 0
+    let receiptCount = 0;
+    try { receiptCount = await SupabaseClient.supabaseCount('claims_receipt'); } catch(e) {}
+    
+    // 3) sales_monthly 건수
+    let salesCount = 0;
+    try { salesCount = await SupabaseClient.supabaseCount('sales_monthly'); } catch(e) {}
+    
+    console.log(`✅ Supabase 연결: claims=${claimsCount}, claims_receipt=${receiptCount}, sales_monthly=${salesCount}`);
+    
+    if (badge) {
+      const parts = [];
+      if (claimsCount > 0) parts.push(`회수${claimsCount}`);
+      if (receiptCount > 0) parts.push(`접수${receiptCount}`);
+      if (salesCount > 0) parts.push(`매출${salesCount}`);
+      badge.innerHTML = `● LIVE (${parts.length > 0 ? parts.join('·') : claimsCount + '건'})`;
+      badge.style.background = 'rgba(0,196,140,0.1)';
+      badge.style.borderColor = 'rgba(0,196,140,0.2)';
+      badge.style.color = 'var(--accent-emerald)';
+    }
+    
+    // 홈 KPI 업데이트 (회수일 기준 클레임)
+    if (claimsCount > 0) {
+      const kpiVals = document.querySelectorAll('#section-home .kpi-card .kpi-value');
+      if (kpiVals.length > 0) {
+        // 총 건수 = 기존 정적값 유지 (claims 테이블은 회수일 기준이므로)
+      }
+    }
+    
+    // KPI 현황 자동 업데이트 시도 (claims_receipt + sales_monthly)
+    if (receiptCount > 0 && salesCount > 0) {
+      try { await updateKpiFromSupabase(); } catch(e) { console.log('KPI 자동업데이트 스킵:', e.message); }
+    }
+    
+  } catch (err) {
+    console.error('Supabase 연결 실패:', err);
+    if (badge) {
+      badge.innerHTML = '⚠ 오프라인';
+      badge.style.background = 'rgba(255,179,71,0.1)';
+      badge.style.borderColor = 'rgba(255,179,71,0.2)';
+      badge.style.color = 'var(--accent-amber)';
+    }
+  }
+}
+
+// ─── KPI 자동 업데이트 (v_kpi_monthly 뷰 활용) ───
+async function updateKpiFromSupabase() {
+  const kpiData = await SupabaseClient.fetchKpiMonthly();
+  if (!kpiData || kpiData.length === 0) return;
+  
+  console.log('📊 KPI 데이터:', kpiData);
+  // KPI 데이터가 있으면 콘솔에 출력 (추후 UI 반영 확대)
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(initSupabase, 300);
+});
+
+// OKR Year tabs
+function showOkrYear(year, btn) {
+  document.querySelectorAll('.okr-year-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.okr-year-tab').forEach(t => t.classList.remove('active'));
+  const target = document.getElementById('okr-' + year);
+  if (target) { target.classList.add('active'); btn.classList.add('active'); }
+}
+
+function addOkrYear() {
+  const years = document.querySelectorAll('.okr-year-tab');
+  const lastYear = parseInt(years[years.length - 1].textContent);
+  const newYear = lastYear + 1;
+  
+  // Add tab
+  const tab = document.createElement('button');
+  tab.className = 'okr-year-tab';
+  tab.textContent = newYear;
+  tab.onclick = function() { showOkrYear(newYear, this); };
+  document.querySelector('.okr-add-year').before(tab);
+  
+  // Add content
+  const content = document.createElement('div');
+  content.id = 'okr-' + newYear;
+  content.className = 'okr-year-content';
+  content.innerHTML = `
+    <div class="okr-summary">
+      <div class="okr-summary-card"><div class="okr-summary-label">Objectives</div><div class="okr-summary-value" style="color:var(--sidiz-blue-bright)">-</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">Key Results</div><div class="okr-summary-value" style="color:var(--accent-cyan)">-</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">평균 달성률</div><div class="okr-summary-value" style="color:var(--accent-amber)">-</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">완료</div><div class="okr-summary-value" style="color:var(--accent-emerald)">-</div></div>
+    </div>
+    <div style="text-align:center;padding:40px;color:var(--text-muted)">
+      <div style="font-size:36px;margin-bottom:12px">📝</div>
+      <p style="font-size:14px;font-weight:500;margin-bottom:6px">${newYear}년 OKR을 작성해 주세요</p>
+      <p style="font-size:12px">Objective(목표)와 Key Result(핵심결과)를 등록하면 이곳에 표시됩니다.</p>
+    </div>`;
+  document.getElementById('okr-' + lastYear).after(content);
+  showOkrYear(newYear, tab);
+}
+</script>
+</body>
+</html>

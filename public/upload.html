@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIDIZ 데이터 업로드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #1a2744; --blue: #0057b8; --dark: #0d1b2a; --card: #17293f;
+  --border: #243b5a; --text: #f0f4f8; --muted: #6b83a0; --secondary: #a0b4cb;
+  --emerald: #00c48c; --rose: #ff6b7a; --amber: #ffb347; --cyan: #00c6d7;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--dark); color:var(--text); min-height:100vh; padding:32px; }
+.container { max-width:900px; margin:0 auto; }
+h1 { font-size:24px; margin-bottom:4px; }
+h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.subtitle { color:var(--muted); font-size:13px; margin-bottom:32px; }
+.back-link { color:var(--muted); font-size:12px; text-decoration:none; display:inline-block; margin-bottom:16px; }
+.back-link:hover { color:var(--text); }
+
+.upload-section { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px; margin-bottom:24px; }
+.upload-section h2 { font-size:16px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+.upload-section h2::before { content:''; width:3px; height:18px; background:linear-gradient(135deg,#0057b8,#00c6d7); border-radius:2px; }
+.upload-desc { font-size:12px; color:var(--muted); margin-bottom:20px; line-height:1.7; }
+
+.column-spec { background:rgba(0,0,0,0.2); border-radius:10px; padding:14px 18px; margin-bottom:18px; font-size:11px; }
+.column-spec strong { color:var(--cyan); }
+.column-spec code { background:rgba(0,87,184,0.15); color:var(--text); padding:1px 5px; border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:10px; }
+
+.drop-zone {
+  border:2px dashed var(--border); border-radius:12px; padding:40px;
+  text-align:center; cursor:pointer; transition:all 0.2s; position:relative;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color:var(--blue); background:rgba(0,87,184,0.05); }
+.drop-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.drop-zone .icon { font-size:36px; margin-bottom:8px; }
+.drop-zone p { font-size:13px; color:var(--secondary); }
+.drop-zone .hint { font-size:11px; color:var(--muted); margin-top:4px; }
+
+.preview { margin-top:18px; display:none; }
+.preview.show { display:block; }
+.preview h3 { font-size:13px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.preview-info { font-size:11px; color:var(--muted); margin-bottom:10px; }
+
+.preview-table-wrap { overflow-x:auto; max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; }
+.preview-table { width:100%; border-collapse:collapse; font-size:11px; }
+.preview-table th { padding:8px 10px; text-align:left; font-weight:600; color:var(--muted); background:rgba(0,0,0,0.3); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1; font-size:10px; }
+.preview-table td { padding:6px 10px; border-bottom:1px solid rgba(36,59,90,0.3); font-family:'JetBrains Mono',monospace; font-size:10px; white-space:nowrap; }
+
+.actions { display:flex; gap:12px; margin-top:16px; align-items:center; }
+.btn { padding:10px 24px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+.btn-primary { background:var(--blue); color:white; }
+.btn-primary:hover { background:#2d7dd2; }
+.btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-danger { background:rgba(255,107,122,0.12); color:var(--rose); border:1px solid rgba(255,107,122,0.2); }
+.btn-danger:hover { background:rgba(255,107,122,0.2); }
+.btn-secondary { background:var(--dark); color:var(--secondary); border:1px solid var(--border); }
+.btn-secondary:hover { border-color:var(--blue); color:var(--text); }
+
+.status { font-size:12px; margin-top:12px; padding:10px 14px; border-radius:8px; display:none; }
+.status.show { display:block; }
+.status.success { background:rgba(0,196,140,0.08); border:1px solid rgba(0,196,140,0.2); color:var(--emerald); }
+.status.error { background:rgba(255,107,122,0.08); border:1px solid rgba(255,107,122,0.2); color:var(--rose); }
+.status.loading { background:rgba(0,198,215,0.08); border:1px solid rgba(0,198,215,0.2); color:var(--cyan); }
+
+.mode-toggle { display:flex; gap:4px; background:rgba(0,0,0,0.3); padding:3px; border-radius:8px; margin-bottom:16px; width:fit-content; }
+.mode-btn { padding:7px 16px; border-radius:6px; font-size:11px; font-weight:500; cursor:pointer; border:none; background:transparent; color:var(--muted); transition:all 0.2s; }
+.mode-btn.active { background:var(--blue); color:white; }
+
+.existing-data { margin-top:18px; }
+.existing-data h3 { font-size:13px; font-weight:600; margin-bottom:8px; }
+.stat-row { display:flex; gap:10px; margin-bottom:12px; }
+.stat-badge { padding:5px 12px; border-radius:6px; font-size:11px; background:rgba(0,87,184,0.1); border:1px solid rgba(0,87,184,0.15); color:var(--secondary); font-family:'JetBrains Mono',monospace; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <a href="index.html" class="back-link">← 포털로 돌아가기</a>
+  <h1>SIDIZ <span>데이터 업로드</span></h1>
+  <p class="subtitle">ERP 엑셀 데이터 → Supabase 업로드 · 접수일 기준 클레임 및 매출량 관리</p>
+
+  <!-- ============ 접수일 클레임 업로드 ============ -->
+  <div class="upload-section">
+    <h2>접수일 기준 클레임 데이터</h2>
+    <p class="upload-desc">
+      ERP에서 <strong>접수일 기준</strong>으로 다운받은 엑셀 파일을 업로드합니다.<br>
+      기존 <code>claims</code> 테이블(회수일 기준)과 별도의 <code>claims_receipt</code> 테이블에 저장됩니다.
+    </p>
+
+    <div class="column-spec">
+      <strong>필수 컬럼:</strong> 
+      <code>receipt_id</code>(접수번호) · <code>receipt_date</code>(접수일, YYYY-MM-DD) · <code>item</code>(제품군) · <code>category</code>(유형)<br>
+      <strong>선택 컬럼:</strong> 
+      <code>judgement_type</code> · <code>defect_type</code> · <code>model</code> · <code>country</code> · <code>cost</code> · <code>claim_detail</code> · <code>inspection_result</code> · <code>main_category</code> · <code>sub_category</code> · <code>defective_part</code> · <code>lot</code> · <code>code</code> · <code>brand</code><br>
+      <em style="color:var(--amber)">※ 첫 번째 행이 헤더(컬럼명)여야 합니다. 한글 헤더도 자동 매핑됩니다.</em>
+    </div>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="setClaimMode('append',this)">추가 (기존 유지)</button>
+      <button class="mode-btn" onclick="setClaimMode('replace',this)">교체 (기존 삭제 후 업로드)</button>
+    </div>
+
+    <div class="drop-zone" id="claimDropZone">
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="handleClaimFile(this.files[0])">
+      <div class="icon">📋</div>
+      <p>엑셀 파일을 드래그하거나 클릭하여 선택</p>
+      <div class="hint">.xlsx, .xls, .csv 지원</div>
+    </div>
+
+    <div class="preview" id="claimPreview">
+      <h3>📄 미리보기</h3>
+      <div class="preview-info" id="claimPreviewInfo"></div>
+      <div class="preview-table-wrap"><table class="preview-table" id="claimPreviewTable"></table></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="claimUploadBtn" onclick="uploadClaims()" disabled>Supabase에 업로드</button>
+        <button class="btn btn-secondary" onclick="resetClaimPreview()">취소</button>
+      </div>
+    </div>
+
+    <div class="status" id="claimStatus"></div>
+
+    <div class="existing-data" id="claimExisting"></div>
+  </div>
+
+  <!-- ============ 매출량 업로드 ============ -->
+  <div class="upload-section">
+    <h2>월별 매출량 데이터 (KPI 불량지수용)</h2>
+    <p class="upload-desc">
+      KPI 현황의 <strong>불량지수(%) = 클레임건수 / 매출건수 × 100</strong> 계산에 필요한 매출량 데이터입니다.<br>
+      <code>sales_monthly</code> 테이블에 저장되며, 같은 월+국가 데이터가 있으면 자동으로 업데이트됩니다.
+    </p>
+
+    <div class="column-spec">
+      <strong>필수 컬럼:</strong> 
+      <code>year_month</code>(연월, YYYY-MM) · <code>country</code>(국내/베트남) · <code>sales_count</code>(매출건수)<br>
+      <strong>선택 컬럼:</strong> 
+      <code>sales_amount</code>(매출액, 원 단위)<br>
+      <em style="color:var(--amber)">※ 엑셀 예시: 2025-01 | 국내 | 19188 | 842000000</em>
+    </div>
+
+    <div class="drop-zone" id="salesDropZone">
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="handleSalesFile(this.files[0])">
+      <div class="icon">📊</div>
+      <p>매출량 엑셀 파일을 드래그하거나 클릭하여 선택</p>
+      <div class="hint">.xlsx, .xls, .csv 지원</div>
+    </div>
+
+    <div class="preview" id="salesPreview">
+      <h3>📄 미리보기</h3>
+      <div class="preview-info" id="salesPreviewInfo"></div>
+      <div class="preview-table-wrap"><table class="preview-table" id="salesPreviewTable"></table></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="salesUploadBtn" onclick="uploadSales()" disabled>Supabase에 업로드 (Upsert)</button>
+        <button class="btn btn-secondary" onclick="resetSalesPreview()">취소</button>
+      </div>
+    </div>
+
+    <div class="status" id="salesStatus"></div>
+
+    <div class="existing-data" id="salesExisting"></div>
+  </div>
+
+  <!-- ============ 기존 데이터 관리 ============ -->
+  <div class="upload-section">
+    <h2>기존 데이터 현황 확인</h2>
+    <p class="upload-desc">현재 Supabase에 저장된 데이터 현황을 확인합니다.</p>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="checkExistingData()">데이터 현황 조회</button>
+      <button class="btn btn-danger" onclick="confirmDeleteReceipt()">claims_receipt 전체 삭제</button>
+      <button class="btn btn-danger" onclick="confirmDeleteSales()">sales_monthly 전체 삭제</button>
+    </div>
+    <div class="status" id="existingStatus"></div>
+  </div>
+</div>
+
+<script>
+// ─── Supabase Config ───
+const SUPA_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
+const SUPA_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+const headers = {
+  'apikey': SUPA_KEY,
+  'Authorization': `Bearer ${SUPA_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=minimal'
+};
+
+let claimMode = 'append';
+let claimParsedData = [];
+let salesParsedData = [];
+
+// ─── 한글 헤더 → 영문 컬럼 매핑 ───
+const CLAIM_HEADER_MAP = {
+  '접수번호': 'receipt_id', '접수일': 'receipt_date', '유형': 'category',
+  '카테고리': 'category', '판정유형': 'judgement_type', '판정': 'judgement_type',
+  '하자유형': 'defect_type', '하자': 'defect_type', '불량유형': 'defect_type',
+  '제품': 'item', '제품군': 'item', '모델': 'model', '모델명': 'model',
+  '국가': 'country', '지역': 'country', '브랜드': 'brand',
+  '비용': 'cost', '금액': 'cost', '클레임비용': 'cost',
+  '요구내역': 'claim_detail', '클레임상세': 'claim_detail', '상세': 'claim_detail',
+  '판정결과': 'inspection_result', '검사결과': 'inspection_result',
+  '대분류': 'main_category', '소분류': 'sub_category',
+  '불량부위': 'defective_part', 'LOT': 'lot', '로트': 'lot', '코드': 'code',
+  // 영문 그대로도 매핑
+  'receipt_id': 'receipt_id', 'receipt_date': 'receipt_date', 'category': 'category',
+  'judgement_type': 'judgement_type', 'defect_type': 'defect_type', 'item': 'item',
+  'model': 'model', 'country': 'country', 'brand': 'brand', 'cost': 'cost',
+  'claim_detail': 'claim_detail', 'inspection_result': 'inspection_result',
+  'main_category': 'main_category', 'sub_category': 'sub_category',
+  'defective_part': 'defective_part', 'lot': 'lot', 'code': 'code',
+};
+
+const SALES_HEADER_MAP = {
+  '연월': 'year_month', '년월': 'year_month', '월': 'year_month',
+  '국가': 'country', '지역': 'country',
+  '매출건수': 'sales_count', '매출량': 'sales_count', '건수': 'sales_count',
+  '매출액': 'sales_amount', '금액': 'sales_amount',
+  'year_month': 'year_month', 'country': 'country',
+  'sales_count': 'sales_count', 'sales_amount': 'sales_amount',
+};
+
+function setClaimMode(mode, btn) {
+  claimMode = mode;
+  document.querySelectorAll('.mode-toggle .mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ─── Excel 파싱 ───
+function parseExcel(file, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      callback(null, json, wb.SheetNames[0]);
+    } catch (err) {
+      callback(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function mapHeaders(rows, headerMap) {
+  return rows.map(row => {
+    const mapped = {};
+    Object.entries(row).forEach(([key, val]) => {
+      const cleanKey = key.trim();
+      const mappedKey = headerMap[cleanKey];
+      if (mappedKey) mapped[mappedKey] = val;
+    });
+    return mapped;
+  });
+}
+
+function formatDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return val.toISOString().split('T')[0];
+  }
+  const s = String(val).trim();
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // YYYYMMDD
+  if (/^\d{8}$/.test(s)) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+  // YYYY/MM/DD
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) return s.replace(/\//g,'-');
+  // Excel serial number
+  if (/^\d+$/.test(s) && parseInt(s) > 40000) {
+    const d = new Date((parseInt(s) - 25569) * 86400000);
+    return d.toISOString().split('T')[0];
+  }
+  return s;
+}
+
+// ─── Claim File Handler ───
+function handleClaimFile(file) {
+  if (!file) return;
+  showStatus('claimStatus', 'loading', '파일 파싱 중...');
+  
+  parseExcel(file, (err, rows, sheetName) => {
+    if (err) { showStatus('claimStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
+    
+    const mapped = mapHeaders(rows, CLAIM_HEADER_MAP);
+    
+    // 날짜 포맷 변환
+    claimParsedData = mapped.filter(r => r.receipt_date).map(r => {
+      r.receipt_date = formatDate(r.receipt_date);
+      r.cost = parseFloat(r.cost) || 0;
+      if (!r.country) r.country = '국내';
+      if (!r.brand) r.brand = '시디즈';
+      return r;
+    });
+    
+    if (claimParsedData.length === 0) {
+      showStatus('claimStatus', 'error', '유효한 데이터가 없습니다. receipt_date(접수일) 컬럼을 확인해 주세요.');
+      return;
+    }
+    
+    // 미리보기 표시
+    showPreview('claimPreview', 'claimPreviewTable', 'claimPreviewInfo', claimParsedData, file.name);
+    document.getElementById('claimUploadBtn').disabled = false;
+    hideStatus('claimStatus');
+  });
+}
+
+function handleSalesFile(file) {
+  if (!file) return;
+  showStatus('salesStatus', 'loading', '파일 파싱 중...');
+  
+  parseExcel(file, (err, rows, sheetName) => {
+    if (err) { showStatus('salesStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
+    
+    const mapped = mapHeaders(rows, SALES_HEADER_MAP);
+    
+    salesParsedData = mapped.filter(r => r.year_month && r.sales_count).map(r => {
+      r.sales_count = parseInt(r.sales_count) || 0;
+      r.sales_amount = parseFloat(r.sales_amount) || 0;
+      if (!r.country) r.country = '국내';
+      // year_month 포맷 정리
+      let ym = String(r.year_month).trim();
+      if (/^\d{6}$/.test(ym)) ym = ym.slice(0,4)+'-'+ym.slice(4,6);
+      r.year_month = ym;
+      return r;
+    });
+    
+    if (salesParsedData.length === 0) {
+      showStatus('salesStatus', 'error', '유효한 데이터가 없습니다. year_month(연월), sales_count(매출건수) 컬럼을 확인해 주세요.');
+      return;
+    }
+    
+    showPreview('salesPreview', 'salesPreviewTable', 'salesPreviewInfo', salesParsedData, file.name);
+    document.getElementById('salesUploadBtn').disabled = false;
+    hideStatus('salesStatus');
+  });
+}
+
+function showPreview(containerId, tableId, infoId, data, filename) {
+  const container = document.getElementById(containerId);
+  const table = document.getElementById(tableId);
+  const info = document.getElementById(infoId);
+  
+  container.classList.add('show');
+  info.textContent = `${filename} — ${data.length}행 · 컬럼: ${Object.keys(data[0]).join(', ')}`;
+  
+  const cols = Object.keys(data[0]);
+  const previewRows = data.slice(0, 20);
+  
+  let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  previewRows.forEach(row => {
+    html += '<tr>' + cols.map(c => {
+      let v = row[c] ?? '';
+      if (typeof v === 'string' && v.length > 40) v = v.slice(0, 40) + '...';
+      return `<td>${v}</td>`;
+    }).join('') + '</tr>';
+  });
+  if (data.length > 20) html += `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted)">... 외 ${data.length - 20}행</td></tr>`;
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+// ─── Supabase Upload ───
+async function uploadClaims() {
+  if (claimParsedData.length === 0) return;
+  
+  const btn = document.getElementById('claimUploadBtn');
+  btn.disabled = true;
+  btn.textContent = '업로드 중...';
+  showStatus('claimStatus', 'loading', `${claimParsedData.length}건 업로드 중...`);
+  
+  try {
+    // 교체 모드면 기존 데이터 삭제
+    if (claimMode === 'replace') {
+      await fetch(`${SUPA_URL}/rest/v1/claims_receipt?id=gt.0`, {
+        method: 'DELETE', headers
+      });
+    }
+    
+    // 500건씩 분할 업로드
+    const batchSize = 500;
+    let uploaded = 0;
+    for (let i = 0; i < claimParsedData.length; i += batchSize) {
+      const batch = claimParsedData.slice(i, i + batchSize);
+      const res = await fetch(`${SUPA_URL}/rest/v1/claims_receipt`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(batch)
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
+      uploaded += batch.length;
+      showStatus('claimStatus', 'loading', `${uploaded} / ${claimParsedData.length}건 업로드 완료...`);
+    }
+    
+    showStatus('claimStatus', 'success', `✅ ${claimParsedData.length}건 업로드 완료! (${claimMode === 'replace' ? '교체' : '추가'} 모드)`);
+    resetClaimPreview();
+  } catch (err) {
+    showStatus('claimStatus', 'error', '❌ 업로드 실패: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Supabase에 업로드';
+  }
+}
+
+async function uploadSales() {
+  if (salesParsedData.length === 0) return;
+  
+  const btn = document.getElementById('salesUploadBtn');
+  btn.disabled = true;
+  btn.textContent = '업로드 중...';
+  showStatus('salesStatus', 'loading', `${salesParsedData.length}건 업로드 중...`);
+  
+  try {
+    // Upsert — year_month + country 기준으로 중복 시 업데이트
+    const res = await fetch(`${SUPA_URL}/rest/v1/sales_monthly`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+      body: JSON.stringify(salesParsedData)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
+    }
+    
+    showStatus('salesStatus', 'success', `✅ ${salesParsedData.length}건 업로드(Upsert) 완료!`);
+    resetSalesPreview();
+  } catch (err) {
+    showStatus('salesStatus', 'error', '❌ 업로드 실패: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Supabase에 업로드 (Upsert)';
+  }
+}
+
+// ─── 기존 데이터 현황 ───
+async function checkExistingData() {
+  showStatus('existingStatus', 'loading', '조회 중...');
+  try {
+    const [r1, r2, r3] = await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/claims?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }),
+      fetch(`${SUPA_URL}/rest/v1/claims_receipt?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }).catch(() => null),
+      fetch(`${SUPA_URL}/rest/v1/sales_monthly?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }).catch(() => null),
+    ]);
+    
+    const c1 = r1.headers.get('content-range')?.split('/')[1] || '?';
+    const c2 = r2?.ok ? (r2.headers.get('content-range')?.split('/')[1] || '0') : '테이블 미생성';
+    const c3 = r3?.ok ? (r3.headers.get('content-range')?.split('/')[1] || '0') : '테이블 미생성';
+    
+    showStatus('existingStatus', 'success', `claims(회수일): ${c1}건 · claims_receipt(접수일): ${c2}건 · sales_monthly(매출): ${c3}건`);
+  } catch (err) {
+    showStatus('existingStatus', 'error', '조회 실패: ' + err.message);
+  }
+}
+
+async function confirmDeleteReceipt() {
+  if (!confirm('claims_receipt 테이블의 모든 데이터를 삭제합니다. 계속하시겠습니까?')) return;
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/claims_receipt?id=gt.0`, { method: 'DELETE', headers });
+    showStatus('existingStatus', 'success', '✅ claims_receipt 전체 삭제 완료');
+  } catch (err) {
+    showStatus('existingStatus', 'error', '삭제 실패: ' + err.message);
+  }
+}
+
+async function confirmDeleteSales() {
+  if (!confirm('sales_monthly 테이블의 모든 데이터를 삭제합니다. 계속하시겠습니까?')) return;
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/sales_monthly?id=gt.0`, { method: 'DELETE', headers });
+    showStatus('existingStatus', 'success', '✅ sales_monthly 전체 삭제 완료');
+  } catch (err) {
+    showStatus('existingStatus', 'error', '삭제 실패: ' + err.message);
+  }
+}
+
+// ─── UI Helpers ───
+function showStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status show ' + type;
+  el.textContent = msg;
+}
+function hideStatus(id) { document.getElementById(id).classList.remove('show'); }
+
+function resetClaimPreview() {
+  document.getElementById('claimPreview').classList.remove('show');
+  document.getElementById('claimUploadBtn').disabled = true;
+  claimParsedData = [];
+}
+function resetSalesPreview() {
+  document.getElementById('salesPreview').classList.remove('show');
+  document.getElementById('salesUploadBtn').disabled = true;
+  salesParsedData = [];
+}
+
+// Drag & Drop
+document.querySelectorAll('.drop-zone').forEach(zone => {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const input = zone.querySelector('input');
+      if (zone.id === 'claimDropZone') handleClaimFile(file);
+      else if (zone.id === 'salesDropZone') handleSalesFile(file);
+    }
+  });
+});
+
+// 페이지 로드 시 기존 데이터 현황 자동 조회
+checkExistingData();
+</script>
+</body>
+</html>
