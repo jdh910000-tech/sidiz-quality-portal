@@ -107,12 +107,20 @@ async function updateKpiFromSupabase(year) {
       if (jt) { if (isVn) dVn[jt][mi]++; else dKr[jt][mi]++; }
     });
     for (let i = 0; i < 12; i++) {
-      if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
-      if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
-      types.forEach(t => {
-        if (dKr[t][i] > 0 && data.detail_kr[t][i] === 0) data.detail_kr[t][i] = dKr[t][i];
-        if (dVn[t][i] > 0 && data.detail_vn[t][i] === 0) data.detail_vn[t][i] = dVn[t][i];
-      });
+      // 브랜드 필터 적용 시 Supabase 값으로 무조건 덮어쓰기
+      if (_kpiBrandFilter !== 'all') {
+        data.judgement.kr[i] = jKr[i];
+        data.judgement.vn[i] = jVn[i];
+        types.forEach(t => { data.detail_kr[t][i] = dKr[t][i]; data.detail_vn[t][i] = dVn[t][i]; });
+      } else {
+        // 전체 브랜드: 정적 데이터가 0인 월만 Supabase 값 적용
+        if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
+        if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
+        types.forEach(t => {
+          if (dKr[t][i] > 0 && data.detail_kr[t][i] === 0) data.detail_kr[t][i] = dKr[t][i];
+          if (dVn[t][i] > 0 && data.detail_vn[t][i] === 0) data.detail_vn[t][i] = dVn[t][i];
+        });
+      }
     }
     try {
       const sales = await SupabaseClient.supabaseFetch('sales_monthly',

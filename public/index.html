@@ -342,7 +342,7 @@ body::before {
     <div class="kpi-card"><div class="kpi-label">총 클레임 건수</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)" id="homeClaimCount">-</div><div class="kpi-change" id="homeClaimSub">로딩 중...</div></div>
     <div class="kpi-card"><div class="kpi-label">평균 불량지수</div><div class="kpi-value" style="color:var(--accent-amber)" id="homeDefectIdx">-</div><div class="kpi-change" id="homeDefectSub">-</div></div>
     <div class="kpi-card"><div class="kpi-label">월평균 하자보수비</div><div class="kpi-value" style="color:var(--accent-rose)" id="homeCostAvg">-</div><div class="kpi-change" id="homeCostSub">-</div></div>
-    <div class="kpi-card"><div class="kpi-label">총 매출건수</div><div class="kpi-value" style="color:var(--accent-emerald)" id="homeSalesCount">-</div><div class="kpi-change" id="homeSalesSub">-</div></div>
+    <div class="kpi-card"><div class="kpi-label">실패비용 (누적)</div><div class="kpi-value" style="color:var(--accent-emerald)" id="homeSalesCount">-</div><div class="kpi-change" id="homeSalesSub">-</div></div>
   </div>
   <div class="section-title" style="margin-top:24px">메뉴</div>
   <div class="home-grid">
@@ -1114,7 +1114,8 @@ async function loadProductAccordion() {
       return;
     }
     _allProductClaims = claims;
-    const categories = [...new Set(claims.map(c => c.category).filter(Boolean))].sort();
+    const VALID_PROD_CATS = ['제조','설계','서비스','사양재검토','고객불만','세트교환요구','영업지원(BS)','취소(조치)','취소(유상)','취소(재접수)'];
+    const categories = [...new Set(claims.map(c => c.category).filter(c => c && VALID_PROD_CATS.includes(c)))].sort();
     const fc = document.getElementById('prodCategoryFilter');
     fc.innerHTML = '<button class="sub-tab active" data-cat="전체" onclick="toggleCategoryMulti(\'전체\',this)">전체</button>' +
       categories.map(cat => `<button class="sub-tab" data-cat="${cat}" onclick="toggleCategoryMulti('${cat}',this)">${cat}</button>`).join('');
@@ -1381,7 +1382,7 @@ async function initSupabase() {
         const validClaims = allClaims.filter(c => VALID_CATS.includes(c.category));
         const el = id => document.getElementById(id);
         el('homeClaimCount').textContent = validClaims.length.toLocaleString();
-        el('homeClaimSub').textContent = `Supabase 실시간 · ${VALID_CATS.join('/')} 합산`;
+        el('homeClaimSub').textContent = '제조/설계/서비스/사양재검토/고객불만';
         // 브랜드 드롭다운 채우기 (KPI용)
         const brands = [...new Set(allClaims.map(c=>c.brand).filter(Boolean))].sort();
         const kbs = document.getElementById('kpiBrandSelect');
@@ -1393,6 +1394,32 @@ async function initSupabase() {
     // KPI 고객클레임 현황 초기화
     if (window.KpiModule) await window.KpiModule.initKpiSection();
     if (window.CostModule) window.CostModule.renderCostSection('2026');
+    // 홈 KPI 나머지 카드 채우기
+    try {
+      const el = id => document.getElementById(id);
+      if (window.KpiModule && window.KpiModule.KPI_DATA) {
+        const kd = window.KpiModule.KPI_DATA['2026'];
+        if (kd) {
+          const tJ = kd.judgement.kr.map((v,i)=>(v||0)+(kd.judgement.vn[i]||0));
+          const tS = kd.sales.kr.map((v,i)=>(v||0)+(kd.sales.vn[i]||0));
+          const totalJ = tJ.reduce((s,v)=>s+v,0), totalS = tS.reduce((s,v)=>s+v,0);
+          if (totalS > 0) { el('homeDefectIdx').textContent = ((totalJ/totalS)*100).toFixed(2)+'%'; el('homeDefectSub').textContent = '목표 1.50% 대비'; }
+          else { el('homeDefectIdx').textContent = '-'; el('homeDefectSub').textContent = '매출 데이터 필요'; }
+        }
+      }
+      if (window.CostModule && window.CostModule.COST_DATA) {
+        const cd = window.CostModule.COST_DATA['2026'];
+        if (cd) {
+          const mc = cd.haza_subtotal.filter(v=>v>0).length || 1;
+          const hazaT = cd.haza_subtotal.reduce((s,v)=>s+(v||0),0);
+          const barosT = cd.baros_subtotal.reduce((s,v)=>s+(v||0),0);
+          el('homeCostAvg').textContent = hazaT > 0 ? Math.round(hazaT/mc/10000).toLocaleString()+'만' : '-';
+          el('homeCostSub').textContent = cd.target?.haza_subtotal ? '목표: '+Math.round(cd.target.haza_subtotal/10000).toLocaleString()+'만' : '-';
+          el('homeSalesCount').textContent = (hazaT+barosT) > 0 ? ((hazaT+barosT)/100000000).toFixed(2)+'억' : '-';
+          el('homeSalesSub').textContent = '하자보수비 + 바로스 누적';
+        }
+      }
+    } catch(e) {}
   } catch(e) { console.error('Supabase 연결 실패:', e);
     if(badge) { badge.innerHTML='⚠ 오프라인'; badge.style.background='rgba(255,179,71,0.1)'; badge.style.borderColor='rgba(255,179,71,0.2)'; badge.style.color='var(--accent-amber)'; } }
 }

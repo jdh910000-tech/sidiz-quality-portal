@@ -234,6 +234,22 @@ function renderCostComboChart(data, year, range) {
     }
   };
 
+  const costTotalLabel = {
+    id: 'costTotalLabel',
+    afterDatasetsDraw(chart) {
+      const { ctx: c, data: d, scales: { x, y } } = chart;
+      const haza = d.datasets[0].data, baros = d.datasets[1].data;
+      c.save(); c.font = 'bold 10px JetBrains Mono, monospace'; c.textAlign = 'center';
+      for (let i = 0; i < haza.length; i++) {
+        const total = haza[i] + baros[i];
+        if (total === 0) continue;
+        c.fillStyle = i < range ? '#f0f4f8' : 'rgba(160,180,203,0.3)';
+        c.fillText(total.toLocaleString(), x.getPixelForValue(i), y.getPixelForValue(total) - 6);
+      }
+      c.restore();
+    }
+  };
+
   _costComboChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -245,7 +261,7 @@ function renderCostComboChart(data, year, range) {
         { label: '목표 (' + targetRatio.toFixed(2) + '%)', data: Array(12).fill(targetRatio), type: 'line', borderColor: 'rgba(0,196,140,0.7)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
       ]
     },
-    plugins: [rangeOverlay],
+    plugins: [rangeOverlay, costTotalLabel],
     options: {
       responsive: true, maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
@@ -299,7 +315,7 @@ function renderCostTable(data, year, range, pd, py) {
   });
 
   let h = `<div class="data-table-header"><h3>하자보수비 및 바로스 용역료 상세 (${year}년${rangeLabel}, 단위: 만원)</h3></div>
-  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th>${py}평균</th><th>${year}목표</th><th>${year}평균</th>${mh}<th>누적</th></tr></thead><tbody>`;
+  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th style="text-align:center">${py}평균</th><th style="text-align:center">${year}목표</th><th style="text-align:center">${year}평균</th>${mh}<th>누적</th></tr></thead><tbody>`;
 
   h += `<tr style="background:rgba(0,87,184,0.03)"><td class="row-header" colspan="2">매출액</td><td>${costFmtEok(prevAvg.revenue || yAvg?.revenue)}</td><td>${costFmtEok(tgt.revenue)}</td><td>${costFmtEok(avg(data.revenue))}</td>`;
   h += data.revenue.map((v, i) => { const dim = i >= range ? ' style="opacity:0.25"' : ''; return `<td${dim}>${costFmtEok(v)}</td>`; }).join('');
@@ -307,7 +323,6 @@ function renderCostTable(data, year, range, pd, py) {
 
   // 하자보수비 세부
   const hazaRows = [
-    { key: 'haza_general_return', label: '일반반품' },
     { key: 'haza_product', label: '제품' },
     { key: 'haza_lig', label: 'LIG 제품보상' },
     { key: 'haza_material', label: '자재' },
@@ -328,22 +343,22 @@ function renderCostTable(data, year, range, pd, py) {
     const r = visibleHazaRows[i];
     h += `<tr><td>${r.label}</td><td>${prevAvgFmt(r.key)}</td><td>${tgtFmt(r.key)}</td><td>${yearAvgFmt(data[r.key] || [])}</td>${mc(data[r.key] || [])}<td>${costFmtMan(cumul(data[r.key] || []))}</td></tr>`;
   }
-  h += `<tr style="font-weight:600"><td>계</td><td>${prevAvgFmt('haza_subtotal')}</td><td class="success">${tgtFmt('haza_subtotal')}</td><td class="danger">${yearAvgFmt(computedHazaSub)}</td>${mc(computedHazaSub)}<td class="danger">${costFmtMan(cumul(computedHazaSub))}</td></tr>`;
+  h += `<tr style="font-weight:600"><td>계</td><td>${prevAvgFmt('haza_subtotal')}</td><td>${tgtFmt('haza_subtotal')}</td><td>${yearAvgFmt(computedHazaSub)}</td>${mc(computedHazaSub)}<td>${costFmtMan(cumul(computedHazaSub))}</td></tr>`;
 
   // 바로스 AS
   h += `<tr><td class="row-header" rowspan="4">바로스 AS</td><td>AS 컨택센터</td><td>${prevAvgFmt('baros_contact')}</td><td>${tgtFmt('baros_contact')}</td><td>${yearAvgFmt(data.baros_contact)}</td>${mc(data.baros_contact)}<td>${costFmtMan(cumul(data.baros_contact))}</td></tr>`;
   h += `<tr><td>AS조치비(무상)</td><td>${prevAvgFmt('baros_as')}</td><td>${tgtFmt('baros_as')}</td><td>${yearAvgFmt(data.baros_as)}</td>${mc(data.baros_as)}<td>${costFmtMan(cumul(data.baros_as))}</td></tr>`;
   h += `<tr><td>AS물류비</td><td>${prevAvgFmt('baros_logistics')}</td><td>${tgtFmt('baros_logistics')}</td><td>${yearAvgFmt(data.baros_logistics)}</td>${mc(data.baros_logistics)}<td>${costFmtMan(cumul(data.baros_logistics))}</td></tr>`;
-  h += `<tr style="font-weight:600"><td>계</td><td>${prevAvgFmt('baros_subtotal')}</td><td class="success">${tgtFmt('baros_subtotal')}</td><td class="danger">${yearAvgFmt(data.baros_subtotal)}</td>${mc(data.baros_subtotal)}<td class="danger">${costFmtMan(cumul(data.baros_subtotal))}</td></tr>`;
+  h += `<tr style="font-weight:600"><td>계</td><td>${prevAvgFmt('baros_subtotal')}</td><td>${tgtFmt('baros_subtotal')}</td><td>${yearAvgFmt(data.baros_subtotal)}</td>${mc(data.baros_subtotal)}<td>${costFmtMan(cumul(data.baros_subtotal))}</td></tr>`;
 
   // 소계
   h += `<tr style="font-weight:700;background:rgba(255,107,122,0.04)"><td class="row-header" colspan="2">소계</td>`;
   const prevTotal = (prevAvg.haza_subtotal || 0) + (prevAvg.baros_subtotal || 0);
   const prevTotalY = yAvg ? ((yAvg.haza_subtotal || 0) + (yAvg.baros_subtotal || 0)) : prevTotal;
   const tgtTotal = (tgt.haza_subtotal || 0) + (tgt.baros_subtotal || 0);
-  h += `<td>${costFmtMan(prevTotalY || prevTotal)}</td><td class="success">${costFmtMan(tgtTotal)}</td><td class="danger">${yearAvgFmt(total)}</td>`;
+  h += `<td>${costFmtMan(prevTotalY || prevTotal)}</td><td>${costFmtMan(tgtTotal)}</td><td>${yearAvgFmt(total)}</td>`;
   h += total.map((v, i) => { const dim = i >= range ? ' style="opacity:0.25"' : ''; return `<td${dim}>${costFmtMan(v)}</td>`; }).join('');
-  h += `<td class="danger">${costFmtMan(cumul(total))}</td></tr>`;
+  h += `<td>${costFmtMan(cumul(total))}</td></tr>`;
 
   // 매출액 대비 비율
   h += `<tr style="font-weight:600"><td class="row-header" colspan="2">매출액 대비 비율</td>`;
@@ -352,9 +367,9 @@ function renderCostTable(data, year, range, pd, py) {
   const tgtRatioVal = tgt.ratio ? (tgt.ratio * 100).toFixed(2) : '-';
   const revTotal = cumul(data.revenue); const costTotal = cumul(total);
   const yearRatio = revTotal > 0 ? ((costTotal / revTotal) * 100).toFixed(2) : '-';
-  h += `<td>${prevRatioY}%</td><td class="success">${tgtRatioVal}%</td><td class="danger">${yearRatio}%</td>`;
+  h += `<td>${prevRatioY}%</td><td>${tgtRatioVal}%</td><td>${yearRatio}%</td>`;
   h += ratioArr.map((v, i) => { const dim = i >= range ? ' style="opacity:0.25"' : ''; return `<td${dim}>${v}</td>`; }).join('');
-  h += `<td class="danger">${yearRatio}%</td></tr>`;
+  h += `<td>${yearRatio}%</td></tr>`;
 
   h += '</tbody></table>';
   container.innerHTML = h;
