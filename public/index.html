@@ -378,7 +378,14 @@ body::before {
   <div id="claim-product" class="claim-content" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div>
-      <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="prodYearSelect" onchange="onProdYearChange(this.value)" style="background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:8px;font-size:13px">
+          <option value="all">전체 연도</option>
+          <option value="2026" selected>2026년</option>
+          <option value="2025">2025년</option>
+        </select>
+        <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
+      </div>
     </div>
 
     <!-- 판정유형(category) 필터 — 다중 선택 -->
@@ -1114,11 +1121,26 @@ function toggleCategoryMulti(cat, btn) {
   applyProductFilter();
 }
 
+let _selectedProdYear = 'all';
+
+function onProdYearChange(year) {
+  _selectedProdYear = year;
+  applyProductFilter();
+}
+
 function applyProductFilter() {
-  let filtered;
-  if (_selectedCategories.has('전체')) { filtered = _allProductClaims; document.getElementById('prodFilterCount').textContent = ''; }
-  else { filtered = _allProductClaims.filter(c => _selectedCategories.has(c.category));
-    document.getElementById('prodFilterCount').textContent = `(${[..._selectedCategories].join(', ')} · ${filtered.length}건)`; }
+  let filtered = _allProductClaims;
+  // 연도 필터
+  if (_selectedProdYear && _selectedProdYear !== 'all') {
+    filtered = filtered.filter(c => c.claim_date && c.claim_date.startsWith(_selectedProdYear));
+  }
+  // 카테고리 필터
+  if (!_selectedCategories.has('전체')) {
+    filtered = filtered.filter(c => _selectedCategories.has(c.category));
+    document.getElementById('prodFilterCount').textContent = `(${[..._selectedCategories].join(', ')} · ${filtered.length}건)`;
+  } else {
+    document.getElementById('prodFilterCount').textContent = '';
+  }
   renderProductAccordion(filtered);
 }
 
@@ -1208,13 +1230,17 @@ function renderProductMonthlyChart(cid, item) {
   const months = [...new Set(filtered.map(c => c.claim_date?.slice(0, 7)).filter(Boolean))].sort();
   const krM = {}; const vnM = {};
   filtered.forEach(c => { const m = c.claim_date?.slice(0,7); if(!m) return; if(c.country==='베트남') vnM[m]=(vnM[m]||0)+1; else krM[m]=(krM[m]||0)+1; });
-  _productCharts[cid] = new Chart(ctx, { type:'bar', data:{ labels:months.map(m=>parseInt(m.slice(5))+'월'),
-    datasets:[{label:'국내',data:months.map(m=>krM[m]||0),backgroundColor:'rgba(45,125,210,0.75)',borderColor:'rgba(45,125,210,1)',borderWidth:1,borderRadius:4},
-      {label:'베트남',data:months.map(m=>vnM[m]||0),backgroundColor:'rgba(216,87,72,0.7)',borderColor:'rgba(216,87,72,1)',borderWidth:1,borderRadius:4}]},
+  // X축 1~12월 고정 (선택 연도 기준)
+  const chartYear = _selectedProdYear && _selectedProdYear !== 'all' ? _selectedProdYear : (filtered.length > 0 ? filtered[0].claim_date?.slice(0,4) || '2026' : '2026');
+  const fixedMonths = Array.from({length:12}, (_,i) => chartYear + '-' + String(i+1).padStart(2,'0'));
+  const fixedLabels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  _productCharts[cid] = new Chart(ctx, { type:'bar', data:{ labels:fixedLabels,
+    datasets:[{label:'국내',data:fixedMonths.map(m=>krM[m]||0),backgroundColor:'rgba(45,125,210,0.75)',borderColor:'rgba(45,125,210,1)',borderWidth:1,borderRadius:4},
+      {label:'베트남',data:fixedMonths.map(m=>vnM[m]||0),backgroundColor:'rgba(216,87,72,0.7)',borderColor:'rgba(216,87,72,1)',borderWidth:1,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',align:'end',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true,padding:12}},
       tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,cornerRadius:8,padding:10}},
       scales:{x:{stacked:true,grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10}}},
-        y:{stacked:true,grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"}},beginAtZero:true}}}});
+        y:{stacked:true,grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}}}});
 }
 
 function toggleAccordion(i) { document.getElementById('acc-'+i).classList.toggle('open'); }
