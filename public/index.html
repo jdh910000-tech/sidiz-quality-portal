@@ -167,9 +167,9 @@ body::before {
 .data-table-header h3 { font-size: 14px; font-weight: 600; }
 
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.data-table th { padding: 10px 14px; text-align: right; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 11px; white-space: nowrap; }
+.data-table th { padding: 10px 14px; text-align: center; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 11px; white-space: nowrap; }
 .data-table th:first-child, .data-table th:nth-child(2) { text-align: left; }
-.data-table td { padding: 9px 14px; text-align: right; border-bottom: 1px solid rgba(36,59,90,0.4); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.data-table td { padding: 9px 14px; text-align: center; border-bottom: 1px solid rgba(36,59,90,0.4); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 .data-table td:first-child, .data-table td:nth-child(2) { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
 .data-table tr:hover td { background: rgba(0,87,184,0.04); }
 .row-header { color: var(--text-secondary); font-weight: 600 !important; }
@@ -1204,11 +1204,12 @@ function renderProductAccordion(claims) {
     const detailMonthly = {};
     itemClaims.forEach(c => {
       const dt = c.defect_type || '미분류';
+      const cat = c.category || '미분류';
       const irRaw = c.inspection_result || c.claim_detail || '미분류';
       const stdName = _findStandardName(item, dt, irRaw);
-      const key = dt + '|||' + stdName;
+      const key = dt + '|||' + cat + '|||' + stdName;
       const m = c.claim_date?.slice(0, 7) || '미분류';
-      if (!detailMonthly[key]) detailMonthly[key] = { defect_type: dt, detail: stdName, total: 0, months: {} };
+      if (!detailMonthly[key]) detailMonthly[key] = { defect_type: dt, category: cat, detail: stdName, total: 0, months: {} };
       detailMonthly[key].total++;
       detailMonthly[key].months[m] = (detailMonthly[key].months[m] || 0) + 1;
     });
@@ -1234,6 +1235,7 @@ function renderProductAccordion(claims) {
         const txt = d.detail.length > 35 ? d.detail.slice(0,35)+'...' : d.detail;
         rows += '<tr>';
         if (idx===0) rows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:top;border-right:1px solid var(--border)">${dt}<br><span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sidiz-blue-bright);font-weight:700">${group.total}건</span></td>`;
+        rows += `<td style="text-align:center;font-size:10px;white-space:nowrap">${d.category||'-'}</td>`;
         rows += `<td style="text-align:left;font-size:10px;max-width:200px;white-space:normal;line-height:1.4" title="${d.detail.replace(/"/g,'&quot;')}">${txt}</td>`;
         rows += `<td style="text-align:center;white-space:nowrap"><span class="tag ${st}" style="display:inline-block;min-width:52px;text-align:center">${sl}</span></td>`;
         rows += allMonths.map(m => `<td style="text-align:center">${d.months[m] || '-'}</td>`).join('');
@@ -1247,7 +1249,7 @@ function renderProductAccordion(claims) {
       </div>
       <div class="accordion-body">
         <div style="margin-bottom:20px"><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">📊 월별 클레임 건수 추이</div><div style="height:180px;position:relative"><canvas id="prodChart-${i}" height="180"></canvas></div></div>
-        <div><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">하자유형 — 판정내용별 월별 건수</div><div style="overflow-x:auto"><table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">하자유형</th><th style="text-align:left">판정내용 (상세)</th><th style="text-align:center">상태</th>${mh}<th style="text-align:center;font-weight:700">합계</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+        <div><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">하자유형 — 판정유형 — 판정내용별 월별 건수</div><div style="overflow-x:auto"><table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">하자유형</th><th style="text-align:center">판정유형</th><th style="text-align:left">판정내용 (상세)</th><th style="text-align:center">상태</th>${mh}<th style="text-align:center;font-weight:700">합계</th></tr></thead><tbody>${rows}</tbody></table></div></div>
       </div></div>`;
   });
   document.getElementById('productAccordion').innerHTML = html;

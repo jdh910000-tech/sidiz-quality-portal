@@ -74,8 +74,32 @@ function fmt(v) { return v != null && v !== 0 ? Number(v).toLocaleString() : '-'
 const VALID_KPI_CATS = ['제조','설계','서비스','고객불만','사양재검토'];
 let _kpiBrandFilter = 'all';
 
+// 원본 정적 데이터 보존 (최초 1회만 복사)
+let _KPI_DATA_ORIGINAL = null;
+function _backupKpiData() {
+  if (_KPI_DATA_ORIGINAL) return;
+  _KPI_DATA_ORIGINAL = JSON.parse(JSON.stringify(KPI_DATA));
+}
+function _restoreKpiData(year) {
+  if (!_KPI_DATA_ORIGINAL || !_KPI_DATA_ORIGINAL[year]) return;
+  const orig = _KPI_DATA_ORIGINAL[year];
+  const data = KPI_DATA[year];
+  data.judgement.kr = [...orig.judgement.kr];
+  data.judgement.vn = [...orig.judgement.vn];
+  data.sales.kr = [...orig.sales.kr];
+  data.sales.vn = [...orig.sales.vn];
+  const types = ['제조','설계','서비스','고객불만','사양재검토'];
+  types.forEach(t => {
+    data.detail_kr[t] = [...orig.detail_kr[t]];
+    data.detail_vn[t] = [...orig.detail_vn[t]];
+  });
+}
+
 async function updateKpiFromSupabase(year) {
   if (!window.SupabaseClient) return;
+  _backupKpiData();
+  // 항상 원본 정적 데이터로 복원 후 Supabase 값 병합
+  _restoreKpiData(year);
   try {
     let query = `select=claim_date,country,category,brand&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31&limit=10000`;
     const allClaims = await SupabaseClient.supabaseFetch('claims', query);
@@ -107,13 +131,13 @@ async function updateKpiFromSupabase(year) {
       if (jt) { if (isVn) dVn[jt][mi]++; else dKr[jt][mi]++; }
     });
     for (let i = 0; i < 12; i++) {
-      // 브랜드 필터 적용 시 Supabase 값으로 무조건 덮어쓰기
       if (_kpiBrandFilter !== 'all') {
+        // 브랜드 필터: Supabase 값으로 덮어쓰기 (정적 데이터 위에)
         data.judgement.kr[i] = jKr[i];
         data.judgement.vn[i] = jVn[i];
         types.forEach(t => { data.detail_kr[t][i] = dKr[t][i]; data.detail_vn[t][i] = dVn[t][i]; });
       } else {
-        // 전체 브랜드: 정적 데이터가 0인 월만 Supabase 값 적용
+        // 전체 브랜드: 정적 데이터 유지, 0인 월만 Supabase 값 적용
         if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
         if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
         types.forEach(t => {
@@ -281,7 +305,7 @@ function renderKpiMainTable(data, year, range) {
   const rangeLabel = range < 12 ? ` · ~${range}월 강조` : '';
 
   let h = `<div class="data-table-header"><h3>고객클레임 종합 현황 (${year}년${rangeLabel})</h3></div>
-  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th>${py}평균</th><th>${year}평균</th>${mh}</tr></thead><tbody>`;
+  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th style="text-align:center">${py}평균</th><th style="text-align:center">${year}평균</th>${mh}</tr></thead><tbody>`;
 
   h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>${pd?fmt(avg(pd.sales.kr)):'-'}</td><td>${fmt(avg(data.sales.kr))}</td>${mc(data.sales.kr)}</tr>`;
   h+=`<tr><td>베트남</td><td>${pd?fmt(avg(pd.sales.vn)):'-'}</td><td>${fmt(avg(data.sales.vn))}</td>${mc(data.sales.vn)}</tr>`;
@@ -318,7 +342,7 @@ function renderKpiJudgementTables(data, year, range) {
   function build(flag, label, dd, pdd) {
     const mh = MONTHS.map(m=>`<th>${m}</th>`).join('');
     let h = `<div class="data-table-header"><h3>${flag} ${label} — 판정유형별 클레임 건수</h3></div>
-    <table class="data-table"><thead><tr><th style="text-align:left">판정유형</th><th>${py}평균</th>${mh}</tr></thead><tbody>`;
+    <table class="data-table"><thead><tr><th style="text-align:left">판정유형</th><th style="text-align:center">${py}평균</th>${mh}</tr></thead><tbody>`;
     let tot = Array(12).fill(0);
     types.forEach(t => {
       const arr = dd[t]||Array(12).fill(0);
