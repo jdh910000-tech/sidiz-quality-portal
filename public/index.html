@@ -384,6 +384,9 @@ body::before {
           <option value="2026" selected>2026년</option>
           <option value="2025">2025년</option>
         </select>
+        <select id="prodBrandSelect" onchange="onProdBrandChange(this.value)" style="background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:8px;font-size:13px">
+          <option value="all">전체 브랜드</option>
+        </select>
         <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
       </div>
     </div>
@@ -1110,6 +1113,10 @@ async function loadProductAccordion() {
     const fc = document.getElementById('prodCategoryFilter');
     fc.innerHTML = '<button class="sub-tab active" data-cat="전체" onclick="toggleCategoryMulti(\'전체\',this)">전체</button>' +
       categories.map(cat => `<button class="sub-tab" data-cat="${cat}" onclick="toggleCategoryMulti('${cat}',this)">${cat}</button>`).join('');
+    // 브랜드 드롭다운 자동 생성
+    const brands = [...new Set(claims.map(c => c.brand).filter(Boolean))].sort();
+    const bs = document.getElementById('prodBrandSelect');
+    if (bs) { bs.innerHTML = '<option value="all">전체 브랜드</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join(''); }
     renderProductAccordion(claims);
   } catch(e) {
     document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-rose)">⚠️ 로딩 실패: ' + e.message + '</div>';
@@ -1135,9 +1142,15 @@ function toggleCategoryMulti(cat, btn) {
 }
 
 let _selectedProdYear = 'all';
+let _selectedProdBrand = 'all';
 
 function onProdYearChange(year) {
   _selectedProdYear = year;
+  applyProductFilter();
+}
+
+function onProdBrandChange(brand) {
+  _selectedProdBrand = brand;
   applyProductFilter();
 }
 
@@ -1146,6 +1159,10 @@ function applyProductFilter() {
   // 연도 필터
   if (_selectedProdYear && _selectedProdYear !== 'all') {
     filtered = filtered.filter(c => c.claim_date && c.claim_date.startsWith(_selectedProdYear));
+  }
+  // 브랜드 필터
+  if (_selectedProdBrand && _selectedProdBrand !== 'all') {
+    filtered = filtered.filter(c => c.brand === _selectedProdBrand);
   }
   // 카테고리 필터
   if (!_selectedCategories.has('전체')) {
