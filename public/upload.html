@@ -164,6 +164,37 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
     <div class="existing-data" id="salesExisting"></div>
   </div>
 
+  <!-- ============ 실패비용 업로드 ============ -->
+  <div class="upload-section">
+    <h2>월별 실패비용 데이터</h2>
+    <p class="upload-desc">
+      KPI 현황의 <strong>실패비용 현황</strong>에 사용됩니다.<br>
+      <code>failure_costs</code> 테이블에 저장되며, 같은 연월 데이터가 있으면 자동으로 업데이트됩니다.
+    </p>
+    <div class="upload-desc" style="margin-top:8px">
+      <strong>필수 컬럼:</strong>
+      <code>year_month</code>(연월, YYYY-MM) · <code>revenue</code>(매출액, 원) · <code>haza_product</code>(제품) · <code>haza_material</code>(자재) · <code>haza_t50re</code>(T50RE 헤드자재) · <code>haza_t50re_labor</code>(T50RE 헤드인건비) · <code>haza_claim</code>(클레임보상) · <code>baros_contact</code>(AS컨택센터) · <code>baros_as</code>(AS조치비) · <code>baros_logistics</code>(AS물류비)<br>
+      <strong>컬럼명 자동 매핑:</strong> 한글 헤더도 인식합니다 (예: "매출액" → revenue, "제품" → haza_product)
+    </div>
+    <div class="drop-zone" id="costDropZone" onclick="document.getElementById('costFile').click()">
+      <p>실패비용 엑셀 파일을 드래그하거나 클릭하여 선택</p>
+      <p style="font-size:11px;color:#6b83a0">.xlsx 형식 지원</p>
+    </div>
+    <input type="file" id="costFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleCostFile(this)">
+
+    <div id="costPreview" style="display:none;margin-top:16px">
+      <h3 style="margin-bottom:8px">미리보기</h3>
+      <div id="costPreviewTable" style="overflow-x:auto;max-height:300px;overflow-y:auto"></div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="uploadCostData()">Supabase에 업로드 (Upsert)</button>
+        <button class="btn" onclick="document.getElementById('costPreview').style.display='none'">취소</button>
+      </div>
+    </div>
+
+    <div class="status" id="costStatus"></div>
+    <div class="existing-data" id="costExisting"></div>
+  </div>
+
   <!-- ============ 기존 데이터 관리 ============ -->
   <div class="upload-section">
     <h2>기존 데이터 현황 확인</h2>
@@ -221,6 +252,27 @@ const SALES_HEADER_MAP = {
   'year_month': 'year_month', 'country': 'country',
   'sales_count': 'sales_count', 'sales_amount': 'sales_amount',
 };
+
+const COST_HEADER_MAP = {
+  '연월': 'year_month', '년월': 'year_month', '월': 'year_month',
+  '매출액': 'revenue', '매출': 'revenue',
+  '제품': 'haza_product', '하자보수비_제품': 'haza_product',
+  '자재': 'haza_material', '하자보수비_자재': 'haza_material',
+  'T50RE 헤드 자재': 'haza_t50re', 'T50RE헤드자재': 'haza_t50re', '헤드자재': 'haza_t50re',
+  'T50RE 헤드 인건비': 'haza_t50re_labor', 'T50RE헤드인건비': 'haza_t50re_labor', '헤드인건비': 'haza_t50re_labor',
+  '클레임 보상': 'haza_claim', '클레임보상': 'haza_claim', '보상': 'haza_claim',
+  'AS 컨택센터': 'baros_contact', 'AS컨택센터': 'baros_contact', '컨택센터': 'baros_contact',
+  'AS조치비': 'baros_as', 'AS조치비(무상)': 'baros_as', '조치비': 'baros_as',
+  'AS물류비': 'baros_logistics', 'AS물류비(유,무상)': 'baros_logistics', '물류비': 'baros_logistics',
+  // 영문 그대로
+  'year_month': 'year_month', 'revenue': 'revenue',
+  'haza_product': 'haza_product', 'haza_material': 'haza_material',
+  'haza_t50re': 'haza_t50re', 'haza_t50re_labor': 'haza_t50re_labor',
+  'haza_claim': 'haza_claim', 'baros_contact': 'baros_contact',
+  'baros_as': 'baros_as', 'baros_logistics': 'baros_logistics',
+};
+
+let costParsedData = [];
 
 function setClaimMode(mode, btn) {
   claimMode = mode;
@@ -505,12 +557,81 @@ document.querySelectorAll('.drop-zone').forEach(zone => {
     e.preventDefault(); zone.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
     if (file) {
-      const input = zone.querySelector('input');
       if (zone.id === 'claimDropZone') handleClaimFile(file);
       else if (zone.id === 'salesDropZone') handleSalesFile(file);
+      else if (zone.id === 'costDropZone') handleCostFile(file);
     }
   });
 });
+
+// ─── 실패비용 파일 처리 ───
+function handleCostFile(fileOrInput) {
+  const file = fileOrInput instanceof File ? fileOrInput : fileOrInput.files[0];
+  if (!file) return;
+  showStatus('costStatus', 'loading', '파일 파싱 중...');
+  
+  parseExcel(file, (err, rows, sheetName) => {
+    if (err) { showStatus('costStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
+    
+    const mapped = mapHeaders(rows, COST_HEADER_MAP);
+    const numFields = ['revenue','haza_product','haza_material','haza_t50re','haza_t50re_labor','haza_claim','baros_contact','baros_as','baros_logistics'];
+    
+    costParsedData = mapped.filter(r => r.year_month).map(r => {
+      numFields.forEach(f => { r[f] = parseFloat(r[f]) || 0; });
+      let ym = String(r.year_month).trim();
+      if (/^\d{6}$/.test(ym)) ym = ym.slice(0,4)+'-'+ym.slice(4,6);
+      r.year_month = ym;
+      return r;
+    });
+    
+    if (costParsedData.length === 0) {
+      showStatus('costStatus', 'error', '유효한 데이터가 없습니다. year_month(연월) 컬럼을 확인해 주세요.');
+      return;
+    }
+    
+    // 미리보기
+    const container = document.getElementById('costPreview');
+    const table = document.getElementById('costPreviewTable');
+    container.style.display = 'block';
+    const cols = Object.keys(costParsedData[0]);
+    const preview = costParsedData.slice(0, 20);
+    let html = '<table class="preview-table"><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+    preview.forEach(row => {
+      html += '<tr>' + cols.map(c => {
+        let v = row[c] ?? '';
+        if (typeof v === 'number') v = v.toLocaleString();
+        return `<td>${v}</td>`;
+      }).join('') + '</tr>';
+    });
+    if (costParsedData.length > 20) html += `<tr><td colspan="${cols.length}" style="text-align:center">... 외 ${costParsedData.length-20}행</td></tr>`;
+    html += '</tbody></table>';
+    table.innerHTML = `<p style="margin-bottom:8px;font-size:12px;color:#a0b4cb">${file.name} — ${costParsedData.length}행</p>` + html;
+    hideStatus('costStatus');
+  });
+}
+
+async function uploadCostData() {
+  if (costParsedData.length === 0) return;
+  showStatus('costStatus', 'loading', `${costParsedData.length}건 업로드 중...`);
+  try {
+    const upsertHeaders = { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' };
+    const res = await fetch(`${SUPA_URL}/rest/v1/failure_costs`, {
+      method: 'POST',
+      headers: upsertHeaders,
+      body: JSON.stringify(costParsedData)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || res.statusText);
+    }
+    showStatus('costStatus', 'success', `✅ ${costParsedData.length}건 업로드(Upsert) 완료!`);
+    costParsedData = [];
+    document.getElementById('costPreview').style.display = 'none';
+    checkExistingData();
+  } catch(e) {
+    showStatus('costStatus', 'error', '❌ 업로드 실패: ' + e.message);
+  }
+}
 
 // 페이지 로드 시 기존 데이터 현황 자동 조회
 checkExistingData();
