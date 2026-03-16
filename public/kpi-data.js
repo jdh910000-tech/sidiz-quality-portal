@@ -269,7 +269,7 @@ function updateKpiComboChart(data, year, range) {
       },
       scales: {
         x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 11 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 11 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0 },
+        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 11 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 1000 },
         y1: { position: 'right', title: { display: true, text: '불량지수(%)', color: '#6b83a0', font: { size: 11 } }, grid: { drawOnChartArea: false }, ticks: { color: '#ffb347', font: { size: 10, family: "'JetBrains Mono'" }, callback: v=>v+'%' }, min: 0, max: 3.5 }
       }
     }
