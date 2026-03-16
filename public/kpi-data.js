@@ -131,20 +131,14 @@ async function updateKpiFromSupabase(year) {
       if (jt) { if (isVn) dVn[jt][mi]++; else dKr[jt][mi]++; }
     });
     for (let i = 0; i < 12; i++) {
-      if (_kpiBrandFilter !== 'all') {
-        // 브랜드 필터: Supabase 값으로 덮어쓰기 (정적 데이터 위에)
-        data.judgement.kr[i] = jKr[i];
-        data.judgement.vn[i] = jVn[i];
-        types.forEach(t => { data.detail_kr[t][i] = dKr[t][i]; data.detail_vn[t][i] = dVn[t][i]; });
-      } else {
-        // 전체 브랜드: 정적 데이터 유지, 0인 월만 Supabase 값 적용
-        if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
-        if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
-        types.forEach(t => {
-          if (dKr[t][i] > 0 && data.detail_kr[t][i] === 0) data.detail_kr[t][i] = dKr[t][i];
-          if (dVn[t][i] > 0 && data.detail_vn[t][i] === 0) data.detail_vn[t][i] = dVn[t][i];
-        });
-      }
+      // 정적 데이터가 있는 월(>0)은 항상 유지, 0인 월만 Supabase 값 적용
+      // 브랜드 필터 시에도 동일 (정적 데이터는 이미 시디즈 기준)
+      if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
+      if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
+      types.forEach(t => {
+        if (dKr[t][i] > 0 && data.detail_kr[t][i] === 0) data.detail_kr[t][i] = dKr[t][i];
+        if (dVn[t][i] > 0 && data.detail_vn[t][i] === 0) data.detail_vn[t][i] = dVn[t][i];
+      });
     }
     try {
       const sales = await SupabaseClient.supabaseFetch('sales_monthly',
@@ -307,19 +301,19 @@ function renderKpiMainTable(data, year, range) {
   let h = `<div class="data-table-header"><h3>고객클레임 종합 현황 (${year}년${rangeLabel})</h3></div>
   <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th style="text-align:center">${py}평균</th><th style="text-align:center">${year}평균</th>${mh}</tr></thead><tbody>`;
 
-  h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td>국내</td><td>${pd?fmt(avg(pd.sales.kr)):'-'}</td><td>${fmt(avg(data.sales.kr))}</td>${mc(data.sales.kr)}</tr>`;
-  h+=`<tr><td>베트남</td><td>${pd?fmt(avg(pd.sales.vn)):'-'}</td><td>${fmt(avg(data.sales.vn))}</td>${mc(data.sales.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.sales.kr)):'-'}</td><td>${fmt(avg(data.sales.kr))}</td>${mc(data.sales.kr)}</tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.sales.vn)):'-'}</td><td>${fmt(avg(data.sales.vn))}</td>${mc(data.sales.vn)}</tr>`;
   const tS=data.sales.kr.map((v,i)=>(v||0)+(data.sales.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td>계</td><td>${pd?fmt(avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)))):'-'}</td><td>${fmt(avg(tS))}</td>${mc(tS)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">계</td><td>${pd?fmt(avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)))):'-'}</td><td>${fmt(avg(tS))}</td>${mc(tS)}</tr>`;
 
-  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td>국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>-</td>${mc(data.judgement.kr)}</tr>`;
-  h+=`<tr><td>베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>-</td>${mc(data.judgement.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>-</td>${mc(data.judgement.kr)}</tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>-</td>${mc(data.judgement.vn)}</tr>`;
   const tJ=data.judgement.kr.map((v,i)=>(v||0)+(data.judgement.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td>판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>-</td>${mc(tJ)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>-</td>${mc(tJ)}</tr>`;
 
-  h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td>국내</td><td>-</td><td>-</td>${dc(data.judgement.kr,data.sales.kr)}</tr>`;
-  h+=`<tr><td>베트남</td><td>-</td><td>-</td>${dc(data.judgement.vn,data.sales.vn)}</tr>`;
-  h+=`<tr style="font-weight:600"><td>불량 계</td><td>-</td><td>-</td>${dc(tJ,tS)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td class="row-header">국내</td><td>-</td><td>-</td>${dc(data.judgement.kr,data.sales.kr)}</tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>-</td><td>-</td>${dc(data.judgement.vn,data.sales.vn)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">불량 계</td><td>-</td><td>-</td>${dc(tJ,tS)}</tr>`;
   h+=`<tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td>${Array(12).fill('<td>1.50%</td>').join('')}</tr>`;
   h+='</tbody></table>';
   container.innerHTML = h;

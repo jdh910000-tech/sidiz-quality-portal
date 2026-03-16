@@ -337,19 +337,19 @@ function renderCostTable(data, year, range, pd, py) {
     return arr.some(v => v > 0) || (prevAvg[r.key] && prevAvg[r.key] > 0) || (yAvg && yAvg[r.key] && yAvg[r.key] > 0) || (tgt[r.key] && tgt[r.key] > 0);
   });
 
-  h += `<tr><td class="row-header" rowspan="${visibleHazaRows.length + 1}">(판)하자보수비</td><td>${visibleHazaRows[0]?.label || ''}</td><td>${prevAvgFmt(visibleHazaRows[0]?.key)}</td><td>${tgtFmt(visibleHazaRows[0]?.key)}</td><td>${yearAvgFmt(data[visibleHazaRows[0]?.key] || [])}</td>${mc(data[visibleHazaRows[0]?.key] || [])}<td>${costFmtMan(cumul(data[visibleHazaRows[0]?.key] || []))}</td></tr>`;
+  h += `<tr><td class="row-header" rowspan="${visibleHazaRows.length + 1}">(판)하자보수비</td><td class="row-header">${visibleHazaRows[0]?.label || ''}</td><td>${prevAvgFmt(visibleHazaRows[0]?.key)}</td><td>${tgtFmt(visibleHazaRows[0]?.key)}</td><td>${yearAvgFmt(data[visibleHazaRows[0]?.key] || [])}</td>${mc(data[visibleHazaRows[0]?.key] || [])}<td>${costFmtMan(cumul(data[visibleHazaRows[0]?.key] || []))}</td></tr>`;
 
   for (let i = 1; i < visibleHazaRows.length; i++) {
     const r = visibleHazaRows[i];
-    h += `<tr><td>${r.label}</td><td>${prevAvgFmt(r.key)}</td><td>${tgtFmt(r.key)}</td><td>${yearAvgFmt(data[r.key] || [])}</td>${mc(data[r.key] || [])}<td>${costFmtMan(cumul(data[r.key] || []))}</td></tr>`;
+    h += `<tr><td class="row-header">${r.label}</td><td>${prevAvgFmt(r.key)}</td><td>${tgtFmt(r.key)}</td><td>${yearAvgFmt(data[r.key] || [])}</td>${mc(data[r.key] || [])}<td>${costFmtMan(cumul(data[r.key] || []))}</td></tr>`;
   }
-  h += `<tr style="font-weight:600"><td>계</td><td>${prevAvgFmt('haza_subtotal')}</td><td>${tgtFmt('haza_subtotal')}</td><td>${yearAvgFmt(computedHazaSub)}</td>${mc(computedHazaSub)}<td>${costFmtMan(cumul(computedHazaSub))}</td></tr>`;
+  h += `<tr style="font-weight:600"><td class="row-header">계</td><td>${prevAvgFmt('haza_subtotal')}</td><td>${tgtFmt('haza_subtotal')}</td><td>${yearAvgFmt(computedHazaSub)}</td>${mc(computedHazaSub)}<td>${costFmtMan(cumul(computedHazaSub))}</td></tr>`;
 
   // 바로스 AS
-  h += `<tr><td class="row-header" rowspan="4">바로스 AS</td><td>AS 컨택센터</td><td>${prevAvgFmt('baros_contact')}</td><td>${tgtFmt('baros_contact')}</td><td>${yearAvgFmt(data.baros_contact)}</td>${mc(data.baros_contact)}<td>${costFmtMan(cumul(data.baros_contact))}</td></tr>`;
-  h += `<tr><td>AS조치비(무상)</td><td>${prevAvgFmt('baros_as')}</td><td>${tgtFmt('baros_as')}</td><td>${yearAvgFmt(data.baros_as)}</td>${mc(data.baros_as)}<td>${costFmtMan(cumul(data.baros_as))}</td></tr>`;
-  h += `<tr><td>AS물류비</td><td>${prevAvgFmt('baros_logistics')}</td><td>${tgtFmt('baros_logistics')}</td><td>${yearAvgFmt(data.baros_logistics)}</td>${mc(data.baros_logistics)}<td>${costFmtMan(cumul(data.baros_logistics))}</td></tr>`;
-  h += `<tr style="font-weight:600"><td>계</td><td>${prevAvgFmt('baros_subtotal')}</td><td>${tgtFmt('baros_subtotal')}</td><td>${yearAvgFmt(data.baros_subtotal)}</td>${mc(data.baros_subtotal)}<td>${costFmtMan(cumul(data.baros_subtotal))}</td></tr>`;
+  h += `<tr><td class="row-header" rowspan="4">바로스 AS</td><td class="row-header">AS 컨택센터</td><td>${prevAvgFmt('baros_contact')}</td><td>${tgtFmt('baros_contact')}</td><td>${yearAvgFmt(data.baros_contact)}</td>${mc(data.baros_contact)}<td>${costFmtMan(cumul(data.baros_contact))}</td></tr>`;
+  h += `<tr><td class="row-header">AS조치비(무상)</td><td>${prevAvgFmt('baros_as')}</td><td>${tgtFmt('baros_as')}</td><td>${yearAvgFmt(data.baros_as)}</td>${mc(data.baros_as)}<td>${costFmtMan(cumul(data.baros_as))}</td></tr>`;
+  h += `<tr><td class="row-header">AS물류비</td><td>${prevAvgFmt('baros_logistics')}</td><td>${tgtFmt('baros_logistics')}</td><td>${yearAvgFmt(data.baros_logistics)}</td>${mc(data.baros_logistics)}<td>${costFmtMan(cumul(data.baros_logistics))}</td></tr>`;
+  h += `<tr style="font-weight:600"><td class="row-header">계</td><td>${prevAvgFmt('baros_subtotal')}</td><td>${tgtFmt('baros_subtotal')}</td><td>${yearAvgFmt(data.baros_subtotal)}</td>${mc(data.baros_subtotal)}<td>${costFmtMan(cumul(data.baros_subtotal))}</td></tr>`;
 
   // 소계
   h += `<tr style="font-weight:700;background:rgba(255,107,122,0.04)"><td class="row-header" colspan="2">소계</td>`;

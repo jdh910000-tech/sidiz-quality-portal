@@ -168,9 +168,9 @@ body::before {
 
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .data-table th { padding: 10px 14px; text-align: center; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 11px; white-space: nowrap; }
-.data-table th:first-child, .data-table th:nth-child(2) { text-align: left; }
+.data-table th[style*="text-align:left"] { text-align: left; }
 .data-table td { padding: 9px 14px; text-align: center; border-bottom: 1px solid rgba(36,59,90,0.4); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-.data-table td:first-child, .data-table td:nth-child(2) { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
+.data-table td.row-header { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
 .data-table tr:hover td { background: rgba(0,87,184,0.04); }
 .row-header { color: var(--text-secondary); font-weight: 600 !important; }
 .highlight { color: var(--sidiz-blue-bright); font-weight: 600; }
