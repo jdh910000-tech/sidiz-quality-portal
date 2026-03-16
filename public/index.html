@@ -337,6 +337,14 @@ body::before {
       <span class="header-date" id="currentDate"></span>
     </div>
   </div>
+  <div class="section-title">최근 현황 요약 (누적)</div>
+  <div class="kpi-grid" id="homeKpiGrid">
+    <div class="kpi-card"><div class="kpi-label">총 클레임 건수</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)" id="homeClaimCount">-</div><div class="kpi-change" id="homeClaimSub">로딩 중...</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 불량지수</div><div class="kpi-value" style="color:var(--accent-amber)" id="homeDefectIdx">-</div><div class="kpi-change" id="homeDefectSub">-</div></div>
+    <div class="kpi-card"><div class="kpi-label">월평균 하자보수비</div><div class="kpi-value" style="color:var(--accent-rose)" id="homeCostAvg">-</div><div class="kpi-change" id="homeCostSub">-</div></div>
+    <div class="kpi-card"><div class="kpi-label">총 매출건수</div><div class="kpi-value" style="color:var(--accent-emerald)" id="homeSalesCount">-</div><div class="kpi-change" id="homeSalesSub">-</div></div>
+  </div>
+  <div class="section-title" style="margin-top:24px">메뉴</div>
   <div class="home-grid">
     <div class="portal-card" onclick="showSection('claim')"><div class="card-icon blue">📋</div><div class="card-title">고객클레임 현황</div><div class="card-desc">일/월별 클레임, 제품별 추이, 접수일 기준 분석 대시보드</div><div class="card-status live">운영 중</div></div>
     <div class="portal-card" onclick="showSection('kpi')"><div class="card-icon emerald">📊</div><div class="card-title">KPI 현황</div><div class="card-desc">품질경영위원회 자료, 고객클레임 KPI, 실패비용 분석</div><div class="card-status live">운영 중</div></div>
@@ -347,13 +355,6 @@ body::before {
     <div class="portal-card" onclick="showSection('cert')"><div class="card-icon cyan">📜</div><div class="card-title">인증현황</div><div class="card-desc">제품 인증 및 규격 관리 현황</div><div class="card-status dev">개발 예정</div></div>
     <div class="portal-card" onclick="showSection('team')"><div class="card-icon blue">👥</div><div class="card-title">인원현황</div><div class="card-desc">품질관리팀 조직 구조도 및 인원별 담당 역할</div><div class="card-status live">운영 중</div></div>
     <div class="portal-card" onclick="showSection('okr')"><div class="card-icon emerald">🎯</div><div class="card-title">팀 목표</div><div class="card-desc">연도별 OKR 기반 팀 목표 관리 — 계획 및 결과 매칭</div><div class="card-status live">운영 중</div></div>
-  </div>
-  <div class="section-title">최근 현황 요약 (누적)</div>
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">총 클레임 건수 (불량)</div><div class="kpi-value" style="color:var(--sidiz-blue-bright)">6,274</div><div class="kpi-change">10개월 누적 국내+베트남</div></div>
-    <div class="kpi-card"><div class="kpi-label">평균 불량지수</div><div class="kpi-value" style="color:var(--accent-amber)">1.80%</div><div class="kpi-change up">▲ 목표 1.5% 대비 초과</div></div>
-    <div class="kpi-card"><div class="kpi-label">월평균 하자보수비</div><div class="kpi-value" style="color:var(--accent-rose)">1.61억</div><div class="kpi-change up">목표 1.15억 대비 초과</div></div>
-    <div class="kpi-card"><div class="kpi-label">총 매출건수</div><div class="kpi-value" style="color:var(--accent-emerald)">347,807</div><div class="kpi-change">국내+베트남 누적</div></div>
   </div>
 </div>
 
@@ -494,6 +495,10 @@ body::before {
       <select id="kpiYearSelect" onchange="if(window.KpiModule) window.KpiModule.onKpiYearChange(this.value)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">
         <option value="2026" selected>2026년</option>
         <option value="2025">2025년</option>
+      </select>
+      <label style="font-size:11px;color:var(--text-muted)">브랜드:</label>
+      <select id="kpiBrandSelect" onchange="if(window.KpiModule) window.KpiModule.onKpiBrandChange(this.value)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;cursor:pointer">
+        <option value="all">전체</option>
       </select>
     </div>
   </div>
@@ -1368,11 +1373,21 @@ async function initSupabase() {
     if(badge) { const parts=[]; if(cnt>0) parts.push('회수'+cnt); if(rcnt>0) parts.push('접수'+rcnt);
       badge.innerHTML = '● LIVE ('+(parts.length>0?parts.join('·'):cnt+'건')+')';
       badge.style.background='rgba(0,196,140,0.1)'; badge.style.borderColor='rgba(0,196,140,0.2)'; badge.style.color='var(--accent-emerald)'; }
-    // 홈 KPI 카드 업데이트
-    const kpiVals = document.querySelectorAll('#section-home .kpi-card .kpi-value');
-    if(kpiVals.length>0 && cnt>0) { kpiVals[0].textContent = cnt.toLocaleString();
-      const kpiSubs = document.querySelectorAll('#section-home .kpi-card .kpi-change');
-      if(kpiSubs.length>0) kpiSubs[0].textContent = 'Supabase 실시간 · claims 테이블'; }
+    // 홈 KPI 카드 업데이트 — 제조/설계/서비스/사양재검토/고객불만만 집계
+    const VALID_CATS = ['제조','설계','서비스','사양재검토','고객불만'];
+    try {
+      const allClaims = await SupabaseClient.fetchClaims('select=category,claim_date,country,brand&limit=10000');
+      if (allClaims && allClaims.length > 0) {
+        const validClaims = allClaims.filter(c => VALID_CATS.includes(c.category));
+        const el = id => document.getElementById(id);
+        el('homeClaimCount').textContent = validClaims.length.toLocaleString();
+        el('homeClaimSub').textContent = `Supabase 실시간 · ${VALID_CATS.join('/')} 합산`;
+        // 브랜드 드롭다운 채우기 (KPI용)
+        const brands = [...new Set(allClaims.map(c=>c.brand).filter(Boolean))].sort();
+        const kbs = document.getElementById('kpiBrandSelect');
+        if(kbs) kbs.innerHTML = '<option value="all">전체</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
+      }
+    } catch(e) { console.warn('홈 KPI 업데이트 실패:', e); }
     // 제품별 아코디언 로드
     await loadProductAccordion();
     // KPI 고객클레임 현황 초기화

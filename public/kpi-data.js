@@ -71,18 +71,28 @@ let _kpiMonthRange = 12; // 표시 구분: 12=전체, N=~N월 강조
 function fmt(v) { return v != null && v !== 0 ? Number(v).toLocaleString() : '-'; }
 
 // ─── Supabase 실시간 업데이트 ───
+const VALID_KPI_CATS = ['제조','설계','서비스','고객불만','사양재검토'];
+let _kpiBrandFilter = 'all';
+
 async function updateKpiFromSupabase(year) {
   if (!window.SupabaseClient) return;
   try {
-    const claims = await SupabaseClient.supabaseFetch('claims',
-      `select=claim_date,country,category&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31&limit=10000`);
-    if (!claims || claims.length === 0) return;
+    let query = `select=claim_date,country,category,brand&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31&limit=10000`;
+    const allClaims = await SupabaseClient.supabaseFetch('claims', query);
+    if (!allClaims || allClaims.length === 0) return;
+    // 브랜드 필터 적용
+    let claims = allClaims;
+    if (_kpiBrandFilter && _kpiBrandFilter !== 'all') {
+      claims = allClaims.filter(c => c.brand === _kpiBrandFilter);
+    }
+    // 유효 카테고리만 집계
+    const validClaims = claims.filter(c => VALID_KPI_CATS.includes(c.category));
     const data = KPI_DATA[year]; if (!data) return;
     const types = ['제조','설계','서비스','고객불만','사양재검토'];
     const jKr = Array(12).fill(0), jVn = Array(12).fill(0);
     const dKr = {}, dVn = {};
     types.forEach(t => { dKr[t] = Array(12).fill(0); dVn[t] = Array(12).fill(0); });
-    claims.forEach(c => {
+    validClaims.forEach(c => {
       const mi = parseInt(c.claim_date.slice(5,7)) - 1;
       if (mi < 0 || mi > 11) return;
       const isVn = c.country === '베트남';
@@ -320,6 +330,12 @@ async function onKpiYearChange(year) {
   await updateKpiFromSupabase(year);
   renderKpiClaimSection(year);
 }
+async function onKpiBrandChange(brand) {
+  _kpiBrandFilter = brand;
+  const year = document.getElementById('kpiYearSelect')?.value || '2026';
+  await updateKpiFromSupabase(year);
+  renderKpiClaimSection(year);
+}
 function onMonthRangeChange(val) {
   _kpiMonthRange = parseInt(val);
   const year = document.getElementById('kpiYearSelect')?.value || '2026';
@@ -331,4 +347,4 @@ async function initKpiSection() {
   renderKpiClaimSection(year);
 }
 
-window.KpiModule = { initKpiSection, onKpiYearChange, onMonthRangeChange, renderKpiClaimSection, KPI_DATA };
+window.KpiModule = { initKpiSection, onKpiYearChange, onKpiBrandChange, onMonthRangeChange, renderKpiClaimSection, KPI_DATA };
