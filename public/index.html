@@ -1059,30 +1059,43 @@ let _defectDict = []; // 표준 하자명 사전
 // 사전 로드
 fetch('defect-dictionary.json').then(r => r.json()).then(d => { _defectDict = d; console.log('✅ 하자 사전 로드:', d.length + '개 패턴'); }).catch(() => console.log('⚠ 하자 사전 없음 — 원본 표기 사용'));
 
-// 표준 하자명 찾기
+// 표준 하자명 찾기 — inspection_result 기반 그룹핑 개선
 function _findStandardName(item, defectType, rawText) {
   if (!rawText || rawText === '미분류') return '미분류';
-  // 1단계: 사전에서 item + defect_type + 원본 텍스트 포함 여부로 매칭
-  const rawClean = rawText.replace(/[\s,.\-·\/\(\)]+/g, '').toLowerCase();
+  
+  // inspection_result가 긴 CS메모인 경우(80자 이상) → 첫 줄만 사용
+  let shortText = rawText;
+  if (rawText.length > 80) {
+    // 첫 번째 의미있는 줄 추출 (날짜/코드 줄 스킵)
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    shortText = lines[0] || rawText.slice(0, 60);
+  }
+  
+  // 핵심 판정내용 추출: "판정내용 , 부가설명" 형태에서 앞부분만
+  const corePart = shortText.split(/[,，]/).map(s => s.trim()).filter(s => s.length > 3)[0] || shortText;
+  const coreClean = corePart.replace(/[\s,.·\/\(\)\-]+/g, '').toLowerCase();
+  
+  // 1단계: 사전에서 item + defect_type 매칭
   for (const entry of _defectDict) {
     if (entry.item === item && entry.defect_type === defectType) {
-      const patClean = entry.pattern.replace(/[\s,.\-·\/\(\)]+/g, '').toLowerCase();
-      if (rawClean.includes(patClean) || patClean.includes(rawClean)) {
+      const patClean = entry.pattern.replace(/[\s,.·\/\(\)\-]+/g, '').toLowerCase();
+      if (coreClean.includes(patClean) || patClean.includes(coreClean)) {
         return entry.standard_name;
       }
     }
   }
-  // 2단계: item만 매칭 (defect_type 무시)
+  // 2단계: item만 매칭
   for (const entry of _defectDict) {
     if (entry.item === item) {
-      const patClean = entry.pattern.replace(/[\s,.\-·\/\(\)]+/g, '').toLowerCase();
-      if (rawClean.includes(patClean) || patClean.includes(rawClean)) {
+      const patClean = entry.pattern.replace(/[\s,.·\/\(\)\-]+/g, '').toLowerCase();
+      if (coreClean.includes(patClean) || patClean.includes(coreClean)) {
         return entry.standard_name;
       }
     }
   }
-  // 3단계: 사전에 없으면 원본 텍스트 사용 (80자 제한)
-  return rawText.length > 80 ? rawText.slice(0, 80) + '...' : rawText;
+  // 3단계: 사전에 없으면 corePart 사용 (60자 제한)
+  const result = corePart.length > 60 ? corePart.slice(0, 60) + '...' : corePart;
+  return result;
 }
 
 async function loadProductAccordion() {
