@@ -387,7 +387,7 @@ function handleSalesFile(file) {
     
     const mapped = mapHeaders(rows, SALES_HEADER_MAP);
     
-    salesParsedData = mapped.filter(r => r.year_month && r.sales_count).map(r => {
+    salesParsedData = mapped.filter(r => r.year_month && r.sales_count && String(r.year_month) !== 'year_month').map(r => {
       r.sales_count = parseInt(r.sales_count) || 0;
       r.sales_amount = parseFloat(r.sales_amount) || 0;
       if (!r.country) r.country = '국내';
@@ -488,7 +488,7 @@ async function uploadSales() {
   
   try {
     // Upsert — year_month + country 기준으로 중복 시 업데이트
-    const res = await fetch(`${SUPA_URL}/rest/v1/sales_monthly`, {
+    const res = await fetch(`${SUPA_URL}/rest/v1/sales_monthly?on_conflict=year_month,country`, {
       method: 'POST',
       headers: { ...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
       body: JSON.stringify(salesParsedData)
@@ -594,7 +594,7 @@ function handleCostFile(fileOrInput) {
     const mapped = mapHeaders(rows, COST_HEADER_MAP);
     const numFields = ['revenue','haza_product','haza_material','haza_t50re','haza_t50re_labor','haza_claim','baros_contact','baros_as','baros_logistics'];
     
-    costParsedData = mapped.filter(r => r.year_month).map(r => {
+    costParsedData = mapped.filter(r => r.year_month && String(r.year_month) !== 'year_month').map(r => {
       numFields.forEach(f => { r[f] = parseFloat(r[f]) || 0; });
       let ym = String(r.year_month).trim();
       if (/^\d{6}$/.test(ym)) ym = ym.slice(0,4)+'-'+ym.slice(4,6);
@@ -633,7 +633,7 @@ async function uploadCostData() {
   showStatus('costStatus', 'loading', `${costParsedData.length}건 업로드 중...`);
   try {
     const upsertHeaders = { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' };
-    const res = await fetch(`${SUPA_URL}/rest/v1/failure_costs`, {
+    const res = await fetch(`${SUPA_URL}/rest/v1/failure_costs?on_conflict=year_month`, {
       method: 'POST',
       headers: upsertHeaders,
       body: JSON.stringify(costParsedData)
