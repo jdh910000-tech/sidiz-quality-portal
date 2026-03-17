@@ -111,11 +111,11 @@ table.rt .num{text-align:right;font-family:'SF Mono',monospace}
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
 <script>
 (function(){
-var SB,F={},R={},SLOTS=[
+var SB_URL='https://cyxnbwczcvjeaqmrdzcb.supabase.co',SB_KEY='sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+var F={},R={},SLOTS=[
   {k:'je',i:'📊',n:'(제)비용 분개장',s:"코스트센터 '품질관리팀(평택)' 필터"},
   {k:'haja',i:'📋',n:'하자보수비 분개장',s:"소파사업부 제외, 적요 '하자보수비' 제외"},
   {k:'brand',i:'🏢',n:'브랜드 용역료 청구 현황',s:'② 시디즈: 상담AS+모바일+접수AS'},
@@ -125,9 +125,8 @@ var SB,F={},R={},SLOTS=[
 
 window.addEventListener('load',function(){
   setTimeout(function(){
-    if(typeof XLSX==='undefined'||typeof window.supabase==='undefined'){
+    if(typeof XLSX==='undefined'){
       document.getElementById('libMsg').innerHTML='❌ 라이브러리 로드 실패.<br>인터넷 연결 확인 후 새로고침하세요.';return;}
-    SB=window.supabase.createClient('https://cyxnbwczcvjeaqmrdzcb.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5eG5id2N6Y3ZqZWFxbXJkemNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE1OTM1MDIsImV4cCI6MjA1NzE2OTUwMn0.i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5QFRr0sT1W47w');
     document.getElementById('libMsg').classList.add('hid');
     document.getElementById('step1').classList.remove('hid');
     buildUI();
@@ -381,7 +380,13 @@ async function upload(){
   document.getElementById('step2').classList.add('hid');document.getElementById('step3').classList.remove('hid');
   document.getElementById('s2').className='done';document.getElementById('s3').className='active';
   var lg=document.getElementById('upLog');lg.textContent='[업로드] '+ym+'\n'+JSON.stringify(p,null,2)+'\n';
-  try{var r=await SB.from('failure_costs').upsert(p,{onConflict:'year_month'});if(r.error)throw r.error;
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/failure_costs',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},
+      body:JSON.stringify(p)
+    });
+    if(!res.ok){var err=await res.json();throw new Error(err.message||res.statusText);}
     lg.textContent+='[완료] ✅ 성공!\n';
     document.getElementById('upRes').innerHTML='<div style="background:#e8f5e9;padding:16px;border-radius:8px;margin-bottom:12px"><strong style="color:#2e7d32">✅ '+ym+' 실패비용 업로드 완료!</strong><br><span style="font-size:13px;color:#555">KPI 현황 → 실패비용 탭에서 확인하세요.</span></div>';
     document.getElementById('s3').className='done';
