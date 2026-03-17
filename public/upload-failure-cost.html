@@ -376,7 +376,7 @@ function showRes(items){
 async function upload(){
   var ym=document.getElementById('ymIn').value,rev=Number((document.getElementById('revIn').value||'').replace(/\D/g,''))||0;
   if(!ym){alert('연월을 입력하세요.');return}
-  var p={year_month:ym,revenue:rev,haza_product:Math.round(R.hp||0),haza_material:Math.round(R.hm||0),haza_t50re:0,haza_t50re_labor:0,haza_claim:Math.round(R.hc||0),baros_contact:Math.round(R.bc||0),baros_as:Math.round(R.ba||0),baros_logistics:Math.round(R.bl||0)};
+  var p={year_month:ym,revenue:rev,haza_product:Math.round(R.hp||0),haza_material:Math.round(R.hm||0),haza_t50re:0,haza_t50re_labor:0,haza_claim:Math.round(R.hc||0),je_haza:Math.round(R.tots['자재 폐기 비용']||0),baros_contact:Math.round(R.bc||0),baros_as:Math.round(R.ba||0),baros_logistics:Math.round(R.bl||0)};
   document.getElementById('step2').classList.add('hid');document.getElementById('step3').classList.remove('hid');
   document.getElementById('s2').className='done';document.getElementById('s3').className='active';
   var lg=document.getElementById('upLog');lg.textContent='[업로드] '+ym+'\n'+JSON.stringify(p,null,2)+'\n';

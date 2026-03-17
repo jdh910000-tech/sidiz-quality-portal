@@ -188,6 +188,7 @@ async function loadFailureCostsFromSupabase(year) {
       if (data.haza_t50re) data.haza_t50re[mi] = row.haza_t50re || 0;
       if (data.haza_t50re_labor) data.haza_t50re_labor[mi] = row.haza_t50re_labor || 0;
       data.haza_claim[mi] = row.haza_claim || 0;
+      if (data.je_haza) data.je_haza[mi] = row.je_haza || 0;
       data.baros_contact[mi] = row.baros_contact || 0;
       data.baros_as[mi] = row.baros_as || 0;
       data.baros_logistics[mi] = row.baros_logistics || 0;
@@ -382,7 +383,7 @@ function renderCostTable(data, year, range, pd, py) {
 
   // (제)하자보수비
   const jeHaza = data.je_haza || Array(12).fill(0);
-  h += `<tr style="background:rgba(255,179,71,0.05)"><td class="row-header" colspan="1">(제)하자보수비</td><td class="row-header">폐기/경비 등</td><td>${prevAvgFmt('je_haza')}</td><td>${tgtFmt('je_haza')}</td><td>${yearAvgFmt(jeHaza)}</td>${mc(jeHaza)}<td>${costFmtMan(cumul(jeHaza))}</td></tr>`;
+  h += `<tr style="background:rgba(255,179,71,0.05)"><td class="row-header" colspan="1">(제)하자보수비</td><td class="row-header">폐기</td><td>${prevAvgFmt('je_haza')}</td><td>${tgtFmt('je_haza')}</td><td>${yearAvgFmt(jeHaza)}</td>${mc(jeHaza)}<td>${costFmtMan(cumul(jeHaza))}</td></tr>`;
 
   // 바로스 AS
   h += `<tr><td class="row-header" rowspan="4">바로스 AS</td><td class="row-header">AS 컨택센터</td><td>${prevAvgFmt('baros_contact')}</td><td>${tgtFmt('baros_contact')}</td><td>${yearAvgFmt(data.baros_contact)}</td>${mc(data.baros_contact)}<td>${costFmtMan(cumul(data.baros_contact))}</td></tr>`;
