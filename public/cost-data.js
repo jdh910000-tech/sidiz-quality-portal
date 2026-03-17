@@ -222,9 +222,10 @@ function renderCostCards(data, year, range) {
   const mc = Math.max(activeMonths, 1);
 
   const hazaTotal = data.haza_subtotal.slice(0, range).reduce((s, v) => s + (v || 0), 0);
+  const jeHazaTotal = (data.je_haza || []).slice(0, range).reduce((s, v) => s + (v || 0), 0);
   const barosTotal = data.baros_subtotal.slice(0, range).reduce((s, v) => s + (v || 0), 0);
   const revenueTotal = data.revenue.slice(0, range).reduce((s, v) => s + (v || 0), 0);
-  const totalCost = hazaTotal + barosTotal;
+  const totalCost = hazaTotal + jeHazaTotal + barosTotal;
   const ratio = revenueTotal > 0 ? ((totalCost / revenueTotal) * 100).toFixed(2) : '-';
   const targetRatio = data.target?.ratio ? (data.target.ratio * 100).toFixed(2) : '1.09';
 
@@ -245,11 +246,12 @@ function renderCostComboChart(data, year, range) {
   if (_costComboChart) _costComboChart.destroy();
 
   const hazaM = data.haza_subtotal.map((v, i) => i < range ? Math.round((v || 0) / 10000) : 0);
+  const jeHazaM = (data.je_haza || Array(12).fill(0)).map((v, i) => i < range ? Math.round((v || 0) / 10000) : 0);
   const barosM = data.baros_subtotal.map((v, i) => i < range ? Math.round((v || 0) / 10000) : 0);
 
   const ratioArr = data.revenue.map((rev, i) => {
     if (i >= range || !rev) return null;
-    const cost = (data.haza_subtotal[i] || 0) + (data.baros_subtotal[i] || 0);
+    const cost = (data.haza_subtotal[i] || 0) + (data.je_haza?.[i] || 0) + (data.baros_subtotal[i] || 0);
     return rev > 0 ? parseFloat(((cost / rev) * 100).toFixed(2)) : null;
   });
 
@@ -270,10 +272,10 @@ function renderCostComboChart(data, year, range) {
     id: 'costTotalLabel',
     afterDatasetsDraw(chart) {
       const { ctx: c, data: d, scales: { x, y } } = chart;
-      const haza = d.datasets[0].data, baros = d.datasets[1].data;
+      const haza = d.datasets[0].data, jeH = d.datasets[1].data, baros = d.datasets[2].data;
       c.save(); c.font = 'bold 10px JetBrains Mono, monospace'; c.textAlign = 'center';
       for (let i = 0; i < haza.length; i++) {
-        const total = haza[i] + baros[i];
+        const total = haza[i] + jeH[i] + baros[i];
         if (total === 0) continue;
         c.fillStyle = i < range ? '#f0f4f8' : 'rgba(160,180,203,0.3)';
         c.fillText(total.toLocaleString(), x.getPixelForValue(i), y.getPixelForValue(total) - 6);
@@ -287,7 +289,8 @@ function renderCostComboChart(data, year, range) {
     data: {
       labels: COST_MONTHS,
       datasets: [
-        { label: '하자보수비', data: hazaM, backgroundColor: 'rgba(255,107,122,0.7)', borderColor: 'rgba(255,107,122,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
+        { label: '(판)하자보수비', data: hazaM, backgroundColor: 'rgba(255,107,122,0.7)', borderColor: 'rgba(255,107,122,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
+        { label: '(제)하자보수비', data: jeHazaM, backgroundColor: 'rgba(156,163,175,0.6)', borderColor: 'rgba(156,163,175,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
         { label: '바로스 AS', data: barosM, backgroundColor: 'rgba(255,179,71,0.7)', borderColor: 'rgba(255,179,71,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
         { label: '매출 대비 비율(%)', data: ratioArr, type: 'line', borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#a78bfa', pointBorderColor: '#17293f', pointBorderWidth: 2, tension: 0.3, fill: false, order: 1, yAxisID: 'y1', spanGaps: false },
         { label: '목표 (' + targetRatio.toFixed(2) + '%)', data: Array(12).fill(targetRatio), type: 'line', borderColor: 'rgba(0,196,140,0.7)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
@@ -340,7 +343,7 @@ function renderCostTable(data, year, range, pd, py) {
     (data.haza_general_return?.[i] || 0) + (data.haza_product[i] || 0) + (data.haza_lig?.[i] || 0) +
     (data.haza_material[i] || 0) + (data.haza_t50re[i] || 0) + (data.haza_t50re_labor?.[i] || 0) + (data.haza_claim[i] || 0)
   ));
-  const total = computedHazaSub.map((h, i) => (h || 0) + (data.baros_subtotal[i] || 0));
+  const total = computedHazaSub.map((h, i) => (h || 0) + (data.je_haza?.[i] || 0) + (data.baros_subtotal[i] || 0));
   const ratioArr = data.revenue.map((rev, i) => {
     if (!rev || rev === 0) return '-';
     return ((total[i] / rev) * 100).toFixed(2) + '%';
@@ -377,6 +380,10 @@ function renderCostTable(data, year, range, pd, py) {
   }
   h += `<tr style="font-weight:600"><td class="row-header">계</td><td>${prevAvgFmt('haza_subtotal')}</td><td>${tgtFmt('haza_subtotal')}</td><td>${yearAvgFmt(computedHazaSub)}</td>${mc(computedHazaSub)}<td>${costFmtMan(cumul(computedHazaSub))}</td></tr>`;
 
+  // (제)하자보수비
+  const jeHaza = data.je_haza || Array(12).fill(0);
+  h += `<tr style="background:rgba(255,179,71,0.05)"><td class="row-header" colspan="1">(제)하자보수비</td><td class="row-header">폐기/경비 등</td><td>${prevAvgFmt('je_haza')}</td><td>${tgtFmt('je_haza')}</td><td>${yearAvgFmt(jeHaza)}</td>${mc(jeHaza)}<td>${costFmtMan(cumul(jeHaza))}</td></tr>`;
+
   // 바로스 AS
   h += `<tr><td class="row-header" rowspan="4">바로스 AS</td><td class="row-header">AS 컨택센터</td><td>${prevAvgFmt('baros_contact')}</td><td>${tgtFmt('baros_contact')}</td><td>${yearAvgFmt(data.baros_contact)}</td>${mc(data.baros_contact)}<td>${costFmtMan(cumul(data.baros_contact))}</td></tr>`;
   h += `<tr><td class="row-header">AS조치비(무상)</td><td>${prevAvgFmt('baros_as')}</td><td>${tgtFmt('baros_as')}</td><td>${yearAvgFmt(data.baros_as)}</td>${mc(data.baros_as)}<td>${costFmtMan(cumul(data.baros_as))}</td></tr>`;
@@ -385,9 +392,9 @@ function renderCostTable(data, year, range, pd, py) {
 
   // 소계
   h += `<tr style="font-weight:700;background:rgba(255,107,122,0.04)"><td class="row-header" colspan="2">소계</td>`;
-  const prevTotal = (prevAvg.haza_subtotal || 0) + (prevAvg.baros_subtotal || 0);
-  const prevTotalY = yAvg ? ((yAvg.haza_subtotal || 0) + (yAvg.baros_subtotal || 0)) : prevTotal;
-  const tgtTotal = (tgt.haza_subtotal || 0) + (tgt.baros_subtotal || 0);
+  const prevTotal = (prevAvg.haza_subtotal || 0) + (prevAvg.je_haza || 0) + (prevAvg.baros_subtotal || 0);
+  const prevTotalY = yAvg ? ((yAvg.haza_subtotal || 0) + (yAvg.je_haza || 0) + (yAvg.baros_subtotal || 0)) : prevTotal;
+  const tgtTotal = (tgt.haza_subtotal || 0) + (tgt.je_haza || 0) + (tgt.baros_subtotal || 0);
   h += `<td>${costFmtMan(prevTotalY || prevTotal)}</td><td>${costFmtMan(tgtTotal)}</td><td>${yearAvgFmt(total)}</td>`;
   h += total.map((v, i) => { const dim = i >= range ? ' style="opacity:0.25"' : ''; return `<td${dim}>${costFmtMan(v)}</td>`; }).join('');
   h += `<td>${costFmtMan(cumul(total))}</td></tr>`;
