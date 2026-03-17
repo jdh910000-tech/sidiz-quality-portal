@@ -288,7 +288,25 @@ function parseExcel(file, callback) {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      
+      // 헤더 행 자동 감지: year_month, 연월, receipt_id, 접수번호 등이 있는 행 찾기
+      const knownHeaders = ['year_month','연월','receipt_id','접수번호','country','국가','revenue','매출액','sales_count','매출건수','haza_product','제품'];
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      let headerRow = 0; // 기본 0 (첫 행)
+      
+      for (let r = range.s.r; r <= Math.min(range.e.r, 10); r++) {
+        let matchCount = 0;
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const cell = ws[XLSX.utils.encode_cell({r, c})];
+          if (cell && cell.v) {
+            const val = String(cell.v).trim();
+            if (knownHeaders.includes(val)) matchCount++;
+          }
+        }
+        if (matchCount >= 2) { headerRow = r; break; }
+      }
+      
+      const json = XLSX.utils.sheet_to_json(ws, { defval: '', range: headerRow });
       callback(null, json, wb.SheetNames[0]);
     } catch (err) {
       callback(err);
