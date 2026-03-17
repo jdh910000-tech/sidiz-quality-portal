@@ -169,8 +169,40 @@ function costFmtManUnit(v) { return v ? Math.round(v / 10000).toLocaleString() +
 function costFmtEok(v) { return v ? (v / 100000000).toFixed(1) + '억' : '-'; }
 function costFmt(v) { return v ? Number(v).toLocaleString() : '-'; }
 
+// ─── Supabase failure_costs 동적 로드 ───
+let _failureCostsLoaded = {};
+async function loadFailureCostsFromSupabase(year) {
+  if (_failureCostsLoaded[year]) return;
+  if (!window.SupabaseClient?.fetchFailureCosts) return;
+  try {
+    const rows = await window.SupabaseClient.fetchFailureCosts(year);
+    if (!rows || rows.length === 0) return;
+    const data = COST_DATA[year];
+    if (!data) return;
+    rows.forEach(row => {
+      const mi = parseInt(row.year_month.split('-')[1]) - 1;
+      if (mi < 0 || mi > 11) return;
+      if (row.revenue) data.revenue[mi] = row.revenue;
+      data.haza_product[mi] = row.haza_product || 0;
+      data.haza_material[mi] = row.haza_material || 0;
+      if (data.haza_t50re) data.haza_t50re[mi] = row.haza_t50re || 0;
+      if (data.haza_t50re_labor) data.haza_t50re_labor[mi] = row.haza_t50re_labor || 0;
+      data.haza_claim[mi] = row.haza_claim || 0;
+      data.baros_contact[mi] = row.baros_contact || 0;
+      data.baros_as[mi] = row.baros_as || 0;
+      data.baros_logistics[mi] = row.baros_logistics || 0;
+      // subtotals 재계산
+      if (data.haza_subtotal) data.haza_subtotal[mi] = (data.haza_product[mi]||0)+(data.haza_material[mi]||0)+(data.haza_t50re?data.haza_t50re[mi]:0)+(data.haza_t50re_labor?data.haza_t50re_labor[mi]:0)+(data.haza_claim[mi]||0);
+      if (data.baros_subtotal) data.baros_subtotal[mi] = (data.baros_contact[mi]||0)+(data.baros_as[mi]||0)+(data.baros_logistics[mi]||0);
+    });
+    _failureCostsLoaded[year] = true;
+    console.log('[CostModule] Supabase failure_costs 로드 완료:', year, rows.length+'건');
+  } catch (e) { console.warn('[CostModule] Supabase failure_costs 로드 실패 (정적 데이터 사용):', e.message); }
+}
+
 // ─── 실패비용 렌더링 메인 ───
-function renderCostSection(year) {
+async function renderCostSection(year) {
+  await loadFailureCostsFromSupabase(year);
   const data = COST_DATA[year]; if (!data) return;
   const range = _costMonthRange;
   const py = String(parseInt(year) - 1);
@@ -376,14 +408,14 @@ function renderCostTable(data, year, range, pd, py) {
 }
 
 // ─── 핸들러 ───
-function onCostYearChange(year) {
+async function onCostYearChange(year) {
   document.getElementById('costYearSelect').value = year;
-  renderCostSection(year);
+  await renderCostSection(year);
 }
-function onCostMonthRangeChange(val) {
+async function onCostMonthRangeChange(val) {
   _costMonthRange = parseInt(val);
   const year = document.getElementById('costYearSelect')?.value || '2026';
-  renderCostSection(year);
+  await renderCostSection(year);
 }
 
-window.CostModule = { renderCostSection, onCostYearChange, onCostMonthRangeChange, COST_DATA };
+window.CostModule = { renderCostSection, onCostYearChange, onCostMonthRangeChange, loadFailureCostsFromSupabase, COST_DATA };

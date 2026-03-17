@@ -1,5 +1,5 @@
-// supabase-client.js — Supabase 연동 모듈 v2
-// claims (회수일), claims_receipt (접수일), sales_monthly (매출량), KPI 뷰
+// supabase-client.js — Supabase 연동 모듈 v3
+// claims (회수일), claims_receipt (접수일), sales_monthly (매출량), failure_costs (실패비용), KPI 뷰
 
 const SUPABASE_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
@@ -42,6 +42,11 @@ async function fetchReceiptByDefect(item, defectType) {
 // ─── sales_monthly (매출량) ───
 async function fetchSalesMonthly() { return supabaseFetch('sales_monthly', 'select=*&order=year_month.desc'); }
 
+// ─── failure_costs (실패비용) ───
+async function fetchFailureCosts(year) {
+  return supabaseFetch('failure_costs', `select=*&year_month=gte.${year}-01&year_month=lte.${year}-12&order=year_month`);
+}
+
 // ─── KPI 뷰 (claims_receipt + sales_monthly 자동 조인) ───
 async function fetchKpiMonthly() { return supabaseFetch('v_kpi_monthly', 'select=*'); }
 
@@ -80,6 +85,8 @@ window.SupabaseClient = {
   fetchReceiptClaims, fetchReceiptByDateRange, fetchReceiptByDefect,
   // 매출량
   fetchSalesMonthly,
+  // 실패비용
+  fetchFailureCosts,
   // KPI 뷰
   fetchKpiMonthly, fetchJudgementMonthly, fetchReceiptMonthly,
   // 집계

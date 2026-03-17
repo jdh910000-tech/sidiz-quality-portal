@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>실패비용 자동 가공</title>
+<style>
+:root{--primary:#1a1a2e;--accent:#e74c3c;--accent2:#2980b9;--bg:#f8f9fa;--card:#fff;--border:#e0e0e0;--text:#333;--text2:#666;--success:#27ae60}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+header{background:var(--primary);color:#fff;padding:16px 0;margin-bottom:24px}
+header .container{display:flex;align-items:center;gap:16px}
+header h1{font-size:20px;font-weight:600}
+header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:14px}
+.badge{background:var(--accent);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.steps{display:flex;gap:4px;margin-bottom:24px}
+.steps div{flex:1;height:4px;background:var(--border);border-radius:2px;transition:background .3s}
+.steps div.active{background:var(--accent2)}.steps div.done{background:var(--success)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+.card h2{font-size:18px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.card h2 .n{background:var(--accent2);color:#fff;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.card .desc{color:var(--text2);font-size:13px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.slot{border:2px dashed var(--border);border-radius:10px;padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;user-select:none}
+.slot:hover{border-color:var(--accent2);background:#f0f7ff}
+.slot.over{border-color:var(--accent2);background:#e3f2fd;transform:scale(1.02)}
+.slot.done{border-color:var(--success);border-style:solid;background:#f0faf4}
+.slot .ico{font-size:28px;margin-bottom:4px}.slot .name{font-size:14px;font-weight:600}
+.slot .sub{font-size:11px;color:var(--text2);margin-top:2px}
+.slot .st{font-size:12px;margin-top:8px;font-weight:600;min-height:18px}
+.st.ok{color:var(--success)}.st.err{color:var(--accent)}.st.ld{color:var(--accent2)}
+.ym{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:#fff8e1;border-radius:8px;border:1px solid #ffe082}
+.ym label{font-size:13px;font-weight:600;white-space:nowrap}
+.ym input{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;width:140px}
+.rev{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:#e3f2fd;border-radius:8px;border:1px solid #90caf9}
+.rev label{font-size:13px;font-weight:600;white-space:nowrap}
+.rev input{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;width:200px;text-align:right}
+.rev span{font-size:12px;color:var(--text2)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-p{background:var(--accent2);color:#fff}.btn-p:hover{background:#2471a3}.btn-p:disabled{background:#bbb;cursor:not-allowed}
+.btn-s{background:var(--success);color:#fff}.btn-s:hover{background:#219a52}
+.btn-o{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-o:hover{background:#f5f5f5}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.total-card{background:linear-gradient(135deg,#1a1a2e,#2c3e6b);color:#fff;border-radius:12px;padding:20px 24px;margin-bottom:16px}
+.total-card .lb{font-size:13px;opacity:.7}.total-card .vl{font-size:32px;font-weight:800;font-family:'SF Mono',monospace;margin-top:4px}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.si{background:#f8f9fa;border-radius:8px;padding:12px;border-left:4px solid var(--accent)}
+.si .lb{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.3px}
+.si .vl{font-size:16px;font-weight:700;margin-top:2px;font-family:'SF Mono',monospace}
+table.rt{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+table.rt th{background:var(--primary);color:#fff;padding:8px 12px;text-align:left;font-weight:500}
+table.rt td{padding:8px 12px;border-bottom:1px solid var(--border)}
+table.rt .num{text-align:right;font-family:'SF Mono',monospace}
+.tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.tag-p{background:#e8f5e9;color:#2e7d32}.tag-e{background:#fff8e1;color:#f57f17}.tag-f{background:#fce4ec;color:#c62828}
+.log{background:#1a1a2e;color:#a0e0a0;border-radius:8px;padding:16px;font-family:'SF Mono',monospace;font-size:12px;max-height:200px;overflow-y:auto;margin-top:12px;white-space:pre-wrap}
+.hid{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="container">
+<a href="index.html">← 포털로 돌아가기</a>
+<h1>실패비용 자동 가공</h1>
+<span class="badge">NEW</span>
+</div></header>
+<div class="container">
+<div class="steps"><div class="active" id="s1"></div><div id="s2"></div><div id="s3"></div></div>
+<div id="libMsg" style="text-align:center;padding:40px;color:var(--text2)">⏳ 라이브러리 로딩 중...</div>
+
+<!-- STEP 1 -->
+<div class="card hid" id="step1">
+<h2><span class="n">1</span> 로우데이터 업로드</h2>
+<p class="desc">5개 파일을 각 칸에 <b>클릭</b>하거나 <b>드래그</b>하여 올려주세요.</p>
+<div class="ym"><label>📅 대상 연월:</label><input type="month" id="ymIn" value="2026-02"></div>
+<div class="rev"><label>💰 매출액 (원):</label><input type="text" id="revIn" placeholder="예: 9,610,981,883"><span>KPI 비율 계산용</span></div>
+<div class="grid" id="fileGrid"></div>
+<div class="actions">
+<button class="btn btn-p" id="btnGo" disabled>🔄 자동 가공 시작</button>
+<button class="btn btn-o" id="btnReset">초기화</button>
+</div>
+</div>
+
+<!-- STEP 2 -->
+<div class="card hid" id="step2">
+<h2><span class="n">2</span> 가공 결과 확인</h2>
+<p class="desc">로우데이터에서 자동 추출된 품질비용 항목입니다.</p>
+<div id="totalCard"></div>
+<h3 style="font-size:14px;font-weight:600;margin-bottom:8px">📤 포털 업로드 항목</h3>
+<div class="sg" id="sumG"></div>
+<h3 style="margin-top:16px;font-size:14px;font-weight:600">📋 상세 내역</h3>
+<div style="overflow-x:auto"><table class="rt" id="tbl"><thead><tr><th>#</th><th>구분</th><th>해당항목</th><th>적요</th><th style="text-align:right">금액(원)</th></tr></thead><tbody></tbody></table></div>
+<div class="actions">
+<button class="btn btn-s" id="btnUp">✅ Supabase에 업로드</button>
+<button class="btn btn-o" id="btnXl">📥 엑셀 다운로드</button>
+<button class="btn btn-o" id="btnCsv">📥 CSV 다운로드</button>
+<button class="btn btn-o" id="btnBack">← 다시 업로드</button>
+</div>
+</div>
+
+<!-- STEP 3 -->
+<div class="card hid" id="step3">
+<h2><span class="n">3</span> 업로드 완료</h2>
+<div id="upRes"></div>
+<div class="log" id="upLog"></div>
+<div class="actions" style="margin-top:16px">
+<a href="index.html#kpi" class="btn btn-p">📊 KPI 현황에서 확인</a>
+<button class="btn btn-o" onclick="location.reload()">새 데이터 업로드</button>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+<script>
+(function(){
+var SB,F={},R={},SLOTS=[
+  {k:'je',i:'📊',n:'(제)비용 분개장',s:"코스트센터 '품질관리팀(평택)' 필터"},
+  {k:'haja',i:'📋',n:'하자보수비 분개장',s:"소파사업부 제외, 적요 '하자보수비' 제외"},
+  {k:'brand',i:'🏢',n:'브랜드 용역료 청구 현황',s:'② 시디즈: 상담AS+모바일+접수AS'},
+  {k:'as',i:'🔧',n:'AS 조치 용역료 청구',s:'(전표) 시트 → 시디즈 합계'},
+  {k:'logi',i:'🚛',n:'시디즈 용역료 청구서',s:'AS조치 → 물류 시디즈 용역료'}
+];
+
+window.addEventListener('load',function(){
+  setTimeout(function(){
+    if(typeof XLSX==='undefined'||typeof window.supabase==='undefined'){
+      document.getElementById('libMsg').innerHTML='❌ 라이브러리 로드 실패.<br>인터넷 연결 확인 후 새로고침하세요.';return;}
+    SB=window.supabase.createClient('https://cyxnbwczcvjeaqmrdzcb.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5eG5id2N6Y3ZqZWFxbXJkemNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE1OTM1MDIsImV4cCI6MjA1NzE2OTUwMn0.i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5QFRr0sT1W47w');
+    document.getElementById('libMsg').classList.add('hid');
+    document.getElementById('step1').classList.remove('hid');
+    buildUI();
+  },300);
+});
+
+function buildUI(){
+  var g=document.getElementById('fileGrid');g.innerHTML='';
+  SLOTS.forEach(function(s){
+    F[s.k]=null;
+    var d=document.createElement('div');d.className='slot';d.id='sl-'+s.k;
+    d.innerHTML='<div class="ico">'+s.i+'</div><div class="name">'+s.n+'</div><div class="sub">'+s.s+'</div><div class="st" id="st-'+s.k+'">클릭 또는 드래그</div>';
+    var inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls';inp.style.cssText='position:absolute;left:-9999px';
+    document.body.appendChild(inp);
+    d.addEventListener('click',function(e){e.preventDefault();inp.value='';inp.click()});
+    inp.addEventListener('change',function(){if(this.files[0])loadFile(this.files[0],s.k)});
+    d.addEventListener('dragover',function(e){e.preventDefault();d.classList.add('over')});
+    d.addEventListener('dragleave',function(e){e.preventDefault();d.classList.remove('over')});
+    d.addEventListener('drop',function(e){e.preventDefault();d.classList.remove('over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0],s.k)});
+    g.appendChild(d);
+  });
+  document.getElementById('btnGo').addEventListener('click',process);
+  document.getElementById('btnReset').addEventListener('click',resetAll);
+  document.getElementById('btnUp').addEventListener('click',upload);
+  document.getElementById('btnXl').addEventListener('click',dlXl);
+  document.getElementById('btnCsv').addEventListener('click',dlCsv);
+  document.getElementById('btnBack').addEventListener('click',goBack);
+  document.getElementById('revIn').addEventListener('input',function(){var v=this.value.replace(/\D/g,'');this.value=v?Number(v).toLocaleString():''});
+}
+
+function loadFile(file,k){
+  var st=document.getElementById('st-'+k),sl=document.getElementById('sl-'+k);
+  st.className='st ld';st.textContent='⏳ '+file.name+' 읽는 중...';
+  var rd=new FileReader();
+  rd.onload=function(e){
+    try{var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});F[k]=wb;sl.classList.add('done');
+    st.className='st ok';st.textContent='✓ '+file.name;chk();}
+    catch(er){st.className='st err';st.textContent='✗ '+er.message}};
+  rd.onerror=function(){st.className='st err';st.textContent='✗ 파일 읽기 오류'};
+  rd.readAsArrayBuffer(file);
+}
+function chk(){var n=0;for(var k in F)if(F[k])n++;var b=document.getElementById('btnGo');b.textContent='🔄 자동 가공 시작 ('+n+'/5)';b.disabled=n<5}
+function resetAll(){for(var k in F)F[k]=null;document.querySelectorAll('.slot').forEach(function(s){s.classList.remove('done')});
+  SLOTS.forEach(function(s){var st=document.getElementById('st-'+s.k);st.className='st';st.textContent='클릭 또는 드래그'});
+  document.getElementById('btnGo').disabled=true;document.getElementById('btnGo').textContent='🔄 자동 가공 시작';}
+
+// ===== 핵심: 자동 가공 =====
+function process(){
+  var items=[];R={items:[],tots:{},bc:0,ba:0,bl:0,hp:0,hm:0,hc:0};
+
+  // 1. 제비용 분개장
+  try{
+    var ws=F.je.Sheets[F.je.SheetNames[0]],d=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    var h={};d[0].forEach(function(v,i){h[String(v).trim()]=i});
+    var seqCol=h['관리번호']!=null?h['관리번호']:(h['번호']!=null?h['번호']:(h['No']!=null?h['No']:h['NO']));
+    var dateCol=h['전표일자']!=null?h['전표일자']:h['전표 일자'];
+    var deptCol=h['발행부서명']!=null?h['발행부서명']:h['부서명'];
+    var writerCol=h['작성자명']!=null?h['작성자명']:h['작성자'];
+    for(var r=1;r<d.length;r++){
+      var rw=d[r],cc=String(rw[h['코스트센터명']]||''),mm=String(rw[h['적요']]||''),ac=String(rw[h['계정코드']]||''),an=String(rw[h['계정명']]||''),am=Number(rw[h['금액']]||0);
+      if(cc!=='품질관리팀(평택)')continue;
+      if(mm.indexOf('정수기')>=0&&mm.indexOf('렌탈')>=0)continue;
+      if(mm.indexOf('감가상각')>=0)continue;
+      var g,it;
+      if(ac==='8305200'){g='실패';it='자재 폐기 비용'}
+      else if(ac==='8302800'||(mm.indexOf('운송')>=0&&mm.indexOf('배차')>=0)){g='실패';it='AS 제반 경비'}
+      else if(ac==='8302100'||ac==='8304500'||an.indexOf('비품')>=0){g='예방';it='시스템 구축 및 인증 유지 비용'}
+      else if(mm.indexOf('렌탈')>=0&&mm.indexOf('전산장비')>=0){g='예방';it='시스템 구축 및 인증 유지 비용'}
+      else if(ac==='8302900'){g='평가';it='외부 시험 의뢰비'}
+      else if(mm.indexOf('조화')>=0||mm.indexOf('경조')>=0||mm.indexOf('바른사원')>=0||mm.indexOf('조의금')>=0){g='예방';it='행사비'}
+      else{g='예방';it='품질 TFT/분임조 활동 비용'}
+      items.push({seq:seqCol!=null?String(rw[seqCol]||''):'',date:dateCol!=null?String(rw[dateCol]||''):'',
+        dept:deptCol!=null?String(rw[deptCol]||''):'',writer:writerCol!=null?String(rw[writerCol]||''):'',
+        acctName:an,gubun:g,item:it,memo:mm,amount:am,src:'제비용분개장'});
+    }
+  }catch(e){alert('제비용 분개장 오류: '+e.message)}
+
+  // 2. AS컨택센터 — ② 시디즈 영역: 상담(유선)_AS + 상담(모바일) + 접수(AS) 청구금액 합산
+  // 구조: C4(idx3)="② 시디즈" → R175: C4="청구금액" + C5="상담(유선)_AS" 같은 행!
+  // 월 컬럼: C10(idx9)=2월 → 공식 7+mi
+  try{
+    var ws2=F.brand.Sheets['브랜드 청구내역'];
+    if(!ws2){for(var sn2 in F.brand.Sheets){if(sn2.indexOf('청구')>=0&&sn2.indexOf('내역')>=0){ws2=F.brand.Sheets[sn2];break;}}}
+    if(!ws2) ws2=F.brand.Sheets[F.brand.SheetNames[0]];
+    var d2=XLSX.utils.sheet_to_json(ws2,{header:1,defval:'',blankrows:true});
+    var ym=document.getElementById('ymIn').value,mi=parseInt(ym.split('-')[1]);
+    var monthCol=7+mi; // 1월=idx8, 2월=idx9...
+    var inSidiz2=false,inAmt=false,contact=0,contactParts=[];
+    for(var r2=0;r2<d2.length;r2++){
+      var row2=d2[r2]||[];
+      var c3=String(row2[3]||''); // C4(idx3)
+      var c4=String(row2[4]||''); // C5(idx4) = 업무명
+      // ② 시디즈 시작
+      if(c3.indexOf('② 시디즈')>=0){inSidiz2=true;continue;}
+      // ③ 알로소 도달 시 중단
+      if(inSidiz2&&c3.indexOf('③')>=0)break;
+      if(!inSidiz2)continue;
+      // 청구금액 영역 진입 (이 행 자체도 데이터 포함!)
+      if(c3.indexOf('청구금액')>=0) inAmt=true;
+      if(!inAmt)continue;
+      // 상담(유선)_AS만 (온라인 제외)
+      if(c4.indexOf('상담')>=0&&c4.indexOf('유선')>=0&&c4.indexOf('_AS')>=0&&c4.indexOf('온라인')<0){
+        var v=Number(row2[monthCol]||0);if(isNaN(v))v=0;
+        contact+=v;contactParts.push('상담AS '+v.toLocaleString());
+      }
+      else if(c4.indexOf('상담')>=0&&c4.indexOf('모바일')>=0){
+        var v=Number(row2[monthCol]||0);if(isNaN(v))v=0;
+        contact+=v;contactParts.push('모바일 '+v.toLocaleString());
+      }
+      else if(c4.indexOf('접수')>=0&&c4.indexOf('AS')>=0){
+        var v=Number(row2[monthCol]||0);if(isNaN(v))v=0;
+        contact+=v;contactParts.push('접수AS '+v.toLocaleString());
+      }
+    }
+    R.bc=contact;
+    items.push({seq:'',date:'',dept:'',writer:'',acctName:'AS 고객센터 상담 인건비',
+      gubun:'실패',item:'AS 용역료(바로스)_컨텍센터',memo:'AS 고객센터 상담 인건비',amount:R.bc,src:'브랜드용역료'});
+  }catch(e){alert('브랜드 용역료 오류: '+e.message)}
+
+  // 3. AS조치비(무상) — (전표) 시트 → 2. 시디즈 → 합계
+  try{
+    var ws3=F.as.Sheets['(전표) 브랜드 용역료 청구'];
+    if(!ws3){for(var sn3 in F.as.Sheets){if(sn3.indexOf('전표')>=0){ws3=F.as.Sheets[sn3];break;}}}
+    var d3=XLSX.utils.sheet_to_json(ws3,{header:1,defval:'',blankrows:true});
+    var inSidiz3=false; R.ba=0;
+    for(var r3=0;r3<d3.length;r3++){
+      var row3=d3[r3]||[],rs3=row3.map(function(v){return String(v)}).join('');
+      if(rs3.indexOf('2. 시디즈')>=0||rs3.indexOf('2.시디즈')>=0){inSidiz3=true;continue;}
+      if(inSidiz3&&(rs3.indexOf('3.')>=0&&(rs3.indexOf('알로소')>=0||rs3.indexOf('3. ')>=0))){break;}
+      if(inSidiz3){
+        var hasHapgye=false;
+        for(var ci=0;ci<Math.min(row3.length,10);ci++){if(String(row3[ci]||'').trim()==='합계'){hasHapgye=true;break;}}
+        if(hasHapgye){
+          for(var ci=4;ci<Math.min(row3.length,20);ci++){var v=Number(row3[ci]||0);if(v>=1000000){R.ba=v;break;}}
+          if(R.ba>0)break;
+        }
+      }
+    }
+    items.push({seq:'',date:'',dept:'',writer:'',acctName:'AS 조치비(무상)',
+      gubun:'실패',item:'AS 용역료(바로스)_조치비(무상)',memo:'AS 조치비(무상)',amount:R.ba,src:'AS조치용역료'});
+  }catch(e){alert('AS조치 용역료 오류: '+e.message)}
+
+  // 4. AS물류비 — 시디즈 용역료 청구서
+  // 주의: C7(idx6)이 수식(=F20*3580)이므로 sheet_to_json은 문자열 반환 → 셀 직접 접근 필요
+  try{
+    var ws4=F.logi.Sheets[F.logi.SheetNames[0]];
+    R.bl=0;
+    // 헬퍼: 워크시트에서 셀의 계산된 값을 직접 읽기
+    function getCellNum(ws,r,c){
+      var addr=XLSX.utils.encode_cell({r:r,c:c});
+      var cell=ws[addr];
+      if(!cell)return 0;
+      if(typeof cell.v==='number')return cell.v;
+      var n=Number(cell.v);
+      return isNaN(n)?0:n;
+    }
+    // 시트 범위 확인
+    var range=XLSX.utils.decode_range(ws4['!ref']||'A1:J30');
+    // "AS조치" 행 찾기
+    for(var r4=range.s.r;r4<=range.e.r;r4++){
+      var c1Addr=XLSX.utils.encode_cell({r:r4,c:1}); // C2=col B=idx1
+      var c1Cell=ws4[c1Addr];
+      var c1Val=c1Cell?String(c1Cell.v||''):'';
+      if(c1Val.indexOf('AS조치')>=0||c1Val.indexOf('AS 조치')>=0){
+        // C7(col G=idx6) = 시디즈 용역료 (수식의 캐시된 값)
+        R.bl=getCellNum(ws4,r4,6);
+        if(R.bl===0){
+          // fallback: idx5~idx8에서 큰 값 탐색
+          for(var ci=5;ci<=8;ci++){
+            var nv=getCellNum(ws4,r4,ci);
+            if(nv>=100000){R.bl=nv;break;}
+          }
+        }
+        break;
+      }
+    }
+    if(isNaN(R.bl))R.bl=0;
+    items.push({seq:'',date:'',dept:'',writer:'',acctName:'AS 물류(유,무상)',
+      gubun:'실패',item:'AS 용역료(바로스)_물류비(유,무상)',memo:'AS 물류(유,무상)',amount:R.bl,src:'시디즈용역료'});
+  }catch(e){alert('시디즈 용역료 오류: '+e.message)}
+
+  // 5. 하자보수비
+  try{
+    var ws5=F.haja.Sheets[F.haja.SheetNames[0]];
+    var d5=XLSX.utils.sheet_to_json(ws5,{header:1,defval:'',blankrows:true});
+    var h5={};d5[0].forEach(function(v,i){h5[String(v).trim()]=i});
+    var seqCol5=h5['관리번호']!=null?h5['관리번호']:(h5['번호']!=null?h5['번호']:(h5['No']!=null?h5['No']:h5['NO']));
+    var dateCol5=h5['전표일자']!=null?h5['전표일자']:h5['전표 일자'];
+    var deptCol5=h5['발행부서명']!=null?h5['발행부서명']:h5['부서명'];
+    var writerCol5=h5['작성자명']!=null?h5['작성자명']:h5['작성자'];
+    var acctCol5=h5['계정명'];
+    for(var r5=1;r5<d5.length;r5++){
+      var rw5=d5[r5],sn=String(rw5[h5['손익센터명']]||''),mm5=String(rw5[h5['적요']]||'');
+      if(!mm5||mm5==='')continue;
+      if(sn.indexOf('소파')>=0)continue;
+      if(mm5.indexOf('하자보수비')>=0||mm5.indexOf('하다보수비')>=0)continue;
+      var db=Number(rw5[h5['차변금액(원화)']]||0),cr=Number(rw5[h5['대변금액(원화)']]||0),am5=db-cr;
+      var it5;
+      if(mm5.indexOf('자재 AS 출고')>=0||mm5.indexOf('자재/재공 무상매입')>=0)it5='(판)하자보수비_자재';
+      else if(mm5.indexOf('클레임 보상')>=0||mm5.indexOf('클레임 상품권')>=0||mm5.indexOf('반품재작업')>=0)it5='(판)하자보수비_클레임 보상';
+      else it5='(판)하자보수비_제품';
+      items.push({seq:seqCol5!=null?String(rw5[seqCol5]||''):'',date:dateCol5!=null?String(rw5[dateCol5]||''):'',
+        dept:deptCol5!=null?String(rw5[deptCol5]||''):'',writer:writerCol5!=null?String(rw5[writerCol5]||''):'',
+        acctName:acctCol5!=null?String(rw5[acctCol5]||''):'(판)하자보수비',
+        gubun:'실패',item:it5,memo:mm5,amount:am5,src:'하자보수비'});
+    }
+  }catch(e){alert('하자보수비 오류: '+e.message)}
+
+  // 집계 (NaN 방지)
+  var tots={};items.forEach(function(i){
+    var a=Number(i.amount)||0;
+    if(isNaN(a))a=0;
+    i.amount=a;
+    tots[i.item]=(tots[i.item]||0)+a;
+  });
+  R.items=items;R.tots=tots;
+  R.hp=tots['(판)하자보수비_제품']||0;R.hm=tots['(판)하자보수비_자재']||0;R.hc=tots['(판)하자보수비_클레임 보상']||0;
+  showRes(items);
+}
+
+function showRes(items){
+  document.getElementById('step1').classList.add('hid');document.getElementById('step2').classList.remove('hid');
+  document.getElementById('s1').className='done';document.getElementById('s2').className='active';
+  var total=items.reduce(function(s,i){return s+i.amount},0);
+  R.total=total;
+  document.getElementById('totalCard').innerHTML=
+    '<div class="total-card"><div class="lb">💰 품질비용 합계 ('+document.getElementById('ymIn').value+')</div><div class="vl">'+total.toLocaleString()+' 원</div></div>';
+  var g=document.getElementById('sumG');g.innerHTML='';
+  [{l:'(판)제품',v:R.hp},{l:'(판)자재',v:R.hm},{l:'T50RE헤드자재',v:0},{l:'T50RE헤드인건비',v:0},
+   {l:'클레임보상',v:R.hc},{l:'AS컨택센터',v:R.bc},{l:'AS조치비(무상)',v:R.ba},{l:'AS물류비',v:R.bl}
+  ].forEach(function(s){
+    var d=document.createElement('div');d.className='si';d.innerHTML='<div class="lb">'+s.l+'</div><div class="vl">'+(s.v||0).toLocaleString()+'</div>';g.appendChild(d);
+  });
+  // 상세 테이블 — 원래 레이아웃: #, 구분, 해당항목, 적요, 금액
+  var order={'(판)하자보수비_자재':1,'(판)하자보수비_제품':2,'(판)하자보수비_클레임 보상':3,
+    'AS 용역료(바로스)_물류비(유,무상)':4,'AS 용역료(바로스)_조치비(무상)':5,'AS 용역료(바로스)_컨텍센터':6,
+    'AS 제반 경비':7,'시스템 구축 및 인증 유지 비용':8,'자재 폐기 비용':9,'품질 TFT/분임조 활동 비용':10,'행사비':11,'외부 시험 의뢰비':12};
+  var sorted=items.slice().sort(function(a,b){return(order[a.item]||99)-(order[b.item]||99)});
+  var tb=document.querySelector('#tbl tbody');tb.innerHTML='';
+  sorted.forEach(function(it,i){
+    var tc=it.gubun==='예방'?'tag-p':it.gubun==='평가'?'tag-e':'tag-f';
+    tb.innerHTML+='<tr><td>'+(i+1)+'</td><td><span class="tag '+tc+'">'+it.gubun+'</span></td><td>'+it.item+'</td><td>'+it.memo+'</td><td class="num">'+it.amount.toLocaleString()+'</td></tr>';
+  });
+}
+
+// ===== Supabase 업로드 =====
+async function upload(){
+  var ym=document.getElementById('ymIn').value,rev=Number((document.getElementById('revIn').value||'').replace(/\D/g,''))||0;
+  if(!ym){alert('연월을 입력하세요.');return}
+  var p={year_month:ym,revenue:rev,haza_product:Math.round(R.hp||0),haza_material:Math.round(R.hm||0),haza_t50re:0,haza_t50re_labor:0,haza_claim:Math.round(R.hc||0),baros_contact:Math.round(R.bc||0),baros_as:Math.round(R.ba||0),baros_logistics:Math.round(R.bl||0)};
+  document.getElementById('step2').classList.add('hid');document.getElementById('step3').classList.remove('hid');
+  document.getElementById('s2').className='done';document.getElementById('s3').className='active';
+  var lg=document.getElementById('upLog');lg.textContent='[업로드] '+ym+'\n'+JSON.stringify(p,null,2)+'\n';
+  try{var r=await SB.from('failure_costs').upsert(p,{onConflict:'year_month'});if(r.error)throw r.error;
+    lg.textContent+='[완료] ✅ 성공!\n';
+    document.getElementById('upRes').innerHTML='<div style="background:#e8f5e9;padding:16px;border-radius:8px;margin-bottom:12px"><strong style="color:#2e7d32">✅ '+ym+' 실패비용 업로드 완료!</strong><br><span style="font-size:13px;color:#555">KPI 현황 → 실패비용 탭에서 확인하세요.</span></div>';
+    document.getElementById('s3').className='done';
+  }catch(er){lg.textContent+='[오류] ❌ '+er.message+'\n';
+    document.getElementById('upRes').innerHTML='<div style="background:#fce4ec;padding:16px;border-radius:8px"><strong style="color:#c62828">❌ '+er.message+'</strong></div>';}
+}
+
+// ===== 스타일 헬퍼 =====
+function sty(fill,bold,fontClr,hAlign,numFmt,allBorder){
+  var s={};
+  if(fill) s.fill={fgColor:{rgb:fill}};
+  if(bold||fontClr) s.font={};
+  if(bold) s.font.bold=true;
+  if(fontClr) s.font.color={rgb:fontClr};
+  if(hAlign) s.alignment={horizontal:hAlign,vertical:'center',wrapText:true};
+  if(numFmt) s.numFmt=numFmt;
+  if(allBorder){var bd={style:'thin',color:{rgb:'000000'}};s.border={top:bd,bottom:bd,left:bd,right:bd};}
+  return s;
+}
+var HDR='2F5496',WHT='FFFFFF',PINK='FCE4EC',GREEN='E2EFDA',BLUE='D6E4F0';
+
+// ===== 엑셀 다운로드 (서식 포함) =====
+function dlXl(){
+  var ym=document.getElementById('ymIn').value,rev=Number((document.getElementById('revIn').value||'').replace(/\D/g,''))||0;
+  var yr=ym.split('-')[0],mi=parseInt(ym.split('-')[1]),moStr=mi+'월';
+  var ymDot=yr+'.'+ym.split('-')[1];
+  var items=R.items||[],wb=XLSX.utils.book_new();
+  var order={'(판)하자보수비_자재':1,'(판)하자보수비_제품':2,'(판)하자보수비_클레임 보상':3,
+    'AS 용역료(바로스)_물류비(유,무상)':4,'AS 용역료(바로스)_조치비(무상)':5,'AS 용역료(바로스)_컨텍센터':6,
+    'AS 제반 경비':7,'시스템 구축 및 인증 유지 비용':8,'자재 폐기 비용':9,'품질 TFT/분임조 활동 비용':10,'행사비':11,'외부 시험 의뢰비':12};
+  var sorted=items.slice().sort(function(a,b){return(order[a.item]||99)-(order[b.item]||99)});
+
+  // ===== 시트1: 월별 상세 =====
+  var s1=[
+    [null,{v:'◎품질비용('+ymDot+')',s:{font:{bold:true,color:{rgb:'2F5496'}},alignment:{horizontal:'left'}}}],
+    [null],
+    [{v:'',s:sty(HDR,true,WHT,'center',null,true)},
+     {v:'순번',s:sty(HDR,true,WHT,'center',null,true)},{v:'전표일자',s:sty(HDR,true,WHT,'center',null,true)},
+     {v:'발행부서명',s:sty(HDR,true,WHT,'center',null,true)},{v:'작성자명',s:sty(HDR,true,WHT,'center',null,true)},
+     {v:'계정명',s:sty(HDR,true,WHT,'center',null,true)},{v:'금액',s:sty(HDR,true,WHT,'center',null,true)},
+     {v:'적요',s:sty(HDR,true,WHT,'center',null,true)},{v:'구분',s:sty(HDR,true,WHT,'center',null,true)},
+     {v:'해당항목',s:sty(HDR,true,WHT,'center',null,true)}]
+  ];
+  sorted.forEach(function(it){
+    var bg=it.gubun==='예방'||it.gubun==='평가'?GREEN:PINK;
+    var seqV=it.seq?(!isNaN(Number(it.seq))?Number(it.seq):it.seq):'';
+    s1.push([
+      {v:'',s:sty(bg,false,null,'center',null,true)},
+      {v:seqV,s:sty(bg,false,null,'center',null,true)},
+      {v:it.date||'',s:sty(bg,false,null,'center',null,true)},
+      {v:it.dept||'',s:sty(bg,false,null,'center',null,true)},
+      {v:it.writer||'',s:sty(bg,false,null,'center',null,true)},
+      {v:it.acctName||'',s:sty(bg,false,null,'center',null,true)},
+      {v:it.amount||0,t:'n',s:sty(bg,false,null,'center','#,##0',true)},
+      {v:it.memo||'',s:sty(bg,false,null,'left',null,true)},
+      {v:it.gubun||'',s:sty(bg,false,null,'center',null,true)},
+      {v:it.item||'',s:sty(bg,false,null,'center',null,true)}
+    ]);
+  });
+  // 합계 행
+  s1.push([
+    {v:'',s:sty(BLUE,false,null,'center',null,true)},{v:'',s:sty(BLUE,false,null,'center',null,true)},{v:'',s:sty(BLUE,false,null,'center',null,true)},
+    {v:'',s:sty(BLUE,false,null,'center',null,true)},{v:'',s:sty(BLUE,false,null,'center',null,true)},
+    {v:'합계',s:sty(BLUE,false,null,'center',null,true)},
+    {v:R.total||0,t:'n',s:sty(BLUE,false,null,'center','#,##0',true)},
+    {v:'',s:sty(BLUE,false,null,'center',null,true)},{v:'',s:sty(BLUE,false,null,'center',null,true)},{v:'',s:sty(BLUE,false,null,'center',null,true)}
+  ]);
+  var w1=XLSX.utils.aoa_to_sheet(s1);
+  w1['!cols']=[{wch:2},{wch:6},{wch:12},{wch:20},{wch:12},{wch:24},{wch:14},{wch:55},{wch:6},{wch:32}];
+  XLSX.utils.book_append_sheet(wb,w1,moStr);
+
+  // ===== 시트2: 품질비용(26년) — 1~12월 컬럼, 병합, 서식 =====
+  var hdrS=sty(HDR,true,WHT,'center','#,##0',true);
+  var subS=sty(HDR,true,WHT,'center','#,##0_ ',true);
+  var catS=sty(null,true,null,'center','#,##0',true);
+  var itemS=sty(null,false,null,'left','#,##0',true);
+  var valS=sty(null,false,null,'right','#,##0_ ',true);
+  var sumS=sty(null,true,null,'right','#,##0_ ',true);
+  var sumCS=sty(null,true,null,'center','#,##0',true);
+  function mv(key){return R.tots[key]||0;}
+  function valRow(vals12){
+    // vals12[0~4]=text cols, vals12[5]=해당 월 값
+    var row=[];
+    for(var i=0;i<5;i++){
+      var isSubCat=(i<=2);
+      row.push({v:vals12[i]||'',s:isSubCat?catS:itemS});
+    }
+    for(var m=1;m<=12;m++){
+      row.push({v:m===mi?(vals12[5]||0):0,t:'n',s:valS});
+    }
+    return row;
+  }
+  function sumRow(vals12){
+    var row=[];
+    for(var i=0;i<5;i++) row.push({v:vals12[i]||'',s:i<=3?sumCS:sumCS});
+    for(var m=1;m<=12;m++) row.push({v:m===mi?(vals12[5]||0):0,t:'n',s:sumS});
+    return row;
+  }
+  var mHdr=['구분','','비용항목','해당 항목','계정명'];
+  var hRow=[];for(var i=0;i<5;i++) hRow.push({v:mHdr[i],s:hdrS});
+  for(var m=1;m<=12;m++) hRow.push({v:m+'월',s:hdrS});
+
+  var pTft=mv('품질 TFT/분임조 활동 비용'),pHae=mv('행사비'),pSys=mv('시스템 구축 및 인증 유지 비용');
+  var aExt=mv('외부 시험 의뢰비'),fW=mv('자재 폐기 비용'),fAs=mv('AS 제반 경비');
+  var barosSum=(R.bc||0)+(R.ba||0)+(R.bl||0);
+
+  var s2=[
+    [{v:'◎ '+yr+'년 품질비용 (Q - COST)',s:{font:{bold:true,color:{rgb:'000000'}}}}],[null],hRow,
+    valRow(['예방비용\n(P - Cost)','','계획비용','품질관리 사무인건비','',0]),
+    sumRow(['','','','소계','',0]),
+    valRow(['','','교육훈련비용','사내 품질교육비','',0]),
+    valRow(['','','','사외 품질교육비','',0]),
+    valRow(['','','','협력업체 품질점검 지도비','',0]),
+    sumRow(['','','','소계','',0]),
+    valRow(['','','예방활동 및 \n지원비용','행사비','(제)복리후생비',pHae]),
+    valRow(['','','','품질 TFT/분임조 활동 비용','(제)복리후생비, 여비교통비',pTft]),
+    valRow(['','','','제안활동 포상금','',0]),
+    sumRow(['','','','소계','',pHae+pTft]),
+    valRow(['','','품질기술비용','품질기술비용','',0]),
+    sumRow(['','','','소계','',0]),
+    valRow(['','','품질시스템 유지비','시스템 구축 및 인증 유지 비용','(제)지급수수료',pSys]),
+    sumRow(['','','','소계','',pSys]),
+    valRow(['평가비용\n(A - Cost)','','검사비용','검사 관련 경비','',0]),
+    valRow(['','','','외부 검사원 수검비','',0]),
+    valRow(['','','','외부 시험 의뢰비','(제)경상시험연구비',aExt]),
+    valRow(['','','','시험 측정비 (내부)','',0]),
+    sumRow(['','','','소계','',aExt]),
+    valRow(['','','계측기 관리비용','검교정비','',0]),
+    sumRow(['','','','소계','',0]),
+    valRow(['실패비용\n(F - Cost)','사내실패비용\n(IF - Cost)','불량손실비용','자재 폐기 비용','(제)하자보수비',fW]),
+    valRow(['','','','재검사 비용','',0]),valRow(['','','','REWORK 비용','',0]),
+    valRow(['','','','기계고장 수리 비용','',0]),valRow(['','','','공정 유실시간 비용','',0]),
+    sumRow(['','','','소계','',fW]),
+    valRow(['','사외실패비용\n(EF - Cost)','CLAIM 비용','브랜드 클레임','(제)하자보수비',0]),
+    sumRow(['','','','소계','',0]),
+    valRow(['','','CLAIM 처리비용','AS 용역료(바로스)_컨텍센터','(판)물류비',R.bc||0]),
+    valRow(['','','','AS 용역료(바로스)_조치비(무상)','(판)물류비',R.ba||0]),
+    valRow(['','','','AS 용역료(바로스)_물류비(유,무상)','(판)물류비',R.bl||0]),
+    sumRow(['','','','소계','',barosSum]),
+    valRow(['','','','AS 제반 경비','(제)복리후생비',fAs]),
+    valRow(['','','','AS 긴급 대응 비용','(제)하자보수비',0]),valRow(['','','','상해 비용','',0]),
+    valRow(['','','','(판)하자보수비_제품','(판)하자보수비',R.hp||0]),
+    valRow(['','','','(판)하자보수비_자재','(판)하자보수비',R.hm||0]),
+    valRow(['','','','(판)하자보수비_T50 헤드 자재','(판)하자보수비',0]),
+    valRow(['','','','(판)하자보수비_T50 헤드 인건비','(판)하자보수비',0]),
+    valRow(['','','','(판)하자보수비_클레임 보상','(판)하자보수비',R.hc||0]),
+    sumRow(['','','','소계','',barosSum+fAs+(R.hp||0)+(R.hm||0)+(R.hc||0)]),
+    sumRow(['품질비용 합계','','','','',R.total||0])
+  ];
+  var w2=XLSX.utils.aoa_to_sheet(s2);
+  // 병합
+  w2['!merges']=[
+    {s:{r:2,c:0},e:{r:2,c:1}}, // 구분 헤더 A3:B3
+    {s:{r:3,c:0},e:{r:16,c:1}}, // 예방비용 A4:B17
+    {s:{r:17,c:0},e:{r:23,c:1}}, // 평가비용 A18:B24
+    {s:{r:24,c:0},e:{r:44,c:0}}, // 실패비용 A25:A45
+    {s:{r:24,c:1},e:{r:29,c:1}}, // 사내 B25:B30
+    {s:{r:30,c:1},e:{r:44,c:1}}, // 사외 B31:B45
+    {s:{r:45,c:0},e:{r:45,c:4}}, // 품질비용 합계 A46:E46
+    // 비용항목 병합
+    {s:{r:3,c:2},e:{r:4,c:2}}, // 계획비용
+    {s:{r:5,c:2},e:{r:8,c:2}}, // 교육훈련
+    {s:{r:9,c:2},e:{r:12,c:2}}, // 예방활동
+    {s:{r:13,c:2},e:{r:14,c:2}}, // 품질기술
+    {s:{r:15,c:2},e:{r:16,c:2}}, // 품질시스템
+    {s:{r:17,c:2},e:{r:21,c:2}}, // 검사비용
+    {s:{r:22,c:2},e:{r:23,c:2}}, // 계측기
+    {s:{r:24,c:2},e:{r:29,c:2}}, // 불량손실
+    {s:{r:30,c:2},e:{r:31,c:2}}, // CLAIM비용
+    {s:{r:32,c:2},e:{r:44,c:2}}, // CLAIM처리
+  ];
+  var cols2=[{wch:14},{wch:14},{wch:18},{wch:32},{wch:20}];
+  for(var m=0;m<12;m++) cols2.push({wch:14});
+  w2['!cols']=cols2;
+  XLSX.utils.book_append_sheet(wb,w2,'품질비용('+yr.substring(2)+'년)');
+
+  // ===== 시트3: 실패비용_업로드 — 12개월 =====
+  var s3=[
+    [{v:'월별 실패비용 업로드 템플릿',s:{font:{bold:true,color:{rgb:'2F5496'}}}}],
+    [{v:'※ year_month 형식: YYYY-MM (예: '+yr+'-03)',s:{font:{color:{rgb:'888888'}}}}],
+    [{v:'※ 금액 단위: 원 (만원 아님)',s:{font:{color:{rgb:'888888'}}}}],
+    [{v:'연월',s:sty(HDR,true,WHT,'center',null,true)},{v:'매출액',s:sty(HDR,true,WHT,'center',null,true)},{v:'(판)제품',s:sty(HDR,true,WHT,'center',null,true)},{v:'(판)자재',s:sty(HDR,true,WHT,'center',null,true)},{v:'T50RE헤드자재',s:sty(HDR,true,WHT,'center',null,true)},{v:'T50RE헤드인건비',s:sty(HDR,true,WHT,'center',null,true)},{v:'클레임보상',s:sty(HDR,true,WHT,'center',null,true)},{v:'AS컨택센터',s:sty(HDR,true,WHT,'center',null,true)},{v:'AS조치비(무상)',s:sty(HDR,true,WHT,'center',null,true)},{v:'AS물류비',s:sty(HDR,true,WHT,'center',null,true)}],
+    [{v:'year_month',s:sty(BLUE,true,null,'center',null,true)},{v:'revenue',s:sty(BLUE,true,null,'center',null,true)},{v:'haza_product',s:sty(BLUE,true,null,'center',null,true)},{v:'haza_material',s:sty(BLUE,true,null,'center',null,true)},{v:'haza_t50re',s:sty(BLUE,true,null,'center',null,true)},{v:'haza_t50re_labor',s:sty(BLUE,true,null,'center',null,true)},{v:'haza_claim',s:sty(BLUE,true,null,'center',null,true)},{v:'baros_contact',s:sty(BLUE,true,null,'center',null,true)},{v:'baros_as',s:sty(BLUE,true,null,'center',null,true)},{v:'baros_logistics',s:sty(BLUE,true,null,'center',null,true)}]
+  ];
+  for(var m=1;m<=12;m++){
+    var mym=yr+'-'+(m<10?'0'+m:m);
+    var bg=m===mi?GREEN:null;
+    var ds=sty(bg,false,null,'center','#,##0',true);
+    if(m===mi){
+      s3.push([{v:mym,s:sty(GREEN,false,null,'center',null,true)},{v:rev,t:'n',s:ds},{v:Math.round(R.hp||0),t:'n',s:ds},{v:Math.round(R.hm||0),t:'n',s:ds},{v:0,t:'n',s:ds},{v:0,t:'n',s:ds},{v:Math.round(R.hc||0),t:'n',s:ds},{v:Math.round(R.bc||0),t:'n',s:ds},{v:Math.round(R.ba||0),t:'n',s:ds},{v:Math.round(R.bl||0),t:'n',s:ds}]);
+    }else{
+      var ns=sty(null,false,null,'center','#,##0',true);
+      s3.push([{v:mym,s:sty(null,false,null,'center',null,true)},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns},{v:0,t:'n',s:ns}]);
+    }
+  }
+  var w3=XLSX.utils.aoa_to_sheet(s3);
+  w3['!cols']=[{wch:12},{wch:14},{wch:12},{wch:12},{wch:14},{wch:16},{wch:12},{wch:14},{wch:14},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,w3,'실패비용_업로드');
+
+  // ===== 시트4: 검증 =====
+  var s4=[
+    [{v:'◎ '+moStr+' 데이터 자동 가공 검증',s:{font:{bold:true,color:{rgb:'2F5496'}}}}],[null],
+    [{v:'단계',s:sty(HDR,true,WHT,'center',null,true)},{v:'항목',s:sty(HDR,true,WHT,'center',null,true)},{v:'출처',s:sty(HDR,true,WHT,'center',null,true)},{v:'추출값',s:sty(HDR,true,WHT,'center',null,true)},{v:'비고',s:sty(HDR,true,WHT,'center',null,true)}]
+  ];
+  var ds4=function(v){return {v:v,s:sty(null,false,null,'center',null,true)}};
+  var jeItems=items.filter(function(i){return i.src==='제비용분개장'});
+  var hajaItems=items.filter(function(i){return i.src==='하자보수비'});
+  s4.push([ds4('1'),ds4('제비용 분개장 필터링'),ds4('제비용_분개장.xlsx'),ds4(jeItems.length+'건, '+jeItems.reduce(function(s,i){return s+i.amount},0).toLocaleString()+'원'),ds4('품질관리팀(평택), 정수기렌탈/감가상각 제외')]);
+  s4.push([ds4('2'),ds4('AS컨택센터(바로스)'),ds4('브랜드_용역료_청구_현황.xlsx'),ds4((R.bc||0).toLocaleString()+'원'),ds4('② 시디즈: 상담AS+모바일+접수AS')]);
+  s4.push([ds4('3'),ds4('AS조치비(무상)'),ds4('AS_조치_용역료_청구.xlsx'),ds4((R.ba||0).toLocaleString()+'원'),ds4('(전표)시트 2.시디즈 합계')]);
+  s4.push([ds4('4'),ds4('AS물류비'),ds4('시디즈_용역료_청구서.xlsx'),ds4((R.bl||0).toLocaleString()+'원'),ds4('AS조치-물류 시디즈 용역료')]);
+  s4.push([ds4('5'),ds4('하자보수비 분개장'),ds4('하자보수비_분개장.xlsx'),ds4(hajaItems.length+'건, '+hajaItems.reduce(function(s,i){return s+i.amount},0).toLocaleString()+'원'),ds4('소파제외, 하자보수비텍스트 제외')]);
+  s4.push([ds4('5-1'),ds4('  (판)하자보수비_제품'),ds4(''),(ds4((R.hp||0).toLocaleString()+'원')),ds4('AS매출외 + 바로스클레임 차감')]);
+  s4.push([ds4('5-2'),ds4('  (판)하자보수비_자재'),ds4(''),(ds4((R.hm||0).toLocaleString()+'원')),ds4('자재AS출고 + 무상매입')]);
+  s4.push([ds4('5-3'),ds4('  (판)하자보수비_클레임보상'),ds4(''),(ds4((R.hc||0).toLocaleString()+'원')),ds4('클레임보상+상품권+반품재작업')]);
+  s4.push([ds4('6'),ds4('구분/해당항목 매핑'),ds4('관리항목 시트 참조'),ds4('자동 완료'),ds4('1월/12월 패턴 기반')]);
+  var w4=XLSX.utils.aoa_to_sheet(s4);
+  w4['!cols']=[{wch:6},{wch:25},{wch:28},{wch:25},{wch:35}];
+  XLSX.utils.book_append_sheet(wb,w4,'검증');
+
+  XLSX.writeFile(wb,'품질비용_자동가공_'+ym.replace('-','_')+'.xlsx');
+}
+
+function dlCsv(){
+  var ym=document.getElementById('ymIn').value,rev=Number((document.getElementById('revIn').value||'').replace(/\D/g,''))||0;
+  var c='year_month,revenue,haza_product,haza_material,haza_t50re,haza_t50re_labor,haza_claim,baros_contact,baros_as,baros_logistics\n'+ym+','+rev+','+Math.round(R.hp||0)+','+Math.round(R.hm||0)+',0,0,'+Math.round(R.hc||0)+','+Math.round(R.bc||0)+','+Math.round(R.ba||0)+','+Math.round(R.bl||0);
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+c],{type:'text/csv'}));a.download='실패비용_'+ym+'.csv';a.click();
+}
+function goBack(){document.getElementById('step2').classList.add('hid');document.getElementById('step1').classList.remove('hid');
+  document.getElementById('s1').className='active';document.getElementById('s2').className='';
+  document.getElementById('sumG').innerHTML='';document.getElementById('totalCard').innerHTML='';}
+})();
+</script>
+</body>
+</html>
