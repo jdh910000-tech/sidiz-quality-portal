@@ -413,7 +413,13 @@ body::before {
 
   <!-- Receipt Date -->
   <div id="claim-receipt" class="claim-content" style="display:none">
-    <div class="section-title">클레임 현황 (접수일 기준)</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div class="section-title" style="margin-bottom:0">클레임 현황 (접수일 기준)</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="pendingBadge" style="display:none;background:rgba(255,179,71,0.12);border:1px solid rgba(255,179,71,0.3);color:var(--accent-amber);padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer" onclick="window.open('admin-claims.html','_blank')">⏳ 미분류 <strong id="pendingCount">0</strong>건 검토 필요</span>
+        <a href="admin-claims.html" target="_blank" style="font-size:11px;color:var(--text-muted);text-decoration:none;background:var(--sidiz-dark2);border:1px solid var(--border);padding:4px 10px;border-radius:6px">⚙ 증상 사전 관리</a>
+      </div>
+    </div>
     <div class="date-filter">
       <label>기간 선택:</label>
       <input type="date" class="date-input" id="dateFrom" value="2026-01-01">
@@ -425,23 +431,20 @@ body::before {
       <button class="date-btn" style="background:var(--sidiz-dark2);border:1px solid var(--border)" onclick="setQuickDate('all')">전체</button>
     </div>
 
-    <!-- Analysis Box -->
-    <div class="analysis-box">
+    <!-- Analysis Box (동적 생성) -->
+    <div class="analysis-box" id="receiptAnalysisBox">
       <h4>🔍 클레임 분석 인사이트</h4>
-      <div class="analysis-item"><div class="analysis-dot critical"></div><div><strong>T50 헤드레스트 작동불만(파손)</strong> — 작동성 유형 중 최다 건수(77건). 7~8월 급증 추이로 <strong style="color:var(--accent-rose)">헤드 컬링 하자가 지속 증가</strong>하고 있으므로 설계 개선 효과 모니터링이 필요합니다.</div></div>
-      <div class="analysis-item"><div class="analysis-dot critical"></div><div><strong>T50 틸팅 레버 작동안됨</strong> — 65건으로 2위. 4000G 레버 하자와 연관성이 있으며 개선 완료 제품의 필드 적용 확인이 필요합니다.</div></div>
-      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>베트남 설계 클레임 급증</strong> — 6월 이후 베트남 헤드 관련 클레임이 월 100건 이상으로 급증(7월 127건, 8월 117건). 베트남 생산 라인 점검이 시급합니다.</div></div>
-      <div class="analysis-item"><div class="analysis-dot warning"></div><div><strong>소음 클레임 확대</strong> — T50 좌판 소음(30건), 4000G 틸팅 시 소음(30건), 등판 소음(20건) 등 소음 카테고리 복합 발생. 메커니즘 구조 재검토가 필요합니다.</div></div>
-      <div class="analysis-item"><div class="analysis-dot info"></div><div><strong>T25 높이조절 불가(리머+테이퍼)</strong> — 29건 발생 중이며 리머 치수 불량(2.7mm)이 원인으로 <strong style="color:var(--accent-amber)">기준 3.00~4.00mm 대비 미달</strong> 상태입니다.</div></div>
+      <div style="color:var(--text-muted);font-size:12px;padding:8px 0">기간을 선택하고 조회 버튼을 눌러주세요.</div>
     </div>
 
     <div class="stats-row" id="receiptCategories">
-      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('작동성')" onmouseover="this.style.borderColor='var(--sidiz-blue)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">작동성</div><div class="stat-value" style="color:var(--sidiz-blue-bright)">478</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
-      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('소음')" onmouseover="this.style.borderColor='var(--accent-amber)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">소음</div><div class="stat-value" style="color:var(--accent-amber)">102</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
-      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('파손')" onmouseover="this.style.borderColor='var(--accent-rose)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">파손</div><div class="stat-value" style="color:var(--accent-rose)">83</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
-      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('유격')" onmouseover="this.style.borderColor='var(--accent-violet)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">유격</div><div class="stat-value" style="color:var(--accent-violet)">49</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
-      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('수평')" onmouseover="this.style.borderColor='var(--accent-cyan)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">수평</div><div class="stat-value" style="color:var(--accent-cyan)">39</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
-      <div class="stat-item" style="cursor:pointer;transition:all 0.2s" onclick="toggleCategory('기타')" onmouseover="this.style.borderColor='var(--text-muted)'" onmouseout="this.style.borderColor='var(--border)'"><div class="stat-label">외관/감성/기타</div><div class="stat-value" style="color:var(--text-muted)">236</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">▼ 클릭하여 상세보기</div></div>
+      <div class="stat-item"><div class="stat-label">작동성</div><div class="stat-value" style="color:var(--sidiz-blue-bright)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
+      <div class="stat-item"><div class="stat-label">소음</div><div class="stat-value" style="color:var(--accent-amber)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
+      <div class="stat-item"><div class="stat-label">파손</div><div class="stat-value" style="color:var(--accent-rose)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
+      <div class="stat-item"><div class="stat-label">유격</div><div class="stat-value" style="color:var(--accent-violet)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
+      <div class="stat-item"><div class="stat-label">수평</div><div class="stat-value" style="color:var(--accent-cyan)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
+      <div class="stat-item"><div class="stat-label">체결</div><div class="stat-value" style="color:var(--accent-emerald)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
+      <div class="stat-item"><div class="stat-label">외관/기타</div><div class="stat-value" style="color:var(--text-muted)">-</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">조회 전</div></div>
     </div>
 
     <!-- Expandable category detail -->
@@ -979,6 +982,7 @@ body::before {
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="supabase-client.js"></script>
+<script src="symptom-data.js"></script>
 <script src="kpi-data.js"></script>
 <script src="cost-data.js"></script>
 <script>
@@ -1011,53 +1015,232 @@ function showKpiTab(tab,btn) {
 // ─── 접수일 기준 조회 — Supabase claims_receipt ───
 async function applyDateFilter() {
   const from = document.getElementById('dateFrom').value;
-  const to = document.getElementById('dateTo').value;
+  const to   = document.getElementById('dateTo').value;
   if (!from || !to) return;
   const btn = document.querySelector('#claim-receipt .date-btn');
   btn.textContent = '로딩중...'; btn.disabled = true;
   try {
     const claims = await SupabaseClient.fetchReceiptByDateRange(from, to);
-    if (claims.length === 0) { alert('해당 기간에 접수일 데이터가 없습니다.\n📤 데이터 업로드 페이지에서 접수일 기준 클레임 데이터를 먼저 업로드해 주세요.'); return; }
+    if (claims.length === 0) {
+      alert('해당 기간에 접수일 데이터가 없습니다.\n📤 데이터 업로드 페이지에서 먼저 업로드해 주세요.');
+      return;
+    }
     _updateReceiptUI(claims);
   } catch(e) { alert('조회 오류: ' + e.message); }
   finally { btn.textContent = '조회'; btn.disabled = false; }
 }
+
 function _updateReceiptUI(claims) {
-  // 카테고리 집계
-  const cats = {}; claims.forEach(c => { const k = c.category||'기타'; cats[k]=(cats[k]||0)+1; });
-  const mainCats = ['작동성','소음','파손','유격','수평'];
-  const catColors = {'작동성':'var(--sidiz-blue-bright)','소음':'var(--accent-amber)','파손':'var(--accent-rose)','유격':'var(--accent-violet)','수평':'var(--accent-cyan)'};
-  let etc = 0; Object.entries(cats).forEach(([k,v])=>{ if(!mainCats.includes(k)) etc+=v; });
+  const total = claims.length;
+  // ── 카테고리 집계 (defect_category 우선, 없으면 category 폴백) ──
+  const CAT_META = {
+    '작동성': { color:'var(--sidiz-blue-bright)' },
+    '소음':   { color:'var(--accent-amber)' },
+    '파손':   { color:'var(--accent-rose)' },
+    '유격':   { color:'var(--accent-violet)' },
+    '수평':   { color:'var(--accent-cyan)' },
+    '체결':   { color:'var(--accent-emerald)' },
+    '외관/기타': { color:'var(--text-muted)' },
+  };
+  const mainCats = ['작동성','소음','파손','유격','수평','체결'];
+  const cats = {};
+  claims.forEach(c => {
+    let cat = c.defect_category || c.category || '기타';
+    if (!mainCats.includes(cat)) cat = '외관/기타';
+    cats[cat] = (cats[cat] || 0) + 1;
+  });
+  // 카테고리 카드
   const container = document.getElementById('receiptCategories');
-  if(container) {
-    let h=''; mainCats.forEach(cat => {
-      h += `<div class="stat-item" style="cursor:pointer" onclick="toggleCategoryLive('${cat}')"><div class="stat-label">${cat}</div><div class="stat-value" style="color:${catColors[cat]}">${(cats[cat]||0).toLocaleString()}</div><div style="font-size:10px;color:var(--accent-emerald)">✓ 실시간</div></div>`;
+  if (container) {
+    let h = '';
+    Object.entries(CAT_META).forEach(([cat, meta]) => {
+      const cnt = cats[cat] || 0;
+      const pct = total > 0 ? ((cnt / total) * 100).toFixed(1) : '0.0';
+      h += `<div class="stat-item" style="cursor:pointer;transition:all 0.2s"
+              onclick="toggleReceiptCategory('${cat}')"
+              onmouseover="this.style.borderColor='${meta.color}'"
+              onmouseout="this.style.borderColor='var(--border)'">
+              <div class="stat-label">${cat}</div>
+              <div class="stat-value" style="color:${meta.color}">${cnt.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--accent-emerald);margin-top:2px">✓ 실시간 · ${pct}%</div>
+            </div>`;
     });
-    h += `<div class="stat-item" style="cursor:pointer" onclick="toggleCategoryLive('기타')"><div class="stat-label">외관/감성/기타</div><div class="stat-value" style="color:var(--text-muted)">${etc.toLocaleString()}</div><div style="font-size:10px;color:var(--accent-emerald)">✓ 실시간</div></div>`;
     container.innerHTML = h;
   }
-  // 카테고리별 데이터 저장
-  window._liveCatData = {};
-  claims.forEach(c => { let cat = c.category||'기타'; if(!mainCats.includes(cat)) cat='기타'; if(!window._liveCatData[cat]) window._liveCatData[cat]={}; const item=c.item||'기타'; if(!window._liveCatData[cat][item]) window._liveCatData[cat][item]=[]; window._liveCatData[cat][item].push(c); });
-  // TOP10
-  const dc={}; claims.forEach(c=>{ const k=(c.item||'')+' '+(c.defect_type||'기타'); dc[k]=(dc[k]||0)+1; });
-  const sorted=Object.entries(dc).sort((a,b)=>b[1]-a[1]).slice(0,10); const mx=sorted[0]?.[1]||1;
-  const ch=document.querySelector('#claim-receipt .bar-chart');
-  if(ch) ch.innerHTML=sorted.map(([n,v])=>`<div class="bar-row"><div class="bar-label">${n}</div><div class="bar-track"><div class="bar-fill brand" style="width:${Math.round(v/mx*100)}%"><span>${v}건</span></div></div></div>`).join('');
-  // 인사이트
-  const box=document.querySelector('#claim-receipt .analysis-box');
-  if(box) { const dots=['critical','critical','warning','warning','info'];
-    box.innerHTML=`<h4>🔍 클레임 분석 인사이트 (claims_receipt 실시간)</h4>`+sorted.slice(0,5).map(([n,v],i)=>`<div class="analysis-item"><div class="analysis-dot ${dots[i]}"></div><div><strong>${n}</strong> — ${v}건 (${((v/claims.length)*100).toFixed(1)}%)</div></div>`).join(''); }
+  // ── 카테고리·증상별 데이터 캐시 ──
+  window._liveReceiptClaims = claims;
+  window._liveReceiptCatData = {};
+  claims.forEach(c => {
+    let cat = c.defect_category || c.category || '기타';
+    if (!mainCats.includes(cat)) cat = '외관/기타';
+    if (!window._liveReceiptCatData[cat]) window._liveReceiptCatData[cat] = {};
+    const item = c.item || '기타';
+    if (!window._liveReceiptCatData[cat][item]) window._liveReceiptCatData[cat][item] = [];
+    window._liveReceiptCatData[cat][item].push(c);
+  });
+  // ── TOP10: defect_normalized(표준증상) 기준 그룹핑 ──
+  const dc = {};
+  claims.forEach(c => {
+    // 표준증상이 있으면 그것으로, 없으면 제품+원문증상 조합
+    const norm = c.defect_normalized;
+    const key = norm
+      ? `${c.item || ''} · ${norm}`
+      : `${c.item || ''} · ${(c.defect_type || c.raw_symptom || '미분류').slice(0, 20)}`;
+    dc[key] = (dc[key] || 0) + 1;
+  });
+  const sorted = Object.entries(dc).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const mx = sorted[0]?.[1] || 1;
+  const ch = document.querySelector('#claim-receipt .bar-chart');
+  if (ch) {
+    ch.innerHTML = sorted.map(([n, v]) =>
+      `<div class="bar-row">
+        <div class="bar-label">${n}</div>
+        <div class="bar-track">
+          <div class="bar-fill brand" style="width:${Math.round(v / mx * 100)}%">
+            <span>${v}건</span>
+          </div>
+        </div>
+       </div>`
+    ).join('');
+  }
+  // ── 분석 인사이트 ──
+  const classified   = claims.filter(c => c.defect_normalized).length;
+  const unclassified = total - classified;
+  const box = document.getElementById('receiptAnalysisBox');
+  if (box) {
+    const dots = ['critical','critical','warning','warning','info'];
+    let html = `<h4>🔍 클레임 분석 인사이트 <span style="font-size:10px;color:var(--accent-emerald);font-weight:400">· Supabase 실시간</span></h4>`;
+    html += sorted.slice(0, 5).map(([n, v], i) =>
+      `<div class="analysis-item">
+        <div class="analysis-dot ${dots[i]}"></div>
+        <div><strong>${n}</strong> — ${v}건 (${((v / total) * 100).toFixed(1)}%)</div>
+       </div>`
+    ).join('');
+    if (unclassified > 0) {
+      html += `<div class="analysis-item" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+        <div class="analysis-dot" style="background:var(--accent-amber)"></div>
+        <div style="color:var(--accent-amber)">미분류 ${unclassified}건이 있습니다.
+          <a href="admin-claims.html" target="_blank" style="color:var(--sidiz-blue-bright);text-decoration:underline;margin-left:4px">→ 증상 사전에서 검토</a>
+        </div>
+       </div>`;
+    }
+    box.innerHTML = html;
+  }
+  // ── 미분류 배지 업데이트 ──
+  const badge = document.getElementById('pendingBadge');
+  const cnt   = document.getElementById('pendingCount');
+  if (badge && cnt) {
+    if (unclassified > 0) { cnt.textContent = unclassified; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  }
 }
+
+// ── 카테고리 클릭 상세 (접수일 기준 · 표준증상 그룹) ──
+function toggleReceiptCategory(cat) {
+  const detail = document.getElementById('categoryDetail');
+  const title  = document.getElementById('categoryDetailTitle');
+  const body   = document.getElementById('categoryDetailBody');
+  if (!window._liveReceiptCatData || !window._liveReceiptCatData[cat]) {
+    detail.style.display = 'none'; return;
+  }
+  // 이미 열린 같은 카테고리면 닫기
+  if (detail.style.display !== 'none' && title.textContent.startsWith(cat)) {
+    detail.style.display = 'none'; return;
+  }
+  title.textContent = `${cat} — 표준증상별 건수 (내림차순)`;
+  // 표준증상으로 집계
+  const norm = {};
+  Object.entries(window._liveReceiptCatData[cat]).forEach(([item, rows]) => {
+    rows.forEach(c => {
+      const key = `${item} · ${c.defect_normalized || c.defect_type || '미분류'}`;
+      norm[key] = (norm[key] || 0) + 1;
+    });
+  });
+  const sortedNorm = Object.entries(norm).sort((a, b) => b[1] - a[1]);
+  const total = sortedNorm.reduce((s, [, v]) => s + v, 0);
+  let h = `<table class="data-table" style="font-size:12px"><thead><tr>
+    <th style="text-align:left">제품 · 표준증상</th><th>건수</th><th>비율</th>
+    <th>바</th><th>조회</th></tr></thead><tbody>`;
+  const mx = sortedNorm[0]?.[1] || 1;
+  sortedNorm.forEach(([key, v]) => {
+    const [item, norm] = key.split(' · ');
+    const pct = ((v / total) * 100).toFixed(1);
+    h += `<tr>
+      <td style="text-align:left">${key}</td>
+      <td style="font-weight:600">${v}</td>
+      <td style="color:var(--text-muted)">${pct}%</td>
+      <td><div style="background:rgba(0,87,184,0.15);border-radius:3px;height:8px;width:120px">
+            <div style="background:var(--sidiz-blue-bright);height:8px;border-radius:3px;width:${Math.round(v/mx*100)}%"></div>
+          </div></td>
+      <td><button onclick="showReceiptNormDetail('${item.replace(/'/g,"\\'")}','${(norm||'').replace(/'/g,"\\'")}','${cat}')"
+            style="background:rgba(0,87,184,0.1);border:1px solid rgba(0,87,184,0.2);color:var(--sidiz-blue-bright);
+                   padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px">접수건 조회</button></td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  body.innerHTML = h;
+  detail.style.display = 'block';
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function showReceiptNormDetail(item, normalized, category) {
+  const detail = document.getElementById('claimDetail');
+  const title  = document.getElementById('claimDetailTitle');
+  const body   = document.getElementById('claimDetailBody');
+  title.textContent = `접수건 상세 — ${item} · ${normalized}`;
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">⏳ 로딩 중...</div>';
+  detail.style.display = 'block';
+  try {
+    const from = document.getElementById('dateFrom').value;
+    const to   = document.getElementById('dateTo').value;
+    let rows;
+    if (normalized && normalized !== '미분류') {
+      rows = await SupabaseClient.fetchReceiptByNormalized(normalized, from, to);
+    } else {
+      rows = await SupabaseClient.fetchReceiptByDateRange(from, to);
+      rows = rows.filter(r => (r.item || '') === item && !r.defect_normalized);
+    }
+    if (rows.length === 0) { body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">📭 해당 조건의 접수건이 없습니다.</div>'; return; }
+    let h = `<table class="data-table" style="font-size:11px"><thead><tr>
+      <th style="text-align:left">접수번호</th><th style="text-align:left">접수일</th>
+      <th style="text-align:left">제품</th><th style="text-align:left">카테고리</th>
+      <th style="text-align:left">표준증상</th><th style="text-align:left">원문 증상</th>
+      </tr></thead><tbody>`;
+    rows.forEach(r => {
+      h += `<tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:10px">${r.receipt_id||''}</td>
+        <td>${r.receipt_date||''}</td>
+        <td><span style="background:rgba(0,87,184,0.1);padding:2px 6px;border-radius:4px;font-size:10px">${r.item||''}</span></td>
+        <td>${r.defect_category||r.category||''}</td>
+        <td style="color:var(--accent-emerald)">${r.defect_normalized||'-'}</td>
+        <td style="color:var(--text-secondary);font-size:10px">${(r.raw_symptom||r.claim_detail||'').slice(0,60)}</td>
+       </tr>`;
+    });
+    h += `</tbody></table><div style="padding:8px 14px;font-size:11px;color:var(--accent-emerald);border-top:1px solid var(--border)">✓ ${rows.length}건 · 실시간</div>`;
+    body.innerHTML = h;
+  } catch(e) { body.innerHTML = `<div style="color:var(--accent-rose);padding:16px">오류: ${e.message}</div>`; }
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function setQuickDate(range) {
   const to = new Date();
   let from = new Date();
-  if(range==='1m') from.setMonth(from.getMonth()-1);
-  else if(range==='3m') from.setMonth(from.getMonth()-3);
-  else { from = new Date('2026-01-01'); }
+  if (range === '1m')      from.setMonth(from.getMonth() - 1);
+  else if (range === '3m') from.setMonth(from.getMonth() - 3);
+  else                     from = new Date('2026-01-01');
   document.getElementById('dateFrom').value = from.toISOString().split('T')[0];
-  document.getElementById('dateTo').value = to.toISOString().split('T')[0];
+  document.getElementById('dateTo').value   = to.toISOString().split('T')[0];
 }
+
+// ── 미분류 배지 초기 로드 ──
+(async () => {
+  try {
+    const cnt = await SupabaseClient.countPending();
+    const badge = document.getElementById('pendingBadge');
+    const el    = document.getElementById('pendingCount');
+    if (badge && el && cnt > 0) { el.textContent = cnt; badge.style.display = ''; }
+  } catch(_) {}
+})();
 
 // ─── 제품별 클레임 — Supabase claims(회수일) 실시간 ───
 let _allProductClaims = [];

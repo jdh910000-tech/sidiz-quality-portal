@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIDIZ 증상 관리 — 어드민</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="symptom-data.js"></script>
+<style>
+:root {
+  --navy: #1a2744; --blue: #0057b8; --dark: #0d1b2a; --card: #17293f;
+  --border: #243b5a; --text: #f0f4f8; --muted: #6b83a0; --emerald: #00c48c;
+  --rose: #ff6b7a; --amber: #ffb347; --cyan: #00c6d7; --secondary: #a0b4cb;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; padding: 32px; }
+.container { max-width: 1400px; margin: 0 auto; }
+
+/* ─── NAV ─── */
+.top-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+}
+.nav-links { display: flex; gap: 12px; align-items: center; }
+.back-link {
+  color: var(--muted); font-size: 12px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px;
+  transition: all 0.2s;
+}
+.back-link:hover { color: var(--text); border-color: var(--blue); background: rgba(0,87,184,0.08); }
+.page-title { display: flex; flex-direction: column; }
+.page-title h1 { font-size: 22px; font-weight: 700; }
+.page-title h1 span { background: linear-gradient(135deg, #0057b8, #00c6d7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.page-title p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ─── TABS ─── */
+.tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 5px; width: fit-content; }
+.tab-btn {
+  padding: 9px 20px; border-radius: 9px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif;
+  color: var(--muted); background: transparent; transition: all 0.2s;
+}
+.tab-btn.active { background: var(--blue); color: white; }
+.tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.05); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── STATS ─── */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px 22px; position: relative; overflow: hidden;
+}
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+.stat-card.amber::before { background: var(--amber); }
+.stat-card.emerald::before { background: var(--emerald); }
+.stat-card.blue::before { background: var(--blue); }
+.stat-card.cyan::before { background: var(--cyan); }
+.stat-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 10px; }
+.stat-value { font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+.stat-card.amber .stat-value { color: var(--amber); }
+.stat-card.emerald .stat-value { color: var(--emerald); }
+.stat-card.blue .stat-value { color: #4a9eff; }
+.stat-card.cyan .stat-value { color: var(--cyan); }
+.stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* ─── SECTION HEADER ─── */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+}
+.section-title {
+  font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+}
+.section-title::before {
+  content: ''; width: 3px; height: 18px;
+  background: linear-gradient(135deg, #0057b8, #00c6d7); border-radius: 2px;
+}
+
+/* ─── BULK ACTIONS ─── */
+.bulk-actions { display: flex; gap: 8px; align-items: center; }
+.bulk-count { font-size: 12px; color: var(--muted); }
+
+/* ─── BUTTONS ─── */
+.btn {
+  padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s;
+  font-family: 'Noto Sans KR', sans-serif; display: inline-flex; align-items: center; gap: 5px;
+}
+.btn-primary { background: var(--blue); color: white; }
+.btn-primary:hover { background: #2d7dd2; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-secondary { background: var(--dark); color: var(--secondary); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--blue); color: var(--text); }
+.btn-emerald { background: rgba(0,196,140,0.12); color: var(--emerald); border: 1px solid rgba(0,196,140,0.2); font-size: 12px; padding: 6px 12px; }
+.btn-emerald:hover { background: rgba(0,196,140,0.22); }
+.btn-rose { background: rgba(255,107,122,0.12); color: var(--rose); border: 1px solid rgba(255,107,122,0.2); font-size: 12px; padding: 6px 12px; }
+.btn-rose:hover { background: rgba(255,107,122,0.22); }
+.btn-amber { background: rgba(255,179,71,0.12); color: var(--amber); border: 1px solid rgba(255,179,71,0.2); }
+.btn-amber:hover { background: rgba(255,179,71,0.22); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-danger { background: rgba(255,107,122,0.12); color: var(--rose); border: 1px solid rgba(255,107,122,0.2); }
+.btn-danger:hover { background: rgba(255,107,122,0.22); }
+
+/* ─── TABLE ─── */
+.table-wrap {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  overflow: hidden; margin-bottom: 24px;
+}
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  padding: 12px 14px; text-align: left; font-weight: 600; color: var(--muted);
+  background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border);
+  white-space: nowrap; font-size: 11px;
+}
+tbody tr { border-bottom: 1px solid rgba(36,59,90,0.4); transition: background 0.15s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+tbody td { padding: 11px 14px; vertical-align: middle; }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--secondary); }
+
+/* ─── INPUTS IN TABLE ─── */
+.table-input {
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 7px;
+  padding: 6px 10px; color: var(--text); font-size: 12px; width: 100%; min-width: 140px;
+  font-family: 'Noto Sans KR', sans-serif; transition: border-color 0.2s;
+}
+.table-input:focus { outline: none; border-color: var(--blue); background: rgba(0,87,184,0.06); }
+.table-select {
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 7px;
+  padding: 6px 10px; color: var(--text); font-size: 12px; min-width: 100px;
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+}
+.table-select:focus { outline: none; border-color: var(--blue); }
+.table-select option { background: #17293f; }
+
+/* ─── BADGES ─── */
+.badge {
+  display: inline-block; padding: 3px 9px; border-radius: 20px;
+  font-size: 10px; font-weight: 600; white-space: nowrap;
+}
+.badge-amber { background: rgba(255,179,71,0.15); color: var(--amber); border: 1px solid rgba(255,179,71,0.25); }
+.badge-emerald { background: rgba(0,196,140,0.15); color: var(--emerald); border: 1px solid rgba(0,196,140,0.25); }
+.badge-blue { background: rgba(0,87,184,0.2); color: #4a9eff; border: 1px solid rgba(0,87,184,0.3); }
+.badge-cyan { background: rgba(0,198,215,0.15); color: var(--cyan); border: 1px solid rgba(0,198,215,0.25); }
+.badge-rose { background: rgba(255,107,122,0.15); color: var(--rose); border: 1px solid rgba(255,107,122,0.25); }
+.badge-muted { background: rgba(107,131,160,0.15); color: var(--muted); border: 1px solid rgba(107,131,160,0.2); }
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--muted);
+}
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+/* ─── LOADING ─── */
+.loading-row td { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+/* ─── TOAST ─── */
+#toast-container {
+  position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+}
+.toast {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; font-size: 13px; max-width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: slideIn 0.25s ease; display: flex; align-items: center; gap: 10px;
+}
+.toast.success { border-color: rgba(0,196,140,0.4); }
+.toast.error { border-color: rgba(255,107,122,0.4); }
+.toast.warning { border-color: rgba(255,179,71,0.4); }
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(8px); } }
+.toast.hiding { animation: fadeOut 0.3s ease forwards; }
+
+/* ─── FILTER BAR ─── */
+.filter-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-input {
+  background: var(--card); border: 1px solid var(--border); border-radius: 9px;
+  padding: 8px 14px; color: var(--text); font-size: 12px; width: 200px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.filter-input:focus { outline: none; border-color: var(--blue); }
+.filter-select {
+  background: var(--card); border: 1px solid var(--border); border-radius: 9px;
+  padding: 8px 14px; color: var(--text); font-size: 12px; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.filter-select:focus { outline: none; border-color: var(--blue); }
+.filter-select option { background: #17293f; }
+
+/* ─── ADD FORM ─── */
+.add-form {
+  background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px; margin-bottom: 20px;
+}
+.add-form h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--secondary); }
+.form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 11px; color: var(--muted); }
+.form-control {
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; color: var(--text); font-size: 12px;
+  font-family: 'Noto Sans KR', sans-serif; min-width: 160px;
+}
+.form-control:focus { outline: none; border-color: var(--blue); }
+.form-control option { background: #17293f; }
+
+/* ─── CHART ─── */
+.chart-section {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px; margin-bottom: 24px;
+}
+.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--secondary); }
+.bar-chart { display: flex; flex-direction: column; gap: 12px; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
+.bar-label { width: 80px; font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; background: rgba(255,255,255,0.04); border-radius: 6px; height: 28px; overflow: hidden; position: relative; }
+.bar-fill {
+  height: 100%; border-radius: 6px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  display: flex; align-items: center; padding-left: 10px;
+  font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;
+  min-width: 36px;
+}
+.bar-count { width: 40px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--secondary); text-align: right; }
+
+/* ─── CHECKBOX ─── */
+.check-cell { width: 36px; }
+input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--blue); }
+
+/* ─── RAW SYMPTOM CELL ─── */
+.raw-symptom-cell { max-width: 220px; }
+.raw-symptom-text { font-size: 12px; line-height: 1.5; word-break: keep-all; }
+
+/* ─── ACTION CELL ─── */
+.action-cell { display: flex; gap: 6px; white-space: nowrap; }
+
+/* ─── PAGINATION ─── */
+.pagination { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 14px; }
+.page-btn {
+  padding: 6px 12px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted); font-size: 12px; cursor: pointer;
+  transition: all 0.2s; font-family: 'Noto Sans KR', sans-serif;
+}
+.page-btn:hover, .page-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+.page-info { font-size: 12px; color: var(--muted); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr 1fr; } body { padding: 16px; } }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- TOP NAV -->
+  <div class="top-nav">
+    <div class="page-title">
+      <h1>SIDIZ <span>증상 관리 어드민</span></h1>
+      <p>미분류 증상 검토 · 사전 학습 · 패턴 관리</p>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="back-link">← 포털로 돌아가기</a>
+      <a href="upload.html" class="back-link">업로드 페이지</a>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card amber">
+      <div class="stat-label">미검토 (Pending)</div>
+      <div class="stat-value" id="stat-pending">—</div>
+      <div class="stat-sub">승인 대기 중인 증상</div>
+    </div>
+    <div class="stat-card emerald">
+      <div class="stat-label">승인 완료</div>
+      <div class="stat-value" id="stat-approved">—</div>
+      <div class="stat-sub">누적 승인 건수</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">사전 총 패턴 수</div>
+      <div class="stat-value" id="stat-dictionary">—</div>
+      <div class="stat-sub">symptom_dictionary 항목</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-label">이번 달 학습 건수</div>
+      <div class="stat-value" id="stat-monthly">—</div>
+      <div class="stat-sub" id="stat-monthly-sub">—</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="review">📋 미분류 검토</button>
+    <button class="tab-btn" data-tab="dictionary">📚 증상 사전 관리</button>
+    <button class="tab-btn" data-tab="chart">📊 학습 현황</button>
+  </div>
+
+  <!-- TAB: REVIEW -->
+  <div id="tab-review" class="tab-panel active">
+    <div class="section-header">
+      <div class="section-title">미분류 증상 검토 테이블</div>
+      <div class="bulk-actions">
+        <span class="bulk-count" id="selected-count">선택 0건</span>
+        <button class="btn btn-secondary btn-sm" id="btn-select-all">전체 선택</button>
+        <button class="btn btn-emerald btn-sm" id="btn-bulk-approve" disabled>선택 항목 일괄 승인</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="review-table">
+          <thead>
+            <tr>
+              <th class="check-cell"><input type="checkbox" id="chk-all" title="전체 선택"></th>
+              <th>접수번호</th>
+              <th>제품</th>
+              <th>원문 증상</th>
+              <th>추천 카테고리</th>
+              <th>표준증상명 (입력)</th>
+              <th>카테고리 (선택)</th>
+              <th>동작</th>
+            </tr>
+          </thead>
+          <tbody id="review-tbody">
+            <tr class="loading-row"><td colspan="8">⏳ 데이터 로딩 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="pagination" id="review-pagination"></div>
+  </div>
+
+  <!-- TAB: DICTIONARY -->
+  <div id="tab-dictionary" class="tab-panel">
+
+    <!-- ADD FORM -->
+    <div class="add-form">
+      <h3>새 패턴 추가</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>원문 패턴 (raw_pattern)</label>
+          <input class="form-control" id="new-raw" type="text" placeholder="예: 등받이 삐걱" style="min-width:200px;">
+        </div>
+        <div class="form-group">
+          <label>표준증상명 (normalized)</label>
+          <input class="form-control" id="new-normalized" type="text" placeholder="예: 등받이 소음">
+        </div>
+        <div class="form-group">
+          <label>카테고리</label>
+          <select class="form-control" id="new-category">
+            <option value="">선택...</option>
+            <option>작동성</option><option>유격</option><option>체결</option>
+            <option>수평</option><option>소음</option><option>파손</option>
+            <option>외관</option><option>기타</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-add-pattern">+ 추가</button>
+      </div>
+    </div>
+
+    <!-- FILTER -->
+    <div class="filter-bar">
+      <input class="filter-input" id="dict-search" type="text" placeholder="🔍 패턴 검색...">
+      <select class="filter-select" id="dict-cat-filter">
+        <option value="">전체 카테고리</option>
+        <option>작동성</option><option>유격</option><option>체결</option>
+        <option>수평</option><option>소음</option><option>파손</option>
+        <option>외관</option><option>기타</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" id="btn-dict-refresh">새로고침</button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="dict-table">
+          <thead>
+            <tr>
+              <th>원문 패턴</th>
+              <th>표준증상명</th>
+              <th>카테고리</th>
+              <th>사용 횟수</th>
+              <th>등록자</th>
+              <th>등록일</th>
+              <th>동작</th>
+            </tr>
+          </thead>
+          <tbody id="dict-tbody">
+            <tr class="loading-row"><td colspan="7">⏳ 데이터 로딩 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="pagination" id="dict-pagination"></div>
+  </div>
+
+  <!-- TAB: CHART -->
+  <div id="tab-chart" class="tab-panel">
+    <div class="chart-section">
+      <div class="chart-title">카테고리별 학습 패턴 분포</div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title">월별 승인 추이 (최근 6개월)</div>
+      <div class="bar-chart" id="monthly-chart"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<script>
+// ─── CONFIG ───
+const SUPABASE_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+const HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+const CATEGORIES = ['작동성','유격','체결','수평','소음','파손','외관','기타'];
+const CAT_COLORS = {
+  '작동성': '#0057b8', '유격': '#00c6d7', '체결': '#00c48c',
+  '수평': '#a78bfa', '소음': '#ffb347', '파손': '#ff6b7a',
+  '외관': '#f97316', '기타': '#6b83a0'
+};
+
+// ─── HELPERS ───
+async function sbFetch(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { headers: HEADERS, ...opts });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('json') && res.status !== 204) return res.json();
+  return null;
+}
+
+function toast(msg, type = 'success') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('hiding');
+    setTimeout(() => t.remove(), 320);
+  }, 3200);
+}
+
+function catBadge(cat) {
+  if (!cat) return '<span class="badge badge-muted">미분류</span>';
+  const map = {
+    '작동성':'badge-blue','유격':'badge-cyan','체결':'badge-emerald',
+    '수평':'badge-blue','소음':'badge-amber','파손':'badge-rose',
+    '외관':'badge-amber','기타':'badge-muted'
+  };
+  return `<span class="badge ${map[cat]||'badge-muted'}">${cat}</span>`;
+}
+
+function stripDirectional(text) {
+  if (!text) return text;
+  const words = typeof DIRECTIONAL_WORDS !== 'undefined' ? DIRECTIONAL_WORDS :
+    ['좌측','우측','좌','우','앞쪽','뒤쪽','앞','뒤','왼쪽','오른쪽','양쪽','상','하','전','후'];
+  let t = text;
+  words.forEach(w => { t = t.replace(new RegExp(w, 'g'), ''); });
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── STATS ───
+async function loadStats() {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const [pendingRes, approvedRes, dictRes, monthlyRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/symptom_pending?status=eq.pending&select=id`, { headers: { ...HEADERS, 'Prefer': 'count=exact' } }),
+      fetch(`${SUPABASE_URL}/rest/v1/symptom_pending?status=eq.approved&select=id`, { headers: { ...HEADERS, 'Prefer': 'count=exact' } }),
+      fetch(`${SUPABASE_URL}/rest/v1/symptom_dictionary?select=id`, { headers: { ...HEADERS, 'Prefer': 'count=exact' } }),
+      fetch(`${SUPABASE_URL}/rest/v1/symptom_dictionary?created_at=gte.${monthStart}&select=id`, { headers: { ...HEADERS, 'Prefer': 'count=exact' } })
+    ]);
+
+    const getCount = r => parseInt(r.headers.get('content-range')?.split('/')[1] || '0', 10);
+    document.getElementById('stat-pending').textContent = getCount(pendingRes);
+    document.getElementById('stat-approved').textContent = getCount(approvedRes);
+    document.getElementById('stat-dictionary').textContent = getCount(dictRes);
+    document.getElementById('stat-monthly').textContent = getCount(monthlyRes);
+    document.getElementById('stat-monthly-sub').textContent =
+      `${now.getFullYear()}년 ${now.getMonth()+1}월`;
+  } catch(e) {
+    console.warn('Stats load failed', e);
+  }
+}
+
+// ═══════════════════════════════════════════
+// TAB 1: REVIEW
+// ═══════════════════════════════════════════
+let reviewData = [];
+let reviewPage = 1;
+const REVIEW_PAGE_SIZE = 20;
+
+async function loadReview() {
+  const tbody = document.getElementById('review-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="8">⏳ 데이터 로딩 중...</td></tr>';
+  try {
+    const data = await sbFetch(
+      '/rest/v1/symptom_pending?status=eq.pending&order=created_at.desc&limit=500'
+    );
+    reviewData = data || [];
+    reviewPage = 1;
+    renderReviewTable();
+  } catch(e) {
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="8">❌ 로딩 실패: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderReviewTable() {
+  const tbody = document.getElementById('review-tbody');
+  const start = (reviewPage - 1) * REVIEW_PAGE_SIZE;
+  const pageData = reviewData.slice(start, start + REVIEW_PAGE_SIZE);
+
+  if (reviewData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">✅</div><p>검토 대기 중인 증상이 없습니다</p></div></td></tr>`;
+    renderPagination('review-pagination', 0, 0, null);
+    return;
+  }
+
+  tbody.innerHTML = pageData.map(row => {
+    const sugCat = row.suggested_category || '';
+    const sugNorm = row.suggested_normalized || row.raw_symptom || '';
+    return `
+    <tr data-id="${escHtml(row.id)}" data-receipt="${escHtml(row.receipt_id||'')}">
+      <td class="check-cell"><input type="checkbox" class="row-check" data-id="${escHtml(row.id)}"></td>
+      <td><span class="mono">${escHtml(row.receipt_id||row.id||'—')}</span></td>
+      <td><span class="badge badge-blue">${escHtml(row.product_name||row.product_code||'—')}</span></td>
+      <td class="raw-symptom-cell"><div class="raw-symptom-text">${escHtml(row.raw_symptom||'—')}</div></td>
+      <td>${catBadge(sugCat)}</td>
+      <td>
+        <input class="table-input norm-input" data-id="${escHtml(row.id)}"
+          type="text" value="${escHtml(sugNorm)}" placeholder="표준증상명 입력">
+      </td>
+      <td>
+        <select class="table-select cat-select" data-id="${escHtml(row.id)}">
+          <option value="">선택...</option>
+          ${CATEGORIES.map(c => `<option value="${c}" ${c===sugCat?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <div class="action-cell">
+          <button class="btn btn-emerald btn-sm btn-approve" data-id="${escHtml(row.id)}">✅ 승인</button>
+          <button class="btn btn-rose btn-sm btn-reject" data-id="${escHtml(row.id)}">❌ 거절</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPagination('review-pagination', reviewPage, Math.ceil(reviewData.length / REVIEW_PAGE_SIZE), p => {
+    reviewPage = p;
+    renderReviewTable();
+  });
+
+  updateSelectedCount();
+}
+
+function renderPagination(containerId, current, total, onPage) {
+  const c = document.getElementById(containerId);
+  if (!c || total <= 1) { if(c) c.innerHTML = ''; return; }
+  let html = `<span class="page-info">${current} / ${total} 페이지</span>`;
+  const pages = [];
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || Math.abs(i - current) <= 2) pages.push(i);
+    else if (pages[pages.length-1] !== '...') pages.push('...');
+  }
+  pages.forEach(p => {
+    if (p === '...') { html += `<span class="page-btn" style="cursor:default">…</span>`; }
+    else { html += `<button class="page-btn ${p===current?'active':''}" data-page="${p}">${p}</button>`; }
+  });
+  c.innerHTML = html;
+  c.querySelectorAll('[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => onPage(parseInt(btn.dataset.page)));
+  });
+}
+
+// ─── APPROVE SINGLE ───
+async function approveSingle(id) {
+  const row = reviewData.find(r => String(r.id) === String(id));
+  if (!row) return;
+
+  const normInput = document.querySelector(`.norm-input[data-id="${id}"]`);
+  const catSelect = document.querySelector(`.cat-select[data-id="${id}"]`);
+  const normalized = (normInput?.value || '').trim();
+  const category   = (catSelect?.value || '').trim();
+
+  if (!normalized) { toast('⚠️ 표준증상명을 입력하세요', 'warning'); return; }
+  if (!category)   { toast('⚠️ 카테고리를 선택하세요', 'warning'); return; }
+
+  const rawPattern = stripDirectional(row.raw_symptom || normalized);
+  const now = new Date().toISOString();
+
+  try {
+    // 1. UPSERT normalized pattern to dictionary
+    await upsertPattern(rawPattern, normalized, category);
+    // 2. Also add original raw_symptom as pattern if different
+    if (row.raw_symptom && row.raw_symptom !== rawPattern) {
+      await upsertPattern(row.raw_symptom, normalized, category);
+    }
+
+    // 3. UPDATE symptom_pending
+    await sbFetch(`/rest/v1/symptom_pending?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'approved',
+        approved_normalized: normalized,
+        approved_category: category,
+        reviewed_at: now
+      })
+    });
+
+    // 4. UPDATE claims_receipt if receipt_id exists and defect_normalized is null
+    if (row.receipt_id) {
+      await sbFetch(
+        `/rest/v1/claims_receipt?receipt_id=eq.${encodeURIComponent(row.receipt_id)}&defect_normalized=is.null`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            defect_normalized: normalized,
+            defect_category: category
+          })
+        }
+      );
+    }
+
+    // Remove from local data & re-render
+    reviewData = reviewData.filter(r => String(r.id) !== String(id));
+    renderReviewTable();
+    loadStats();
+    toast(`✅ 승인 완료 — 사전에 추가됨 (${normalized} / ${category})`);
+  } catch(e) {
+    toast(`❌ 승인 실패: ${e.message}`, 'error');
+  }
+}
+
+async function upsertPattern(raw, normalized, category) {
+  // Check if pattern exists
+  const existing = await sbFetch(
+    `/rest/v1/symptom_dictionary?raw_pattern=eq.${encodeURIComponent(raw)}&limit=1`
+  );
+  if (existing && existing.length > 0) {
+    const entry = existing[0];
+    await sbFetch(
+      `/rest/v1/symptom_dictionary?id=eq.${encodeURIComponent(entry.id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ usage_count: (entry.usage_count || 0) + 1 })
+      }
+    );
+  } else {
+    await sbFetch('/rest/v1/symptom_dictionary', {
+      method: 'POST',
+      body: JSON.stringify({
+        raw_pattern: raw,
+        normalized: normalized,
+        category: category,
+        usage_count: 1,
+        created_by: 'admin'
+      })
+    });
+  }
+}
+
+// ─── REJECT SINGLE ───
+async function rejectSingle(id) {
+  if (!confirm('이 항목을 거절 처리하시겠습니까?')) return;
+  try {
+    await sbFetch(`/rest/v1/symptom_pending?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'rejected', reviewed_at: new Date().toISOString() })
+    });
+    reviewData = reviewData.filter(r => String(r.id) !== String(id));
+    renderReviewTable();
+    loadStats();
+    toast('❌ 거절 처리 완료');
+  } catch(e) {
+    toast(`오류: ${e.message}`, 'error');
+  }
+}
+
+// ─── BULK APPROVE ───
+async function bulkApprove() {
+  const checked = [...document.querySelectorAll('.row-check:checked')];
+  if (!checked.length) { toast('선택된 항목이 없습니다', 'warning'); return; }
+
+  let ok = 0, fail = 0;
+  for (const cb of checked) {
+    const id = cb.dataset.id;
+    const normInput = document.querySelector(`.norm-input[data-id="${id}"]`);
+    const catSelect = document.querySelector(`.cat-select[data-id="${id}"]`);
+    const normalized = (normInput?.value || '').trim();
+    const category   = (catSelect?.value || '').trim();
+    if (!normalized || !category) { fail++; continue; }
+    try {
+      const row = reviewData.find(r => String(r.id) === String(id));
+      const rawPattern = stripDirectional(row?.raw_symptom || normalized);
+      await upsertPattern(rawPattern, normalized, category);
+      if (row?.raw_symptom && row.raw_symptom !== rawPattern) {
+        await upsertPattern(row.raw_symptom, normalized, category);
+      }
+      await sbFetch(`/rest/v1/symptom_pending?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'approved', approved_normalized: normalized,
+          approved_category: category, reviewed_at: new Date().toISOString()
+        })
+      });
+      if (row?.receipt_id) {
+        await sbFetch(
+          `/rest/v1/claims_receipt?receipt_id=eq.${encodeURIComponent(row.receipt_id)}&defect_normalized=is.null`,
+          { method: 'PATCH', body: JSON.stringify({ defect_normalized: normalized, defect_category: category }) }
+        );
+      }
+      reviewData = reviewData.filter(r => String(r.id) !== String(id));
+      ok++;
+    } catch { fail++; }
+  }
+  renderReviewTable();
+  loadStats();
+  toast(`✅ 일괄 승인 완료 — ${ok}건 성공${fail ? `, ${fail}건 실패` : ''}`);
+}
+
+function updateSelectedCount() {
+  const count = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('selected-count').textContent = `선택 ${count}건`;
+  document.getElementById('btn-bulk-approve').disabled = count === 0;
+}
+
+// ═══════════════════════════════════════════
+// TAB 2: DICTIONARY
+// ═══════════════════════════════════════════
+let dictData = [];
+let dictPage = 1;
+const DICT_PAGE_SIZE = 25;
+let dictSearchVal = '';
+let dictCatFilter = '';
+
+async function loadDictionary() {
+  const tbody = document.getElementById('dict-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7">⏳ 데이터 로딩 중...</td></tr>';
+  try {
+    const data = await sbFetch('/rest/v1/symptom_dictionary?order=usage_count.desc&limit=1000');
+    dictData = data || [];
+    dictPage = 1;
+    renderDictTable();
+  } catch(e) {
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="7">❌ 로딩 실패: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderDictTable() {
+  const tbody = document.getElementById('dict-tbody');
+  let filtered = dictData;
+  if (dictSearchVal) {
+    const q = dictSearchVal.toLowerCase();
+    filtered = filtered.filter(r =>
+      (r.raw_pattern||'').toLowerCase().includes(q) ||
+      (r.normalized||'').toLowerCase().includes(q)
+    );
+  }
+  if (dictCatFilter) filtered = filtered.filter(r => r.category === dictCatFilter);
+
+  const start = (dictPage - 1) * DICT_PAGE_SIZE;
+  const pageData = filtered.slice(start, start + DICT_PAGE_SIZE);
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>검색 결과가 없습니다</p></div></td></tr>`;
+    renderPagination('dict-pagination', 0, 0, null);
+    return;
+  }
+
+  tbody.innerHTML = pageData.map(row => {
+    const created = row.created_at ? new Date(row.created_at).toLocaleDateString('ko-KR') : '—';
+    return `
+    <tr data-id="${escHtml(row.id)}">
+      <td><span class="mono">${escHtml(row.raw_pattern||'—')}</span></td>
+      <td>${escHtml(row.normalized||'—')}</td>
+      <td>${catBadge(row.category)}</td>
+      <td><span class="badge badge-blue">${row.usage_count||0}</span></td>
+      <td><span style="color:var(--muted);font-size:11px">${escHtml(row.created_by||'—')}</span></td>
+      <td><span style="color:var(--muted);font-size:11px">${created}</span></td>
+      <td>
+        <button class="btn btn-danger btn-sm btn-del-pattern" data-id="${escHtml(row.id)}">🗑 삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPagination('dict-pagination', dictPage, Math.ceil(filtered.length / DICT_PAGE_SIZE), p => {
+    dictPage = p;
+    renderDictTable();
+  });
+}
+
+async function addPattern() {
+  const raw  = document.getElementById('new-raw').value.trim();
+  const norm = document.getElementById('new-normalized').value.trim();
+  const cat  = document.getElementById('new-category').value;
+  if (!raw)  { toast('원문 패턴을 입력하세요', 'warning'); return; }
+  if (!norm) { toast('표준증상명을 입력하세요', 'warning'); return; }
+  if (!cat)  { toast('카테고리를 선택하세요', 'warning'); return; }
+
+  try {
+    await sbFetch('/rest/v1/symptom_dictionary', {
+      method: 'POST',
+      body: JSON.stringify({ raw_pattern: raw, normalized: norm, category: cat, usage_count: 1, created_by: 'admin' })
+    });
+    document.getElementById('new-raw').value = '';
+    document.getElementById('new-normalized').value = '';
+    document.getElementById('new-category').value = '';
+    toast(`✅ 패턴 추가 완료: "${raw}"`);
+    await loadDictionary();
+    loadStats();
+  } catch(e) {
+    toast(`❌ 추가 실패: ${e.message}`, 'error');
+  }
+}
+
+async function deletePattern(id) {
+  if (!confirm('이 패턴을 삭제하시겠습니까?')) return;
+  try {
+    await sbFetch(`/rest/v1/symptom_dictionary?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+    dictData = dictData.filter(r => String(r.id) !== String(id));
+    renderDictTable();
+    loadStats();
+    toast('🗑 패턴 삭제 완료');
+  } catch(e) {
+    toast(`❌ 삭제 실패: ${e.message}`, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════
+// TAB 3: CHART
+// ═══════════════════════════════════════════
+async function loadCharts() {
+  await loadDictIfEmpty();
+  renderCategoryChart();
+  await renderMonthlyChart();
+}
+
+async function loadDictIfEmpty() {
+  if (dictData.length === 0) {
+    try {
+      const data = await sbFetch('/rest/v1/symptom_dictionary?order=usage_count.desc&limit=1000');
+      dictData = data || [];
+    } catch(e) {}
+  }
+}
+
+function renderCategoryChart() {
+  const counts = {};
+  CATEGORIES.forEach(c => counts[c] = 0);
+  dictData.forEach(r => { if (r.category && counts[r.category] !== undefined) counts[r.category]++; });
+
+  const max = Math.max(1, ...Object.values(counts));
+  const container = document.getElementById('bar-chart');
+  container.innerHTML = CATEGORIES.map(cat => {
+    const n = counts[cat];
+    const pct = Math.round((n / max) * 100);
+    const color = CAT_COLORS[cat] || '#6b83a0';
+    return `
+    <div class="bar-row">
+      <div class="bar-label">${cat}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${color};color:${pct>15?'#fff':'transparent'}">
+          ${pct > 8 ? n : ''}
+        </div>
+      </div>
+      <div class="bar-count">${n}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderMonthlyChart() {
+  const container = document.getElementById('monthly-chart');
+  try {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const data = await sbFetch(
+      `/rest/v1/symptom_dictionary?created_at=gte.${sixMonthsAgo.toISOString()}&select=created_at&limit=1000`
+    );
+    const monthly = {};
+    (data||[]).forEach(r => {
+      const d = new Date(r.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      monthly[key] = (monthly[key]||0) + 1;
+    });
+    // Fill last 6 months
+    const labels = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      labels.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+    }
+    const max = Math.max(1, ...labels.map(l => monthly[l]||0));
+    container.innerHTML = labels.map(label => {
+      const n = monthly[label] || 0;
+      const pct = Math.round((n / max) * 100);
+      const [, m] = label.split('-');
+      return `
+      <div class="bar-row">
+        <div class="bar-label">${parseInt(m)}월</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%;background:var(--cyan);color:${pct>15?'#fff':'transparent'}">
+            ${pct > 8 ? n : ''}
+          </div>
+        </div>
+        <div class="bar-count">${n}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--muted);font-size:13px">월별 데이터 로딩 실패</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    if (tab === 'dictionary' && dictData.length === 0) loadDictionary();
+    if (tab === 'chart') loadCharts();
+  });
+});
+
+// Review table events (delegated)
+document.getElementById('review-tbody').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.classList.contains('btn-approve')) approveSingle(id);
+  if (btn.classList.contains('btn-reject'))  rejectSingle(id);
+});
+
+document.getElementById('review-tbody').addEventListener('change', e => {
+  if (e.target.classList.contains('row-check')) updateSelectedCount();
+});
+
+document.getElementById('chk-all').addEventListener('change', function() {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = this.checked);
+  updateSelectedCount();
+});
+
+document.getElementById('btn-select-all').addEventListener('click', () => {
+  const all = document.querySelectorAll('.row-check');
+  const allChecked = [...all].every(c => c.checked);
+  all.forEach(c => c.checked = !allChecked);
+  document.getElementById('chk-all').checked = !allChecked;
+  updateSelectedCount();
+});
+
+document.getElementById('btn-bulk-approve').addEventListener('click', bulkApprove);
+
+// Dictionary events
+document.getElementById('dict-tbody').addEventListener('click', e => {
+  const btn = e.target.closest('.btn-del-pattern');
+  if (btn) deletePattern(btn.dataset.id);
+});
+
+document.getElementById('btn-add-pattern').addEventListener('click', addPattern);
+document.getElementById('btn-dict-refresh').addEventListener('click', loadDictionary);
+
+document.getElementById('dict-search').addEventListener('input', function() {
+  dictSearchVal = this.value;
+  dictPage = 1;
+  renderDictTable();
+});
+
+document.getElementById('dict-cat-filter').addEventListener('change', function() {
+  dictCatFilter = this.value;
+  dictPage = 1;
+  renderDictTable();
+});
+
+// ─── INIT ───
+(async function init() {
+  await Promise.all([loadStats(), loadReview()]);
+})();
+</script>
+</body>
+</html>

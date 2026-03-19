@@ -75,6 +75,88 @@ function aggregateByDefectType(claims) {
   return Object.entries(defects).sort((a, b) => b[1] - a[1]);
 }
 
+// ─── 증상 사전 (symptom_dictionary) ───
+async function fetchSymptomDict() {
+  return supabaseFetch('symptom_dictionary', 'select=raw_pattern,normalized,category,usage_count&order=usage_count.desc&limit=2000');
+}
+async function upsertSymptomPattern(raw_pattern, normalized, category, created_by = 'admin') {
+  const url = `${SUPABASE_URL}/rest/v1/symptom_dictionary`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ raw_pattern, normalized, category, created_by, updated_at: new Date().toISOString() })
+  });
+  if (!res.ok) throw new Error(`upsert dict ${res.status}`);
+}
+async function incrementPatternUsage(raw_pattern) {
+  // usage_count++ via RPC or read-then-update
+  const rows = await supabaseFetch('symptom_dictionary', `select=id,usage_count&raw_pattern=eq.${encodeURIComponent(raw_pattern)}&limit=1`);
+  if (rows.length === 0) return;
+  const { id, usage_count } = rows[0];
+  const url = `${SUPABASE_URL}/rest/v1/symptom_dictionary?id=eq.${id}`;
+  await fetch(url, { method: 'PATCH', headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' }, body: JSON.stringify({ usage_count: (usage_count || 1) + 1, updated_at: new Date().toISOString() }) });
+}
+async function deleteSymptomPattern(id) {
+  const url = `${SUPABASE_URL}/rest/v1/symptom_dictionary?id=eq.${id}`;
+  const res = await fetch(url, { method: 'DELETE', headers: supabaseHeaders });
+  if (!res.ok) throw new Error(`delete dict ${res.status}`);
+}
+
+// ─── 미분류 대기 (symptom_pending) ───
+async function fetchPendingSymptoms(status = 'pending') {
+  return supabaseFetch('symptom_pending', `select=*&status=eq.${status}&order=created_at.desc&limit=500`);
+}
+async function insertPendingSymptoms(rows) {
+  if (!rows || rows.length === 0) return;
+  const url = `${SUPABASE_URL}/rest/v1/symptom_pending`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, 'Prefer': 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify(rows)
+  });
+  if (!res.ok) throw new Error(`insert pending ${res.status}: ${await res.text()}`);
+}
+async function approvePendingSymptom(id, approved_normalized, approved_category) {
+  const url = `${SUPABASE_URL}/rest/v1/symptom_pending?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ status: 'approved', approved_normalized, approved_category, reviewed_at: new Date().toISOString(), reviewed_by: 'admin' })
+  });
+  if (!res.ok) throw new Error(`approve pending ${res.status}`);
+}
+async function rejectPendingSymptom(id) {
+  const url = `${SUPABASE_URL}/rest/v1/symptom_pending?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: 'admin' })
+  });
+  if (!res.ok) throw new Error(`reject pending ${res.status}`);
+}
+async function updateClaimsNormalized(receipt_id, defect_normalized, defect_category) {
+  const url = `${SUPABASE_URL}/rest/v1/claims_receipt?receipt_id=eq.${encodeURIComponent(receipt_id)}&defect_normalized=is.null`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ defect_normalized, defect_category })
+  });
+  if (!res.ok) throw new Error(`update claims normalized ${res.status}`);
+}
+async function countPending() { return supabaseCount('symptom_pending?status=eq.pending'); }
+async function fetchReceiptByCategory(category, from, to) {
+  let params = `select=*&defect_category=eq.${encodeURIComponent(category)}&order=receipt_date.desc&limit=500`;
+  if (from) params += `&receipt_date=gte.${from}`;
+  if (to)   params += `&receipt_date=lte.${to}`;
+  return supabaseFetch('claims_receipt', params);
+}
+async function fetchReceiptByNormalized(normalized, from, to) {
+  let params = `select=*&defect_normalized=ilike.*${encodeURIComponent(normalized)}*&order=receipt_date.desc&limit=500`;
+  if (from) params += `&receipt_date=gte.${from}`;
+  if (to)   params += `&receipt_date=lte.${to}`;
+  return supabaseFetch('claims_receipt', params);
+}
+
 // Export
 window.SupabaseClient = {
   SUPABASE_URL, SUPABASE_ANON_KEY,
@@ -83,6 +165,7 @@ window.SupabaseClient = {
   fetchClaims,
   // 접수일
   fetchReceiptClaims, fetchReceiptByDateRange, fetchReceiptByDefect,
+  fetchReceiptByCategory, fetchReceiptByNormalized,
   // 매출량
   fetchSalesMonthly,
   // 실패비용
@@ -91,4 +174,9 @@ window.SupabaseClient = {
   fetchKpiMonthly, fetchJudgementMonthly, fetchReceiptMonthly,
   // 집계
   aggregateByCategory, aggregateByItem, aggregateByDefectType,
+  // 증상 사전
+  fetchSymptomDict, upsertSymptomPattern, incrementPatternUsage, deleteSymptomPattern,
+  // 미분류 대기
+  fetchPendingSymptoms, insertPendingSymptoms, approvePendingSymptom, rejectPendingSymptom,
+  updateClaimsNormalized, countPending,
 };

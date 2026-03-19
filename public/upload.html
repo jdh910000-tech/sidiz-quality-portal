@@ -6,6 +6,7 @@
 <title>SIDIZ 데이터 업로드</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="symptom-data.js"></script>
 <style>
 :root {
   --navy: #1a2744; --blue: #0057b8; --dark: #0d1b2a; --card: #17293f;
@@ -14,7 +15,7 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Noto Sans KR',sans-serif; background:var(--dark); color:var(--text); min-height:100vh; padding:32px; }
-.container { max-width:900px; margin:0 auto; }
+.container { max-width:960px; margin:0 auto; }
 h1 { font-size:24px; margin-bottom:4px; }
 h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .subtitle { color:var(--muted); font-size:13px; margin-bottom:32px; }
@@ -45,10 +46,13 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
 .preview h3 { font-size:13px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
 .preview-info { font-size:11px; color:var(--muted); margin-bottom:10px; }
 
-.preview-table-wrap { overflow-x:auto; max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; }
+.preview-table-wrap { overflow-x:auto; max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; }
 .preview-table { width:100%; border-collapse:collapse; font-size:11px; }
-.preview-table th { padding:8px 10px; text-align:left; font-weight:600; color:var(--muted); background:rgba(0,0,0,0.3); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1; font-size:10px; }
-.preview-table td { padding:6px 10px; border-bottom:1px solid rgba(36,59,90,0.3); font-family:'JetBrains Mono',monospace; font-size:10px; white-space:nowrap; }
+.preview-table th { padding:8px 10px; text-align:left; font-weight:600; color:var(--muted); background:rgba(0,0,0,0.3); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1; font-size:10px; white-space:nowrap; }
+.preview-table td { padding:6px 10px; border-bottom:1px solid rgba(36,59,90,0.3); font-family:'JetBrains Mono',monospace; font-size:10px; white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+.preview-table tr.unmatched td { background:rgba(255,107,122,0.04); }
+.preview-table td.badge-matched { color:var(--emerald); font-weight:600; }
+.preview-table td.badge-unmatched { color:var(--rose); font-weight:600; }
 
 .actions { display:flex; gap:12px; margin-top:16px; align-items:center; }
 .btn { padding:10px 24px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
@@ -60,11 +64,12 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
 .btn-secondary { background:var(--dark); color:var(--secondary); border:1px solid var(--border); }
 .btn-secondary:hover { border-color:var(--blue); color:var(--text); }
 
-.status { font-size:12px; margin-top:12px; padding:10px 14px; border-radius:8px; display:none; }
+.status { font-size:12px; margin-top:12px; padding:10px 14px; border-radius:8px; display:none; line-height:1.7; }
 .status.show { display:block; }
 .status.success { background:rgba(0,196,140,0.08); border:1px solid rgba(0,196,140,0.2); color:var(--emerald); }
 .status.error { background:rgba(255,107,122,0.08); border:1px solid rgba(255,107,122,0.2); color:var(--rose); }
 .status.loading { background:rgba(0,198,215,0.08); border:1px solid rgba(0,198,215,0.2); color:var(--cyan); }
+.status a { color:var(--amber); text-decoration:underline; }
 
 .mode-toggle { display:flex; gap:4px; background:rgba(0,0,0,0.3); padding:3px; border-radius:8px; margin-bottom:16px; width:fit-content; }
 .mode-btn { padding:7px 16px; border-radius:6px; font-size:11px; font-weight:500; cursor:pointer; border:none; background:transparent; color:var(--muted); transition:all 0.2s; }
@@ -72,8 +77,21 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
 
 .existing-data { margin-top:18px; }
 .existing-data h3 { font-size:13px; font-weight:600; margin-bottom:8px; }
-.stat-row { display:flex; gap:10px; margin-bottom:12px; }
+.stat-row { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
 .stat-badge { padding:5px 12px; border-radius:6px; font-size:11px; background:rgba(0,87,184,0.1); border:1px solid rgba(0,87,184,0.15); color:var(--secondary); font-family:'JetBrains Mono',monospace; }
+.stat-badge.matched { background:rgba(0,196,140,0.1); border-color:rgba(0,196,140,0.2); color:var(--emerald); }
+.stat-badge.unmatched { background:rgba(255,179,71,0.1); border-color:rgba(255,179,71,0.2); color:var(--amber); }
+.stat-badge.total { background:rgba(0,198,215,0.1); border-color:rgba(0,198,215,0.2); color:var(--cyan); }
+.stat-badge.dedup { background:rgba(0,87,184,0.1); border-color:rgba(0,87,184,0.2); color:#7eb8f7; }
+
+/* Parsing status banner */
+.parse-banner {
+  background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:10px;
+  padding:12px 16px; margin-top:14px; display:none;
+}
+.parse-banner.show { display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+.parse-banner span { font-size:11px; font-family:'JetBrains Mono',monospace; }
+.parse-banner .lbl { color:var(--muted); margin-right:4px; }
 </style>
 </head>
 <body>
@@ -83,20 +101,21 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
   <h1>SIDIZ <span>데이터 업로드</span></h1>
   <p class="subtitle">ERP 엑셀 데이터 → Supabase 업로드 · 접수일 기준 클레임 및 매출량 관리</p>
 
-  <!-- ============ 접수일 클레임 업로드 ============ -->
+  <!-- ============ 접수일 클레임 업로드 (증상 자동 파싱 포함) ============ -->
   <div class="upload-section">
     <h2>접수일 기준 클레임 데이터</h2>
     <p class="upload-desc">
       ERP에서 <strong>접수일 기준</strong>으로 다운받은 엑셀 파일을 업로드합니다.<br>
-      기존 <code>claims</code> 테이블(회수일 기준)과 별도의 <code>claims_receipt</code> 테이블에 저장됩니다.
+      <code>claims_receipt</code> 테이블에 저장되며, <code>요구내역</code> 컬럼은 자동으로 증상 파싱 파이프라인을 거칩니다.<br>
+      미분류(미매칭) 항목은 <code>symptom_pending</code> 테이블에 별도 저장되어 관리자 검토를 기다립니다.
     </p>
 
     <div class="column-spec">
-      <strong>필수 컬럼:</strong> 
-      <code>receipt_id</code>(접수번호) · <code>receipt_date</code>(접수일, YYYY-MM-DD) · <code>item</code>(제품군) · <code>category</code>(유형)<br>
-      <strong>선택 컬럼:</strong> 
-      <code>judgement_type</code> · <code>defect_type</code> · <code>model</code> · <code>country</code> · <code>cost</code> · <code>claim_detail</code> · <code>inspection_result</code> · <code>main_category</code> · <code>sub_category</code> · <code>defective_part</code> · <code>lot</code> · <code>code</code> · <code>brand</code><br>
-      <em style="color:var(--amber)">※ 첫 번째 행이 헤더(컬럼명)여야 합니다. 한글 헤더도 자동 매핑됩니다.</em>
+      <strong>필수 컬럼:</strong>
+      <code>접수번호</code> · <code>접수일</code>(YYYY-MM-DD) · <code>제품군</code> · <code>유형</code><br>
+      <strong>선택 컬럼:</strong>
+      <code>판정유형</code> · <code>하자유형</code> · <code>모델</code> · <code>국가</code> · <code>비용</code> · <code>요구내역</code> · <code>판정결과</code> · <code>대분류</code> · <code>소분류</code> · <code>불량부위</code> · <code>LOT</code> · <code>코드</code> · <code>브랜드</code><br>
+      <em style="color:var(--amber)">※ <code>요구내역</code>(claim_detail)은 증상 자동 파싱에 사용됩니다. <code>접수번호</code> 기준 중복은 첫 번째 행이 유지됩니다.</em>
     </div>
 
     <div class="mode-toggle">
@@ -111,8 +130,16 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
       <div class="hint">.xlsx, .xls, .csv 지원</div>
     </div>
 
+    <!-- 파싱 통계 배너 -->
+    <div class="parse-banner" id="claimParseBanner">
+      <span><span class="lbl">총 건수</span><span id="statTotal" style="color:var(--cyan)">-</span></span>
+      <span><span class="lbl">중복 제거</span><span id="statDedup" style="color:#7eb8f7">-</span></span>
+      <span><span class="lbl">자동분류</span><span id="statMatched" style="color:var(--emerald)">-</span></span>
+      <span><span class="lbl">미분류(pending)</span><span id="statUnmatched" style="color:var(--amber)">-</span></span>
+    </div>
+
     <div class="preview" id="claimPreview">
-      <h3>📄 미리보기</h3>
+      <h3>📄 파싱 결과 미리보기</h3>
       <div class="preview-info" id="claimPreviewInfo"></div>
       <div class="preview-table-wrap"><table class="preview-table" id="claimPreviewTable"></table></div>
       <div class="actions">
@@ -122,7 +149,6 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
     </div>
 
     <div class="status" id="claimStatus"></div>
-
     <div class="existing-data" id="claimExisting"></div>
   </div>
 
@@ -135,9 +161,9 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
     </p>
 
     <div class="column-spec">
-      <strong>필수 컬럼:</strong> 
+      <strong>필수 컬럼:</strong>
       <code>year_month</code>(연월, YYYY-MM) · <code>country</code>(국내/베트남) · <code>sales_count</code>(매출건수)<br>
-      <strong>선택 컬럼:</strong> 
+      <strong>선택 컬럼:</strong>
       <code>sales_amount</code>(매출액, 원 단위)<br>
       <em style="color:var(--amber)">※ 엑셀 예시: 2025-01 | 국내 | 19188 | 842000000</em>
     </div>
@@ -160,7 +186,6 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
     </div>
 
     <div class="status" id="salesStatus"></div>
-
     <div class="existing-data" id="salesExisting"></div>
   </div>
 
@@ -220,8 +245,12 @@ const headers = {
 };
 
 let claimMode = 'append';
-let claimParsedData = [];
+let claimParsedData = [];    // rows ready for claims_receipt
+let claimPendingData = [];   // rows for symptom_pending
+let claimRawParsed = [];     // full parsed objects with parse results (for preview)
 let salesParsedData = [];
+let costParsedData = [];
+let symptomDict = null;      // cached symptom dictionary from Supabase
 
 // ─── 한글 헤더 → 영문 컬럼 매핑 ───
 const CLAIM_HEADER_MAP = {
@@ -272,12 +301,29 @@ const COST_HEADER_MAP = {
   'baros_as': 'baros_as', 'baros_logistics': 'baros_logistics',
 };
 
-let costParsedData = [];
-
 function setClaimMode(mode, btn) {
   claimMode = mode;
   document.querySelectorAll('.mode-toggle .mode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+// ─── 증상 사전 로드 ───
+async function loadSymptomDict() {
+  if (symptomDict !== null) return symptomDict;
+  try {
+    const res = await fetch(
+      `${SUPA_URL}/rest/v1/symptom_dictionary?select=raw_pattern,normalized,category,usage_count&order=usage_count.desc`,
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+    );
+    if (res.ok) {
+      symptomDict = await res.json();
+    } else {
+      symptomDict = [];
+    }
+  } catch (e) {
+    symptomDict = [];
+  }
+  return symptomDict;
 }
 
 // ─── Excel 파싱 ───
@@ -288,12 +334,11 @@ function parseExcel(file, callback) {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      
-      // 헤더 행 자동 감지: year_month, 연월, receipt_id, 접수번호 등이 있는 행 찾기
+
       const knownHeaders = ['year_month','연월','receipt_id','접수번호','country','국가','revenue','매출액','sales_count','매출건수','haza_product','제품'];
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      let headerRow = 0; // 기본 0 (첫 행)
-      
+      let headerRow = 0;
+
       for (let r = range.s.r; r <= Math.min(range.e.r, 10); r++) {
         let matchCount = 0;
         for (let c = range.s.c; c <= range.e.c; c++) {
@@ -305,7 +350,7 @@ function parseExcel(file, callback) {
         }
         if (matchCount >= 2) { headerRow = r; break; }
       }
-      
+
       const json = XLSX.utils.sheet_to_json(ws, { defval: '', range: headerRow });
       callback(null, json, wb.SheetNames[0]);
     } catch (err) {
@@ -327,19 +372,26 @@ function mapHeaders(rows, headerMap) {
   });
 }
 
+// ─── 원본 행에서 한글 헤더 이름 보존 (요구내역 추출용) ───
+function extractRawColumn(rows, koreanKey) {
+  // rows are the raw (unmapped) excel rows; look for the column named koreanKey
+  return rows.map(r => {
+    for (const key of Object.keys(r)) {
+      if (key.trim() === koreanKey) return r[key];
+    }
+    return '';
+  });
+}
+
 function formatDate(val) {
   if (!val) return null;
   if (val instanceof Date) {
     return val.toISOString().split('T')[0];
   }
   const s = String(val).trim();
-  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // YYYYMMDD
   if (/^\d{8}$/.test(s)) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
-  // YYYY/MM/DD
   if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) return s.replace(/\//g,'-');
-  // Excel serial number
   if (/^\d+$/.test(s) && parseInt(s) > 40000) {
     const d = new Date((parseInt(s) - 25569) * 86400000);
     return d.toISOString().split('T')[0];
@@ -347,62 +399,199 @@ function formatDate(val) {
   return s;
 }
 
-// ─── Claim File Handler ───
-function handleClaimFile(file) {
+// ─── Claim File Handler (with full auto-parsing) ───
+async function handleClaimFile(file) {
   if (!file) return;
+  showStatus('claimStatus', 'loading', '증상 사전 로드 중...');
+
+  // 1. Load symptom dict first
+  const dict = await loadSymptomDict();
   showStatus('claimStatus', 'loading', '파일 파싱 중...');
-  
+
   parseExcel(file, (err, rows, sheetName) => {
     if (err) { showStatus('claimStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
-    
+
+    // 2. Map headers (요구내역 → claim_detail is already in CLAIM_HEADER_MAP)
     const mapped = mapHeaders(rows, CLAIM_HEADER_MAP);
-    
-    // 날짜 포맷 변환
-    claimParsedData = mapped.filter(r => r.receipt_date).map(r => {
+
+    // Also capture raw 요구내역 text per row (for parseRequirement)
+    // We need the original column value before header mapping strips context.
+    // Since CLAIM_HEADER_MAP maps 요구내역 → claim_detail, we pull claim_detail from mapped rows,
+    // but parseRequirement needs the full original text, so we also capture the raw column.
+    const rawDetailCol = extractRawColumn(rows, '요구내역');
+
+    // 3. Date format + defaults
+    let allRows = mapped.filter(r => r.receipt_date).map((r, idx) => {
       r.receipt_date = formatDate(r.receipt_date);
       r.cost = parseFloat(r.cost) || 0;
       if (!r.country) r.country = '국내';
       if (!r.brand) r.brand = '시디즈';
+      r._rawDetail = rawDetailCol[idx] ? String(rawDetailCol[idx]) : (r.claim_detail ? String(r.claim_detail) : '');
       return r;
     });
-    
-    if (claimParsedData.length === 0) {
+
+    if (allRows.length === 0) {
       showStatus('claimStatus', 'error', '유효한 데이터가 없습니다. receipt_date(접수일) 컬럼을 확인해 주세요.');
       return;
     }
-    
-    // 미리보기 표시
-    showPreview('claimPreview', 'claimPreviewTable', 'claimPreviewInfo', claimParsedData, file.name);
+
+    const totalBeforeDedup = allRows.length;
+
+    // 4. Deduplicate by receipt_id (keep first occurrence)
+    const seenIds = new Set();
+    allRows = allRows.filter(r => {
+      if (!r.receipt_id) return true; // keep rows without id
+      const id = String(r.receipt_id).trim();
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    const afterDedup = allRows.length;
+    const dedupRemoved = totalBeforeDedup - afterDedup;
+
+    // 5. Run parsing pipeline for each row
+    let matchedCount = 0;
+    let unmatchedCount = 0;
+
+    claimParsedData = [];
+    claimPendingData = [];
+    claimRawParsed = [];
+
+    allRows.forEach(r => {
+      const parseResult = SymptomEngine.parseRequirement(r._rawDetail, dict);
+
+      // Build claims_receipt row
+      const dbRow = {
+        receipt_id: r.receipt_id ? String(r.receipt_id).trim() : null,
+        receipt_date: r.receipt_date,
+        item: r.item || parseResult.item || null,
+        category: r.category || null,
+        judgement_type: r.judgement_type || null,
+        defect_type: r.defect_type || null,
+        model: r.model || null,
+        country: r.country,
+        cost: r.cost,
+        claim_detail: r.claim_detail ? String(r.claim_detail) : null,
+        inspection_result: r.inspection_result || null,
+        main_category: r.main_category || null,
+        sub_category: r.sub_category || null,
+        defective_part: r.defective_part || null,
+        lot: r.lot || null,
+        code: r.code || null,
+        brand: r.brand,
+        defect_normalized: parseResult.normalized || null,
+        defect_category: parseResult.category || null,
+        raw_symptom: parseResult.rawSymptom || null,
+      };
+      claimParsedData.push(dbRow);
+
+      if (parseResult.matched) {
+        matchedCount++;
+      } else {
+        unmatchedCount++;
+        // Build symptom_pending row
+        claimPendingData.push({
+          receipt_id: dbRow.receipt_id,
+          item: dbRow.item,
+          raw_symptom: parseResult.rawSymptom || null,
+          normalized_candidate: null,
+          suggested_normalized: null,
+          suggested_category: parseResult.category || null,
+          status: 'pending',
+        });
+      }
+
+      // Store full parse result for preview
+      claimRawParsed.push({
+        ...dbRow,
+        _matched: parseResult.matched,
+        _productCode: parseResult.productCode,
+        _parsedItem: parseResult.item,
+      });
+    });
+
+    // Update stats banner
+    document.getElementById('statTotal').textContent = totalBeforeDedup + '건';
+    document.getElementById('statDedup').textContent = (dedupRemoved > 0 ? `-${dedupRemoved}건 (${afterDedup}건 유지)` : afterDedup + '건');
+    document.getElementById('statMatched').textContent = matchedCount + '건';
+    document.getElementById('statUnmatched').textContent = unmatchedCount + '건';
+    document.getElementById('claimParseBanner').classList.add('show');
+
+    // Show preview table
+    showClaimParsePreview(file.name, afterDedup);
     document.getElementById('claimUploadBtn').disabled = false;
     hideStatus('claimStatus');
   });
 }
 
+function showClaimParsePreview(filename, total) {
+  const container = document.getElementById('claimPreview');
+  const table = document.getElementById('claimPreviewTable');
+  const info = document.getElementById('claimPreviewInfo');
+
+  container.classList.add('show');
+  info.textContent = `${filename} — ${total}건 (최대 30행 미리보기, 빨간 행 = 미분류)`;
+
+  const previewCols = ['접수번호', '접수일', '제품코드', '제품구분', '증상(raw)', '표준증상', '카테고리', '매칭여부'];
+  const preview = claimRawParsed.slice(0, 30);
+
+  let html = '<thead><tr>' + previewCols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  preview.forEach(row => {
+    const cls = row._matched ? '' : ' class="unmatched"';
+    const matchBadge = row._matched
+      ? `<td class="badge-matched">✓ 매칭</td>`
+      : `<td class="badge-unmatched">⚠ 미분류</td>`;
+    html += `<tr${cls}>
+      <td>${escHtml(row.receipt_id ?? '')}</td>
+      <td>${escHtml(row.receipt_date ?? '')}</td>
+      <td>${escHtml(row._productCode ?? '')}</td>
+      <td>${escHtml(row.item ?? row._parsedItem ?? '')}</td>
+      <td title="${escHtml(row.raw_symptom ?? '')}">${escHtml(truncate(row.raw_symptom ?? '', 35))}</td>
+      <td>${escHtml(row.defect_normalized ?? '')}</td>
+      <td>${escHtml(row.defect_category ?? '')}</td>
+      ${matchBadge}
+    </tr>`;
+  });
+  if (claimRawParsed.length > 30) {
+    html += `<tr><td colspan="8" style="text-align:center;color:var(--muted)">... 외 ${claimRawParsed.length - 30}행</td></tr>`;
+  }
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+// ─── Sales File Handler ───
 function handleSalesFile(file) {
   if (!file) return;
   showStatus('salesStatus', 'loading', '파일 파싱 중...');
-  
+
   parseExcel(file, (err, rows, sheetName) => {
     if (err) { showStatus('salesStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
-    
+
     const mapped = mapHeaders(rows, SALES_HEADER_MAP);
-    
+
     salesParsedData = mapped.filter(r => r.year_month && r.sales_count && String(r.year_month) !== 'year_month').map(r => {
       r.sales_count = parseInt(r.sales_count) || 0;
       r.sales_amount = parseFloat(r.sales_amount) || 0;
       if (!r.country) r.country = '국내';
-      // year_month 포맷 정리
       let ym = String(r.year_month).trim();
       if (/^\d{6}$/.test(ym)) ym = ym.slice(0,4)+'-'+ym.slice(4,6);
       r.year_month = ym;
       return r;
     });
-    
+
     if (salesParsedData.length === 0) {
       showStatus('salesStatus', 'error', '유효한 데이터가 없습니다. year_month(연월), sales_count(매출건수) 컬럼을 확인해 주세요.');
       return;
     }
-    
+
     showPreview('salesPreview', 'salesPreviewTable', 'salesPreviewInfo', salesParsedData, file.name);
     document.getElementById('salesUploadBtn').disabled = false;
     hideStatus('salesStatus');
@@ -413,19 +602,19 @@ function showPreview(containerId, tableId, infoId, data, filename) {
   const container = document.getElementById(containerId);
   const table = document.getElementById(tableId);
   const info = document.getElementById(infoId);
-  
+
   container.classList.add('show');
   info.textContent = `${filename} — ${data.length}행 · 컬럼: ${Object.keys(data[0]).join(', ')}`;
-  
+
   const cols = Object.keys(data[0]);
   const previewRows = data.slice(0, 20);
-  
+
   let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
   previewRows.forEach(row => {
     html += '<tr>' + cols.map(c => {
       let v = row[c] ?? '';
       if (typeof v === 'string' && v.length > 40) v = v.slice(0, 40) + '...';
-      return `<td>${v}</td>`;
+      return `<td>${escHtml(String(v))}</td>`;
     }).join('') + '</tr>';
   });
   if (data.length > 20) html += `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted)">... 외 ${data.length - 20}행</td></tr>`;
@@ -433,15 +622,15 @@ function showPreview(containerId, tableId, infoId, data, filename) {
   table.innerHTML = html;
 }
 
-// ─── Supabase Upload ───
+// ─── Supabase Upload: Claims ───
 async function uploadClaims() {
   if (claimParsedData.length === 0) return;
-  
+
   const btn = document.getElementById('claimUploadBtn');
   btn.disabled = true;
   btn.textContent = '업로드 중...';
-  showStatus('claimStatus', 'loading', `${claimParsedData.length}건 업로드 중...`);
-  
+  showStatus('claimStatus', 'loading', `${claimParsedData.length}건 claims_receipt 업로드 중...`);
+
   try {
     // 교체 모드면 기존 데이터 삭제
     if (claimMode === 'replace') {
@@ -449,15 +638,15 @@ async function uploadClaims() {
         method: 'DELETE', headers
       });
     }
-    
-    // 500건씩 분할 업로드
+
+    // Upsert claims_receipt by receipt_id (500건씩 분할)
     const batchSize = 500;
     let uploaded = 0;
     for (let i = 0; i < claimParsedData.length; i += batchSize) {
       const batch = claimParsedData.slice(i, i + batchSize);
-      const res = await fetch(`${SUPA_URL}/rest/v1/claims_receipt`, {
+      const res = await fetch(`${SUPA_URL}/rest/v1/claims_receipt?on_conflict=receipt_id`, {
         method: 'POST',
-        headers: { ...headers, 'Prefer': 'return=minimal' },
+        headers: { ...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
         body: JSON.stringify(batch)
       });
       if (!res.ok) {
@@ -465,11 +654,36 @@ async function uploadClaims() {
         throw new Error(`HTTP ${res.status}: ${errText}`);
       }
       uploaded += batch.length;
-      showStatus('claimStatus', 'loading', `${uploaded} / ${claimParsedData.length}건 업로드 완료...`);
+      showStatus('claimStatus', 'loading', `claims_receipt: ${uploaded} / ${claimParsedData.length}건 완료...`);
     }
-    
-    showStatus('claimStatus', 'success', `✅ ${claimParsedData.length}건 업로드 완료! (${claimMode === 'replace' ? '교체' : '추가'} 모드)`);
-    resetClaimPreview();
+
+    // Upload symptom_pending (insert only if not already pending)
+    let pendingUploaded = 0;
+    if (claimPendingData.length > 0) {
+      showStatus('claimStatus', 'loading', `symptom_pending ${claimPendingData.length}건 저장 중...`);
+      for (let i = 0; i < claimPendingData.length; i += batchSize) {
+        const batch = claimPendingData.slice(i, i + batchSize);
+        // Use ignore on conflict so we don't overwrite rows already under review
+        const res = await fetch(`${SUPA_URL}/rest/v1/symptom_pending?on_conflict=receipt_id`, {
+          method: 'POST',
+          headers: { ...headers, 'Prefer': 'return=minimal,resolution=ignore-duplicates' },
+          body: JSON.stringify(batch)
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          // Non-fatal: log but continue
+          console.warn('symptom_pending insert warn:', errText);
+        } else {
+          pendingUploaded += batch.length;
+        }
+      }
+    }
+
+    const matchedCount = claimParsedData.length - claimPendingData.length;
+    const pendingCount = claimPendingData.length;
+
+    showUploadResult('claimStatus', claimParsedData.length, matchedCount, pendingCount, claimMode);
+    resetClaimPreview(false); // keep status visible
   } catch (err) {
     showStatus('claimStatus', 'error', '❌ 업로드 실패: ' + err.message);
   } finally {
@@ -480,14 +694,13 @@ async function uploadClaims() {
 
 async function uploadSales() {
   if (salesParsedData.length === 0) return;
-  
+
   const btn = document.getElementById('salesUploadBtn');
   btn.disabled = true;
   btn.textContent = '업로드 중...';
   showStatus('salesStatus', 'loading', `${salesParsedData.length}건 업로드 중...`);
-  
+
   try {
-    // Upsert — year_month + country 기준으로 중복 시 업데이트
     const res = await fetch(`${SUPA_URL}/rest/v1/sales_monthly?on_conflict=year_month,country`, {
       method: 'POST',
       headers: { ...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
@@ -497,7 +710,7 @@ async function uploadSales() {
       const errText = await res.text();
       throw new Error(`HTTP ${res.status}: ${errText}`);
     }
-    
+
     showStatus('salesStatus', 'success', `✅ ${salesParsedData.length}건 업로드(Upsert) 완료!`);
     resetSalesPreview();
   } catch (err) {
@@ -512,17 +725,21 @@ async function uploadSales() {
 async function checkExistingData() {
   showStatus('existingStatus', 'loading', '조회 중...');
   try {
-    const [r1, r2, r3] = await Promise.all([
+    const [r1, r2, r3, r4] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/claims?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }),
       fetch(`${SUPA_URL}/rest/v1/claims_receipt?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }).catch(() => null),
       fetch(`${SUPA_URL}/rest/v1/sales_monthly?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }).catch(() => null),
+      fetch(`${SUPA_URL}/rest/v1/symptom_pending?select=count`, { headers: { ...headers, 'Prefer': 'count=exact' } }).catch(() => null),
     ]);
-    
+
     const c1 = r1.headers.get('content-range')?.split('/')[1] || '?';
     const c2 = r2?.ok ? (r2.headers.get('content-range')?.split('/')[1] || '0') : '테이블 미생성';
     const c3 = r3?.ok ? (r3.headers.get('content-range')?.split('/')[1] || '0') : '테이블 미생성';
-    
-    showStatus('existingStatus', 'success', `claims(회수일): ${c1}건 · claims_receipt(접수일): ${c2}건 · sales_monthly(매출): ${c3}건`);
+    const c4 = r4?.ok ? (r4.headers.get('content-range')?.split('/')[1] || '0') : '테이블 미생성';
+
+    showStatus('existingStatus', 'success',
+      `claims(회수일): ${c1}건 · claims_receipt(접수일): ${c2}건 · sales_monthly(매출): ${c3}건 · symptom_pending(미분류): ${c4}건`
+    );
   } catch (err) {
     showStatus('existingStatus', 'error', '조회 실패: ' + err.message);
   }
@@ -556,10 +773,14 @@ function showStatus(id, type, msg) {
 }
 function hideStatus(id) { document.getElementById(id).classList.remove('show'); }
 
-function resetClaimPreview() {
+function resetClaimPreview(clearStatus = true) {
   document.getElementById('claimPreview').classList.remove('show');
+  document.getElementById('claimParseBanner').classList.remove('show');
   document.getElementById('claimUploadBtn').disabled = true;
   claimParsedData = [];
+  claimPendingData = [];
+  claimRawParsed = [];
+  if (clearStatus) hideStatus('claimStatus');
 }
 function resetSalesPreview() {
   document.getElementById('salesPreview').classList.remove('show');
@@ -587,13 +808,13 @@ function handleCostFile(fileOrInput) {
   const file = fileOrInput instanceof File ? fileOrInput : fileOrInput.files[0];
   if (!file) return;
   showStatus('costStatus', 'loading', '파일 파싱 중...');
-  
+
   parseExcel(file, (err, rows, sheetName) => {
     if (err) { showStatus('costStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
-    
+
     const mapped = mapHeaders(rows, COST_HEADER_MAP);
     const numFields = ['revenue','haza_product','haza_material','haza_t50re','haza_t50re_labor','haza_claim','baros_contact','baros_as','baros_logistics'];
-    
+
     costParsedData = mapped.filter(r => r.year_month && String(r.year_month) !== 'year_month').map(r => {
       numFields.forEach(f => { r[f] = parseFloat(r[f]) || 0; });
       let ym = String(r.year_month).trim();
@@ -601,13 +822,12 @@ function handleCostFile(fileOrInput) {
       r.year_month = ym;
       return r;
     });
-    
+
     if (costParsedData.length === 0) {
       showStatus('costStatus', 'error', '유효한 데이터가 없습니다. year_month(연월) 컬럼을 확인해 주세요.');
       return;
     }
-    
-    // 미리보기
+
     const container = document.getElementById('costPreview');
     const table = document.getElementById('costPreviewTable');
     container.style.display = 'block';
@@ -618,12 +838,12 @@ function handleCostFile(fileOrInput) {
       html += '<tr>' + cols.map(c => {
         let v = row[c] ?? '';
         if (typeof v === 'number') v = v.toLocaleString();
-        return `<td>${v}</td>`;
+        return `<td>${escHtml(String(v))}</td>`;
       }).join('') + '</tr>';
     });
     if (costParsedData.length > 20) html += `<tr><td colspan="${cols.length}" style="text-align:center">... 외 ${costParsedData.length-20}행</td></tr>`;
     html += '</tbody></table>';
-    table.innerHTML = `<p style="margin-bottom:8px;font-size:12px;color:#a0b4cb">${file.name} — ${costParsedData.length}행</p>` + html;
+    table.innerHTML = `<p style="margin-bottom:8px;font-size:12px;color:#a0b4cb">${escHtml(file.name)} — ${costParsedData.length}행</p>` + html;
     hideStatus('costStatus');
   });
 }
@@ -649,6 +869,21 @@ async function uploadCostData() {
   } catch(e) {
     showStatus('costStatus', 'error', '❌ 업로드 실패: ' + e.message);
   }
+}
+
+// ─── Upload result status with HTML support ───
+function showUploadResult(id, totalUploaded, matchedCount, pendingCount, mode) {
+  const el = document.getElementById(id);
+  el.className = 'status show success';
+  const modeLabel = mode === 'replace' ? '교체' : '추가';
+  let html = `✅ ${totalUploaded}건 업로드 완료 (${modeLabel} 모드)<br>`;
+  html += `🤖 ${matchedCount}건 자동분류 완료<br>`;
+  if (pendingCount > 0) {
+    html += `⏳ ${pendingCount}건 미분류 → 관리자 검토 필요 (<a href="admin-claims.html">admin-claims.html</a>)`;
+  } else {
+    html += `✅ 모든 항목 자동분류 완료`;
+  }
+  el.innerHTML = html;
 }
 
 // 페이지 로드 시 기존 데이터 현황 자동 조회
