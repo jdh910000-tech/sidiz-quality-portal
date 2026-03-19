@@ -254,7 +254,7 @@ let symptomDict = null;      // cached symptom dictionary from Supabase
 
 // ─── 한글 헤더 → 영문 컬럼 매핑 ───
 const CLAIM_HEADER_MAP = {
-  '접수번호': 'receipt_id', '접수일': 'receipt_date', '유형': 'category',
+  '접수번호': 'receipt_id', '접수일': 'receipt_date', '출고예정일': 'receipt_date', '출고일자': 'receipt_date', '유형': 'category',
   '카테고리': 'category', '판정유형': 'judgement_type', '판정': 'judgement_type',
   '하자유형': 'defect_type', '하자': 'defect_type', '불량유형': 'defect_type',
   '제품': 'item', '제품군': 'item', '모델': 'model', '모델명': 'model',
@@ -383,6 +383,12 @@ function extractRawColumn(rows, koreanKey) {
   });
 }
 
+// ─── 접수번호에서 날짜 추출 (예: P202603110099 → 2026-03-11) ───
+function extractDateFromReceiptId(id) {
+  const m = String(id || '').match(/^P(\d{4})(\d{2})(\d{2})\d+$/i);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
 function formatDate(val) {
   if (!val) return null;
   if (val instanceof Date) {
@@ -421,17 +427,21 @@ async function handleClaimFile(file) {
     const rawDetailCol = extractRawColumn(rows, '요구내역');
 
     // 3. Date format + defaults
-    let allRows = mapped.filter(r => r.receipt_date).map((r, idx) => {
+    // receipt_date가 없으면 접수번호(receipt_id)에서 날짜 추출 (예: P202603110099 → 2026-03-11)
+    let allRows = mapped.filter(r => r.receipt_id || r.receipt_date).map((r, idx) => {
+      if (!r.receipt_date && r.receipt_id) {
+        r.receipt_date = extractDateFromReceiptId(r.receipt_id);
+      }
       r.receipt_date = formatDate(r.receipt_date);
       r.cost = parseFloat(r.cost) || 0;
       if (!r.country) r.country = '국내';
       if (!r.brand) r.brand = '시디즈';
       r._rawDetail = rawDetailCol[idx] ? String(rawDetailCol[idx]) : (r.claim_detail ? String(r.claim_detail) : '');
       return r;
-    });
+    }).filter(r => r.receipt_date); // 날짜 추출 실패 행 제외
 
     if (allRows.length === 0) {
-      showStatus('claimStatus', 'error', '유효한 데이터가 없습니다. receipt_date(접수일) 컬럼을 확인해 주세요.');
+      showStatus('claimStatus', 'error', '유효한 데이터가 없습니다. 접수번호(P+날짜+시퀀스) 또는 접수일/출고예정일 컬럼을 확인해 주세요.');
       return;
     }
 
