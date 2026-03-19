@@ -674,18 +674,16 @@ async function uploadClaims() {
       for (let i = 0; i < claimPendingData.length; i += batchSize) {
         const batch = claimPendingData.slice(i, i + batchSize);
         // Use ignore on conflict so we don't overwrite rows already under review
-        const res = await fetch(`${SUPA_URL}/rest/v1/symptom_pending?on_conflict=receipt_id`, {
+        const res = await fetch(`${SUPA_URL}/rest/v1/symptom_pending`, {
           method: 'POST',
-          headers: { ...headers, 'Prefer': 'return=minimal,resolution=ignore-duplicates' },
+          headers: { ...headers, 'Prefer': 'return=minimal' },
           body: JSON.stringify(batch)
         });
         if (!res.ok) {
           const errText = await res.text();
-          // Non-fatal: log but continue
-          console.warn('symptom_pending insert warn:', errText);
-        } else {
-          pendingUploaded += batch.length;
+          throw new Error(`symptom_pending 저장 실패 ${res.status}: ${errText}`);
         }
+        pendingUploaded += batch.length;
       }
     }
 
