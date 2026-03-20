@@ -577,7 +577,7 @@ body::before {
         <canvas id="rctDefectTrendChart" height="80" style="margin-bottom:14px"></canvas>
         <!-- 편집 안내 -->
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;padding:8px 12px;background:rgba(0,87,184,0.06);border-radius:8px;border:1px solid rgba(0,87,184,0.15)">
-          ✏️ <strong>표준증상 · 카테고리 · 원문증상</strong> 셀을 클릭하면 편집할 수 있습니다. 저장 시 증상 사전에 자동 학습됩니다.
+          ✏️ <strong>표준증상 · 카테고리</strong> 셀을 클릭하면 편집할 수 있습니다. 저장 시 증상 사전에 자동 학습됩니다. · <strong>요구내역</strong> 셀을 클릭하면 전체 내용을 볼 수 있습니다.
         </div>
         <!-- 상세 테이블 -->
         <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
@@ -590,10 +590,11 @@ body::before {
                 <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">제품구분</th>
                 <th style="padding:9px 10px;text-align:left;color:var(--accent-emerald);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">표준증상 ✏️</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--accent-cyan);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">카테고리 ✏️</th>
-                <th style="padding:9px 10px;text-align:left;color:var(--accent-amber);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">원문증상 ✏️</th>
+                <th style="padding:9px 10px;text-align:left;color:var(--accent-amber);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">요구내역</th>
               </tr>
             </thead>
             <tbody id="rctDetailTableBody"></tbody>
+            <tfoot id="rctDetailTableFoot" style="position:sticky;bottom:0;z-index:2"></tfoot>
           </table>
         </div>
       </div>
@@ -1384,6 +1385,7 @@ function _renderRctProductChart() {
     },
     options: {
       responsive: true,
+      aspectRatio: 2,
       cutout: '55%',
       plugins: {
         legend: { position: 'right', labels: { padding: 8, usePointStyle: true, font: { size: 10 }, boxWidth: 10 } },
@@ -1530,10 +1532,20 @@ function _showDefectDetail(defectName) {
           onclick="startEdit(this,'defect_category','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}',${d.seq_no||1},'${(d.raw_symptom||'').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\\/g,'\\\\')}','${(d.defect_normalized||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','${(d.defect_category||'기타').replace(/'/g,"\\'")}')"
           title="클릭하여 편집">${d.defect_category||'기타'}</td>
       <td style="padding:7px 10px;cursor:pointer;color:var(--accent-amber);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-          onclick="startEdit(this,'raw_symptom','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}',${d.seq_no||1},'${(d.raw_symptom||'').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\\/g,'\\\\')}','${(d.defect_normalized||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','${(d.defect_category||'기타').replace(/'/g,"\\'")}')"
-          title="${(d.raw_symptom||'').replace(/"/g,'&quot;')}">${d.raw_symptom||'-'}</td>
+          onclick="showDetailPopover(event,'${encodeURIComponent(d.claim_detail||'')}')"
+          title="클릭하여 전체 내용 보기">${(d.claim_detail||'-').substring(0,40)}${(d.claim_detail||'').length>40?'…':''}</td>
     </tr>`;
   }).join('');
+
+  // 합계 행
+  const tfoot = document.getElementById('rctDetailTableFoot');
+  if (tfoot) {
+    tfoot.innerHTML = `<tr style="background:rgba(13,27,42,0.97)">
+      <td colspan="7" style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:11px;font-weight:600;border-top:2px solid var(--border)">
+        합계&nbsp;<span style="color:var(--accent-amber);font-size:13px;font-weight:700">${sorted.length}</span>건
+      </td>
+    </tr>`;
+  }
 }
 
 // ── 인라인 편집 ──
@@ -2050,6 +2062,52 @@ function addOkrYear() {
   document.getElementById('okr-' + lastYear).after(content);
   showOkrYear(newYear, tab);
 }
+
+// ── 요구내역 팝오버 ──
+function showDetailPopover(event, encodedText) {
+  event.stopPropagation();
+  const text = decodeURIComponent(encodedText) || '(내용 없음)';
+  let pop = document.getElementById('detailPopover');
+  if (!pop) return;
+  pop.querySelector('#detailPopoverText').textContent = text;
+  pop.style.display = 'block';
+
+  // 위치 계산 (클릭 지점 기준)
+  const x = event.clientX;
+  const y = event.clientY;
+  const pw = 340;
+  const ph = pop.offsetHeight || 160;
+  const ww = window.innerWidth;
+  const wh = window.innerHeight;
+  let left = x + 10;
+  let top  = y + 10;
+  if (left + pw > ww - 10) left = x - pw - 10;
+  if (top  + ph > wh - 10) top  = y - ph - 10;
+  pop.style.left = left + 'px';
+  pop.style.top  = top  + 'px';
+}
+
+function closeDetailPopover() {
+  const pop = document.getElementById('detailPopover');
+  if (pop) pop.style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+  const pop = document.getElementById('detailPopover');
+  if (pop && pop.style.display === 'block' && !pop.contains(e.target)) {
+    pop.style.display = 'none';
+  }
+});
 </script>
+
+<!-- 요구내역 팝오버 카드 -->
+<div id="detailPopover" style="display:none;position:fixed;z-index:9999;width:340px;max-width:90vw;background:#1a2744;border:1px solid rgba(74,158,255,0.35);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,0.55);padding:16px 18px;transition:opacity 0.15s">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <span style="font-size:11px;font-weight:700;color:var(--accent-amber);letter-spacing:0.5px">📋 요구내역 전체보기</span>
+    <button onclick="closeDetailPopover()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px" title="닫기">✕</button>
+  </div>
+  <div id="detailPopoverText" style="font-size:12px;color:var(--text-primary);line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow-y:auto"></div>
+</div>
+
 </body>
 </html>
