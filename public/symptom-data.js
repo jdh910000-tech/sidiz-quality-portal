@@ -26,15 +26,75 @@ const PRODUCT_CODE_MAP = {
 const DIRECTIONAL_WORDS = ['좌측','우측','좌','우','앞쪽','뒤쪽','앞','뒤','왼쪽','오른쪽','양쪽','상','하','전','후'];
 
 // ─── 제품코드 추출 ───
+// 시작 글자: T, V, S, K, P, F, E, C, O, M, H, G (제품군 코드 실무 기준)
+const PRODUCT_CODE_PREFIX = /^[TVSKPFECOMHGtvskpfecomhg]/;
 function extractProductCode(text) {
   if (!text) return null;
-  const candidates = text.match(/[A-Z][A-Z0-9]{4,}/g) || [];
+  // 지정된 시작 글자로 시작하는 5자 이상 영숫자 코드만 추출
+  const candidates = (text.match(/[TVSKPFECOMHGtvskpfecomhg][A-Z0-9a-z]{4,}/g) || [])
+    .map(c => c.toUpperCase());
   // 긴 코드부터 매칭 (더 구체적인 코드 우선)
   const sorted = candidates.sort((a, b) => b.length - a.length);
   for (const c of sorted) {
     if (PRODUCT_CODE_MAP[c.trim()]) return c.trim();
   }
   return null;
+}
+
+// ─── 순번(seq_no) 기반 증상 추출 ───
+// seqNo: 행의 순번 값 (1, 2, 3...)
+// text: 요구내역 원문
+// 반환: 해당 순번에 해당하는 증상 텍스트 (클린)
+function extractSymptomBySeq(text, seqNo) {
+  if (!text) return '';
+  let t = String(text).replace(/\t/g, ' ');
+  const seq = parseInt(seqNo) || 1;
+
+  // ── 전략 1: "NN-" 또는 "NN." 구간 추출 ──
+  // 예) "02- 틸트 소음 발생 < 시공팀 조치" → "틸트 소음 발생"
+  const seqStr = String(seq).padStart(2, '0');
+  const seqRegex = new RegExp(`(?:^|\\s)${seqStr}[\\-\\.:]\\s*(.+?)(?=\\s*\\d{2}[\\-\\.:]|<|$)`, 's');
+  const m1 = t.match(seqRegex);
+  if (m1) {
+    let symptom = m1[1]
+      .split(/[<>]/)[0]
+      .replace(/[★▶◀※！!\[\]]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (symptom.length > 4) return symptom;
+  }
+
+  // ── 전략 2: 제품 설명 블록 이후 한글 증상 추출 ──
+  // 패턴: [제품코드] [색상] [제품명] [수량][EA][-] [증상] > [서비스응답]
+  const prodBlockRegex = /[TVSKPFECOMHGtvskpfecomhg][A-Z0-9]{4,}[^\n]{0,60}?\d+EA?\s*[-]?\s*([가-힣].+?)(?:>|<|\n|$)/s;
+  const m2 = t.match(prodBlockRegex);
+  if (m2) {
+    let symptom = m2[1]
+      .split(/[><]/)[0]
+      .replace(/[★▶◀※！!\[\]]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (symptom.length > 4) return symptom;
+  }
+
+  // ── 전략 3: 수량(숫자+EA 또는 단순 숫자) 이후 한글 텍스트 ──
+  const countRegex = /\d+EA?\s*[-]?\s*([가-힣][가-힣\s\w\/(),.\-!]+)/;
+  const m3 = t.match(countRegex);
+  if (m3) {
+    return m3[1].split(/[><]/)[0]
+      .replace(/[★▶◀※！!\[\]]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // ── 전략 4: 한글 문장 첫 번째 추출 (최후 fallback) ──
+  const krRegex = /([가-힣][가-힣\s\w\/(),.\-]{4,})/;
+  const m4 = t.match(krRegex);
+  if (m4) {
+    return m4[1].split(/[><]/)[0].replace(/\s+/g, ' ').trim();
+  }
+
+  return '';
 }
 
 // ─── 증상 텍스트 추출 (노이즈 제거) ───
@@ -113,14 +173,19 @@ function suggestCategory(text) {
   return '기타';
 }
 
-// ─── 전체 파싱 파이프라인 ───
+// ─── 전체 파싱 파이프라인 (순번 기반) ───
 // dict: Supabase에서 로드한 증상사전 배열
+// seqNo: 순번 (1, 2, 3...) — 해당 순번의 증상 구간 추출
 // returns: { productCode, item, rawSymptom, normalized, category, matched }
-function parseRequirement(text, dict) {
+function parseRequirement(text, dict, seqNo) {
   const productCode = extractProductCode(text);
   const item = productCode ? (PRODUCT_CODE_MAP[productCode] || null) : null;
-  const rawSymptom = extractSymptomText(text);
-  const matchResult = dict ? matchSymptomDict(rawSymptom, dict) : null;
+  // 순번이 있으면 순번 기반 추출, 없으면 기존 텍스트 추출
+  const rawSymptom = (seqNo != null)
+    ? extractSymptomBySeq(text, seqNo)
+    : extractSymptomText(text);
+  const stripped = stripDirectional(rawSymptom);
+  const matchResult = dict ? matchSymptomDict(stripped, dict) : null;
   if (matchResult) {
     return { productCode, item, rawSymptom, normalized: matchResult.normalized, category: matchResult.category, matched: true, matchedPattern: matchResult.pattern };
   }
@@ -133,6 +198,7 @@ window.SymptomEngine = {
   PRODUCT_CODE_MAP,
   CATEGORY_KEYWORDS,
   extractProductCode,
+  extractSymptomBySeq,
   extractSymptomText,
   stripDirectional,
   matchSymptomDict,

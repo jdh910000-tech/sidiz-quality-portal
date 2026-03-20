@@ -133,7 +133,7 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
     <!-- 파싱 통계 배너 -->
     <div class="parse-banner" id="claimParseBanner">
       <span><span class="lbl">총 건수</span><span id="statTotal" style="color:var(--cyan)">-</span></span>
-      <span><span class="lbl">중복 제거</span><span id="statDedup" style="color:#7eb8f7">-</span></span>
+      <span><span class="lbl">접수번호+순번</span><span id="statDedup" style="color:#7eb8f7">복합키</span></span>
       <span><span class="lbl">자동분류</span><span id="statMatched" style="color:var(--emerald)">-</span></span>
       <span><span class="lbl">미분류(pending)</span><span id="statUnmatched" style="color:var(--amber)">-</span></span>
     </div>
@@ -254,8 +254,12 @@ let symptomDict = null;      // cached symptom dictionary from Supabase
 
 // ─── 한글 헤더 → 영문 컬럼 매핑 ───
 const CLAIM_HEADER_MAP = {
-  '접수번호': 'receipt_id', '접수일': 'receipt_date', '출고예정일': 'receipt_date', '출고일자': 'receipt_date', '유형': 'category',
-  '카테고리': 'category', '판정유형': 'judgement_type', '판정': 'judgement_type',
+  '접수번호': 'receipt_id',
+  '순번': 'seq_no',
+  '출고예정일': 'processing_date', '출고일자': 'processing_date',
+  '접수일': 'receipt_date',         // 접수일이 별도로 있을 경우
+  '유형': 'category', '카테고리': 'category',
+  '판정유형': 'judgement_type', '판정': 'judgement_type',
   '하자유형': 'defect_type', '하자': 'defect_type', '불량유형': 'defect_type',
   '제품': 'item', '제품군': 'item', '모델': 'model', '모델명': 'model',
   '국가': 'country', '지역': 'country', '브랜드': 'brand',
@@ -264,10 +268,15 @@ const CLAIM_HEADER_MAP = {
   '판정결과': 'inspection_result', '검사결과': 'inspection_result',
   '대분류': 'main_category', '소분류': 'sub_category',
   '불량부위': 'defective_part', 'LOT': 'lot', '로트': 'lot', '코드': 'code',
+  '서비스센터': 'service_center', '서비스팀': 'service_team',
+  '부품코드': 'part_code', '부품명': 'part_name',
+  '유무상': 'warranty_type', '판정형태': 'judgement_form',
   // 영문 그대로도 매핑
-  'receipt_id': 'receipt_id', 'receipt_date': 'receipt_date', 'category': 'category',
-  'judgement_type': 'judgement_type', 'defect_type': 'defect_type', 'item': 'item',
-  'model': 'model', 'country': 'country', 'brand': 'brand', 'cost': 'cost',
+  'receipt_id': 'receipt_id', 'seq_no': 'seq_no',
+  'receipt_date': 'receipt_date', 'processing_date': 'processing_date',
+  'category': 'category', 'judgement_type': 'judgement_type',
+  'defect_type': 'defect_type', 'item': 'item', 'model': 'model',
+  'country': 'country', 'brand': 'brand', 'cost': 'cost',
   'claim_detail': 'claim_detail', 'inspection_result': 'inspection_result',
   'main_category': 'main_category', 'sub_category': 'sub_category',
   'defective_part': 'defective_part', 'lot': 'lot', 'code': 'code',
@@ -405,62 +414,45 @@ function formatDate(val) {
   return s;
 }
 
-// ─── Claim File Handler (with full auto-parsing) ───
+// ─── Claim File Handler (순번 기반 증상 추출) ───
 async function handleClaimFile(file) {
   if (!file) return;
   showStatus('claimStatus', 'loading', '증상 사전 로드 중...');
 
-  // 1. Load symptom dict first
+  // 1. 증상 사전 로드
   const dict = await loadSymptomDict();
   showStatus('claimStatus', 'loading', '파일 파싱 중...');
 
   parseExcel(file, (err, rows, sheetName) => {
     if (err) { showStatus('claimStatus', 'error', '파일 읽기 오류: ' + err.message); return; }
 
-    // 2. Map headers (요구내역 → claim_detail is already in CLAIM_HEADER_MAP)
+    // 2. 헤더 매핑
     const mapped = mapHeaders(rows, CLAIM_HEADER_MAP);
-
-    // Also capture raw 요구내역 text per row (for parseRequirement)
-    // We need the original column value before header mapping strips context.
-    // Since CLAIM_HEADER_MAP maps 요구내역 → claim_detail, we pull claim_detail from mapped rows,
-    // but parseRequirement needs the full original text, so we also capture the raw column.
     const rawDetailCol = extractRawColumn(rows, '요구내역');
 
-    // 3. Date format + defaults
-    // receipt_date가 없으면 접수번호(receipt_id)에서 날짜 추출 (예: P202603110099 → 2026-03-11)
-    let allRows = mapped.filter(r => r.receipt_id || r.receipt_date).map((r, idx) => {
-      if (!r.receipt_date && r.receipt_id) {
-        r.receipt_date = extractDateFromReceiptId(r.receipt_id);
-      }
-      r.receipt_date = formatDate(r.receipt_date);
+    // 3. 접수번호가 있는 행만 유지 + 날짜/순번 처리
+    let allRows = mapped.filter(r => r.receipt_id).map((r, idx) => {
+      // receipt_date: 접수번호에서 추출 (P + YYYYMMDD + seq)
+      r.receipt_date = extractDateFromReceiptId(String(r.receipt_id));
+      // processing_date: 출고예정일
+      if (r.processing_date) r.processing_date = formatDate(r.processing_date);
+      // seq_no 정규화 (없으면 1)
+      r.seq_no = parseInt(r.seq_no) || 1;
       r.cost = parseFloat(r.cost) || 0;
       if (!r.country) r.country = '국내';
       if (!r.brand) r.brand = '시디즈';
+      // 요구내역 원문 보존
       r._rawDetail = rawDetailCol[idx] ? String(rawDetailCol[idx]) : (r.claim_detail ? String(r.claim_detail) : '');
       return r;
-    }).filter(r => r.receipt_date); // 날짜 추출 실패 행 제외
+    }).filter(r => r.receipt_id);  // 접수번호 필수
 
     if (allRows.length === 0) {
-      showStatus('claimStatus', 'error', '유효한 데이터가 없습니다. 접수번호(P+날짜+시퀀스) 또는 접수일/출고예정일 컬럼을 확인해 주세요.');
+      showStatus('claimStatus', 'error', '유효한 데이터가 없습니다. 접수번호(P+날짜+시퀀스) 컬럼을 확인해 주세요.');
       return;
     }
 
-    const totalBeforeDedup = allRows.length;
-
-    // 4. Deduplicate by receipt_id (keep first occurrence)
-    const seenIds = new Set();
-    allRows = allRows.filter(r => {
-      if (!r.receipt_id) return true; // keep rows without id
-      const id = String(r.receipt_id).trim();
-      if (seenIds.has(id)) return false;
-      seenIds.add(id);
-      return true;
-    });
-
-    const afterDedup = allRows.length;
-    const dedupRemoved = totalBeforeDedup - afterDedup;
-
-    // 5. Run parsing pipeline for each row
+    // 4. 중복 제거 없음 — 접수번호+순번 복합키로 개별 관리
+    const totalRows = allRows.length;
     let matchedCount = 0;
     let unmatchedCount = 0;
 
@@ -469,30 +461,35 @@ async function handleClaimFile(file) {
     claimRawParsed = [];
 
     allRows.forEach(r => {
-      const parseResult = SymptomEngine.parseRequirement(r._rawDetail, dict);
+      // 5. 순번 기반 증상 파싱
+      const parseResult = SymptomEngine.parseRequirement(r._rawDetail, dict, r.seq_no);
 
-      // Build claims_receipt row
+      // 6. claims_receipt 행 구성
       const dbRow = {
-        receipt_id: r.receipt_id ? String(r.receipt_id).trim() : null,
-        receipt_date: r.receipt_date,
-        item: r.item || parseResult.item || null,
-        category: r.category || null,
-        judgement_type: r.judgement_type || null,
-        defect_type: r.defect_type || null,
-        model: r.model || null,
-        country: r.country,
-        cost: r.cost,
-        claim_detail: r.claim_detail ? String(r.claim_detail) : null,
+        receipt_id:       String(r.receipt_id).trim(),
+        seq_no:           r.seq_no,
+        receipt_date:     r.receipt_date || null,
+        processing_date:  r.processing_date || null,
+        product_code_raw: parseResult.productCode || null,
+        item:             parseResult.item || r.item || null,
+        category:         r.category || null,
+        judgement_type:   r.judgement_type || null,
+        defect_type:      r.defect_type || null,
+        model:            r.model || null,
+        country:          r.country,
+        cost:             r.cost,
+        claim_detail:     r.claim_detail ? String(r.claim_detail).slice(0, 2000) : null,
         inspection_result: r.inspection_result || null,
-        main_category: r.main_category || null,
-        sub_category: r.sub_category || null,
-        defective_part: r.defective_part || null,
-        lot: r.lot || null,
-        code: r.code || null,
-        brand: r.brand,
+        main_category:    r.main_category || null,
+        sub_category:     r.sub_category || null,
+        defective_part:   r.defective_part || null,
+        lot:              r.lot || null,
+        code:             r.code || null,
+        brand:            r.brand,
+        warranty_type:    r.warranty_type || null,
         defect_normalized: parseResult.normalized || null,
-        defect_category: parseResult.category || null,
-        raw_symptom: parseResult.rawSymptom || null,
+        defect_category:  parseResult.category || null,
+        raw_symptom:      parseResult.rawSymptom || null,
       };
       claimParsedData.push(dbRow);
 
@@ -500,36 +497,34 @@ async function handleClaimFile(file) {
         matchedCount++;
       } else {
         unmatchedCount++;
-        // Build symptom_pending row
-        claimPendingData.push({
-          receipt_id: dbRow.receipt_id,
-          item: dbRow.item,
-          raw_symptom: parseResult.rawSymptom || null,
-          normalized_candidate: null,
-          suggested_normalized: null,
-          suggested_category: parseResult.category || null,
-          status: 'pending',
-        });
+        if (parseResult.rawSymptom && parseResult.rawSymptom.length > 3) {
+          claimPendingData.push({
+            receipt_id:          dbRow.receipt_id,
+            seq_no:              dbRow.seq_no,
+            item:                dbRow.item,
+            raw_symptom:         parseResult.rawSymptom,
+            suggested_category:  parseResult.category || null,
+            status:              'pending',
+          });
+        }
       }
 
-      // Store full parse result for preview
       claimRawParsed.push({
         ...dbRow,
-        _matched: parseResult.matched,
-        _productCode: parseResult.productCode,
-        _parsedItem: parseResult.item,
+        _matched:      parseResult.matched,
+        _productCode:  parseResult.productCode,
+        _parsedItem:   parseResult.item,
       });
     });
 
-    // Update stats banner
-    document.getElementById('statTotal').textContent = totalBeforeDedup + '건';
-    document.getElementById('statDedup').textContent = (dedupRemoved > 0 ? `-${dedupRemoved}건 (${afterDedup}건 유지)` : afterDedup + '건');
+    // 통계 배너 업데이트
+    document.getElementById('statTotal').textContent = totalRows + '건';
+    document.getElementById('statDedup').textContent = '—';
     document.getElementById('statMatched').textContent = matchedCount + '건';
     document.getElementById('statUnmatched').textContent = unmatchedCount + '건';
     document.getElementById('claimParseBanner').classList.add('show');
 
-    // Show preview table
-    showClaimParsePreview(file.name, afterDedup);
+    showClaimParsePreview(file.name, totalRows);
     document.getElementById('claimUploadBtn').disabled = false;
     hideStatus('claimStatus');
   });
@@ -649,12 +644,12 @@ async function uploadClaims() {
       });
     }
 
-    // Upsert claims_receipt by receipt_id (500건씩 분할)
+    // Upsert claims_receipt by (receipt_id, seq_no) 복합키
     const batchSize = 500;
     let uploaded = 0;
     for (let i = 0; i < claimParsedData.length; i += batchSize) {
       const batch = claimParsedData.slice(i, i + batchSize);
-      const res = await fetch(`${SUPA_URL}/rest/v1/claims_receipt?on_conflict=receipt_id`, {
+      const res = await fetch(`${SUPA_URL}/rest/v1/claims_receipt?on_conflict=receipt_id,seq_no`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
         body: JSON.stringify(batch)
