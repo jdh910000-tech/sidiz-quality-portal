@@ -451,24 +451,14 @@ async function handleClaimFile(file) {
       return;
     }
 
-    // 4. seq_no 자동 보정 — 같은 접수번호 내 seq_no 중복 시 1, 2, 3... 자동 재배정
-    // (ERP 파일에 순번 컬럼이 없거나 모두 1일 경우 대비)
-    const receiptGroups = {};
+    // 4. 진짜 중복 제거: (접수번호 + 순번) 조합이 같은 행 → 마지막 행만 유지
+    // ERP의 실제 순번(F열) 값을 그대로 사용, 자동 재배정 없음
+    const seenComposite = new Map();
     allRows.forEach(r => {
-      const rid = String(r.receipt_id).trim();
-      if (!receiptGroups[rid]) receiptGroups[rid] = [];
-      receiptGroups[rid].push(r);
+      const key = `${String(r.receipt_id).trim()}::${r.seq_no}`;
+      seenComposite.set(key, r); // 같은 키면 마지막 행으로 덮어씀
     });
-    allRows = [];
-    Object.values(receiptGroups).forEach(group => {
-      const seqNos = group.map(r => r.seq_no);
-      const hasDupes = seqNos.length !== new Set(seqNos).size;
-      if (hasDupes) {
-        // 순번 중복 → 접수번호 내 순서대로 1, 2, 3... 자동 배정
-        group.forEach((r, i) => { r.seq_no = i + 1; });
-      }
-      allRows.push(...group);
-    });
+    allRows = Array.from(seenComposite.values());
     const totalRows = allRows.length;
     let matchedCount = 0;
     let unmatchedCount = 0;
