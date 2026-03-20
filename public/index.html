@@ -569,6 +569,45 @@ body::before {
       </div>
     </div>
 
+    <!-- 드릴다운: 제품·증상별 추이 -->
+    <div id="rctDrillDown" style="display:none;margin-bottom:16px">
+      <div class="chart-card" style="padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <h3 style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;margin:0">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);display:inline-block"></span>
+            <span id="rctDrillDownTitle">제품·증상별 월별 추이</span>
+          </h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="ddProductSel" onchange="onDrillDownChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">
+              <option value="">-- 제품구분 선택 --</option>
+            </select>
+            <select id="ddSymptomSel" onchange="onDrillDownChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">
+              <option value="">-- 증상 선택 --</option>
+            </select>
+            <button onclick="document.getElementById('rctDrillDown').style.display='none'" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:11px;cursor:pointer">✕ 닫기</button>
+          </div>
+        </div>
+        <canvas id="rctDrillDownChart" height="100"></canvas>
+        <!-- 상세 목록 -->
+        <div id="rctDetailTable" style="margin-top:16px;max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none">
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead>
+              <tr style="background:rgba(0,0,0,0.3)">
+                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">접수번호</th>
+                <th style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">접수일</th>
+                <th style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">제품구분</th>
+                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">증상(표준)</th>
+                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">원문 증상</th>
+                <th style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">유무상</th>
+                <th style="padding:8px 10px;text-align:right;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">비용</th>
+              </tr>
+            </thead>
+            <tbody id="rctDetailTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- 빈 상태 -->
     <div id="rctEmptyState" style="text-align:center;padding:60px 20px;color:var(--text-muted);display:none">
       <div style="font-size:40px;margin-bottom:12px">📋</div>
@@ -1155,10 +1194,10 @@ async function loadReceiptDashboard() {
     _rctAllData = data || [];
 
     // 제품 필터 드롭다운 업데이트
-    const products = [...new Set(_rctAllData.map(d => d.product_code_raw || d.item).filter(Boolean))].sort();
+    const products = [...new Set(_rctAllData.map(d => d.item).filter(Boolean))].sort();
     const sel = document.getElementById('rctProductFilter');
     const curVal = sel.value;
-    sel.innerHTML = '<option value="all">전체 제품</option>' + products.map(p => `<option value="${p}">${p}</option>`).join('');
+    sel.innerHTML = '<option value="all">전체 제품구분</option>' + products.map(p => `<option value="${p}">${p}</option>`).join('');
     if (products.includes(curVal)) sel.value = curVal;
     _rctSelectedProduct = sel.value;
 
@@ -1179,7 +1218,7 @@ async function loadReceiptDashboard() {
 function _applyRctFilter() {
   _rctFilteredData = _rctSelectedProduct === 'all'
     ? _rctAllData
-    : _rctAllData.filter(d => (d.product_code_raw || d.item) === _rctSelectedProduct);
+    : _rctAllData.filter(d => d.item === _rctSelectedProduct);
 
   const empty = document.getElementById('rctEmptyState');
   const cards = document.getElementById('rctSummaryCards');
@@ -1210,7 +1249,7 @@ function _renderRctSummary() {
   const rate = total > 0 ? ((classified / total) * 100).toFixed(1) : '0.0';
 
   _animateCounter('rctCardTotal', total);
-  document.getElementById('rctCardTotalSub').textContent = `${[...new Set(data.map(d=>d.product_code_raw||d.item).filter(Boolean))].length}개 제품`;
+  document.getElementById('rctCardTotalSub').textContent = `${[...new Set(data.map(d=>d.item).filter(Boolean))].length}개 제품구분`;
   _animateCounter('rctCardMonth', monthCount);
   document.getElementById('rctCardMonthSub').textContent = `${thisMonth} 기준`;
   _animateCounter('rctCardClassified', classified);
@@ -1323,7 +1362,7 @@ function _renderRctProductChart() {
   const data = _rctFilteredData;
   const byProd = {};
   data.forEach(d => {
-    const p = d.product_code_raw || d.item || '기타';
+    const p = d.item || '기타';
     byProd[p] = (byProd[p] || 0) + 1;
   });
   const sorted = Object.entries(byProd).sort((a,b) => b[1]-a[1]).slice(0, 10);
@@ -1362,23 +1401,28 @@ function _renderRctRanking() {
   const data = _rctFilteredData;
   const norm = {};
   data.forEach(d => {
-    const key = d.defect_normalized
-      ? `${d.product_code_raw||d.item||''} · ${d.defect_normalized}`
-      : `${d.product_code_raw||d.item||''} · ${(d.raw_symptom||'미분류').slice(0,20)}`;
-    norm[key] = (norm[key] || 0) + 1;
+    const prodLabel = d.item || '미분류';
+    const symptomLabel = d.defect_normalized
+      ? d.defect_normalized
+      : (d.raw_symptom || '').trim().slice(0, 20) || '미분류';
+    const key = `${prodLabel}|||${symptomLabel}`;
+    if (!norm[key]) norm[key] = { prod: prodLabel, symptom: symptomLabel, cnt: 0 };
+    norm[key].cnt++;
   });
-  const sorted = Object.entries(norm).sort((a,b) => b[1]-a[1]).slice(0, 10);
-  const maxVal = sorted[0]?.[1] || 1;
+  const sorted = Object.values(norm).sort((a,b) => b.cnt - a.cnt).slice(0, 10);
+  const maxVal = sorted[0]?.cnt || 1;
   const list = document.getElementById('rctRankingList');
   if (!list) return;
-  list.innerHTML = sorted.map(([name, cnt], i) => {
+  list.innerHTML = sorted.map(({prod, symptom, cnt}, i) => {
     const numClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'normal';
     const pct = (cnt / maxVal * 100).toFixed(0);
-    return `<div class="rct-rank-item" style="animation-delay:${0.05 + i*0.06}s">
+    const label = prod === '미분류' ? symptom : `${prod} · ${symptom}`;
+    return `<div class="rct-rank-item" style="animation-delay:${0.05 + i*0.06}s;cursor:pointer"
+      onclick="showDrillDown('${prod.replace(/'/g,"\\'")}','${symptom.replace(/'/g,"\\'")}')">
       <div class="rct-rank-num ${numClass}">${i+1}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${cnt}건</div>
+        <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${label}">${label}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${cnt}건 · 클릭하여 추이 확인</div>
       </div>
       <div class="rct-rank-bar-wrap">
         <div class="rct-rank-bar" style="width:${pct}%;animation-delay:${0.3+i*0.07}s"></div>
@@ -1389,10 +1433,10 @@ function _renderRctRanking() {
 }
 
 function _renderRctProductChips() {
-  const data = _rctAllData;  // 전체 데이터 기준
+  const data = _rctAllData;
   const byProd = {};
   data.forEach(d => {
-    const p = d.product_code_raw || d.item || '기타';
+    const p = d.item || '기타';
     byProd[p] = (byProd[p] || 0) + 1;
   });
   const sorted = Object.entries(byProd).sort((a,b) => b[1]-a[1]);
@@ -1413,6 +1457,135 @@ function selectRctProduct(prod) {
   document.getElementById('rctProductFilter').value = prod;
   _renderRctProductChips();
   _applyRctFilter();
+  // 드릴다운 초기화
+  const dd = document.getElementById('rctDrillDown');
+  if (dd) dd.style.display = 'none';
+}
+
+// ── 드릴다운: 제품·증상별 월별 추이 ──
+let _rctDrillChart = null;
+
+function showDrillDown(prod, symptom) {
+  const panel = document.getElementById('rctDrillDown');
+  if (!panel) return;
+  panel.style.display = '';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // 제품 드롭다운 채우기
+  const prods = [...new Set(_rctAllData.map(d => d.item).filter(Boolean))].sort();
+  const ddProd = document.getElementById('ddProductSel');
+  ddProd.innerHTML = '<option value="">-- 제품구분 선택 --</option>' +
+    prods.map(p => `<option value="${p}" ${p === prod ? 'selected' : ''}>${p}</option>`).join('');
+
+  // 선택된 제품의 증상 목록 채우기
+  _updateDrillDownSymptoms(prod);
+  document.getElementById('ddSymptomSel').value = symptom;
+
+  _renderDrillDown(prod, symptom);
+}
+
+function _updateDrillDownSymptoms(prod) {
+  const rows = prod ? _rctAllData.filter(d => d.item === prod) : _rctAllData;
+  const symptoms = [...new Set(rows.map(d => d.defect_normalized || d.raw_symptom || '').filter(s => s.length > 1))].sort();
+  const ddSym = document.getElementById('ddSymptomSel');
+  const cur = ddSym.value;
+  ddSym.innerHTML = '<option value="">-- 증상 선택 --</option>' +
+    symptoms.map(s => `<option value="${s}" ${s === cur ? 'selected' : ''}>${s}</option>`).join('');
+}
+
+function onDrillDownChange() {
+  const prod = document.getElementById('ddProductSel').value;
+  const symptom = document.getElementById('ddSymptomSel').value;
+  if (prod !== (document.getElementById('ddProductSel').dataset.lastProd || '')) {
+    document.getElementById('ddProductSel').dataset.lastProd = prod;
+    _updateDrillDownSymptoms(prod);
+  }
+  if (prod && symptom) _renderDrillDown(prod, symptom);
+}
+
+function _renderDrillDown(prod, symptom) {
+  if (!prod || !symptom) return;
+
+  document.getElementById('rctDrillDownTitle').textContent = `📈 ${prod} · ${symptom} — 월별 추이`;
+
+  // 해당 데이터 필터
+  const matched = _rctAllData.filter(d => {
+    const itemMatch = prod === '' || d.item === prod;
+    const symMatch = d.defect_normalized === symptom || (d.raw_symptom || '').includes(symptom);
+    return itemMatch && symMatch;
+  });
+
+  // 월별 집계
+  const byMonth = {};
+  matched.forEach(d => {
+    if (d.receipt_date) {
+      const m = d.receipt_date.slice(0, 7);
+      byMonth[m] = (byMonth[m] || 0) + 1;
+    }
+  });
+  const labels = Object.keys(byMonth).sort();
+  const values = labels.map(l => byMonth[l]);
+
+  // 차트 렌더
+  if (_rctDrillChart) _rctDrillChart.destroy();
+  const ctx = document.getElementById('rctDrillDownChart');
+  if (!ctx) return;
+  _rctDrillChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '클레임 건수',
+        data: values,
+        backgroundColor: 'rgba(255,107,122,0.3)',
+        borderColor: '#ff6b7a',
+        borderWidth: 2,
+        borderRadius: 5,
+      }, {
+        label: '추이선',
+        data: values,
+        type: 'line',
+        borderColor: '#ffb347',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: '#ffb347',
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#1a2234', callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}건` } }
+      },
+      animation: { duration: 800, easing: 'easeOutQuart' }
+    }
+  });
+
+  // 상세 목록 테이블
+  const tableBody = document.getElementById('rctDetailTableBody');
+  const tableWrap = document.getElementById('rctDetailTable');
+  if (tableBody && tableWrap) {
+    tableWrap.style.display = '';
+    const sortedRows = [...matched].sort((a,b) => (b.receipt_date||'').localeCompare(a.receipt_date||''));
+    tableBody.innerHTML = sortedRows.map(d => {
+      const costFmt = d.cost ? Number(d.cost).toLocaleString() + '원' : '-';
+      return `<tr style="border-bottom:1px solid rgba(36,59,90,0.3)" onmouseover="this.style.background='rgba(0,87,184,0.05)'" onmouseout="this.style.background=''">
+        <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan)">${d.receipt_id || '-'}</td>
+        <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px">${d.receipt_date || '-'}</td>
+        <td style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600">${d.item || '-'}</td>
+        <td style="padding:7px 10px;font-size:11px;color:var(--accent-emerald)">${d.defect_normalized || '-'}</td>
+        <td style="padding:7px 10px;font-size:10px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.raw_symptom||'').replace(/"/g,'&quot;')}">${d.raw_symptom || '-'}</td>
+        <td style="padding:7px 10px;text-align:center;font-size:10px">${d.warranty_type || '-'}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-amber)">${costFmt}</td>
+      </tr>`;
+    }).join('');
+  }
 }
 
 // 레거시 호환 함수

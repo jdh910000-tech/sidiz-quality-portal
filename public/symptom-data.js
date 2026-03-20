@@ -25,20 +25,35 @@ const PRODUCT_CODE_MAP = {
 // ─── 방향성 수식어 (제거 대상) ───
 const DIRECTIONAL_WORDS = ['좌측','우측','좌','우','앞쪽','뒤쪽','앞','뒤','왼쪽','오른쪽','양쪽','상','하','전','후'];
 
+// ─── 증상 키워드 (비증상 텍스트 필터링용) ───
+const DEFECT_KEYWORDS = [
+  '파손','소음','유격','흔들','체결','조립','높이','틸팅','럼버','팔걸이','헤드레스트',
+  '좌판','등판','크랙','깨짐','부러','내려','작동','조절','고정','나사','볼트',
+  '스크래치','외관','사출','수평','기울','쏠림','꺼짐','분리','헛돌','꺾임',
+  '변색','오염','찍힘','삐걱','덜컹','흘러','등받이','레버','이음','이상',
+  '불량','하자','결함','문제','안됨','불가','못함','발생','느슨','헐렁',
+  '들뜸','끊김','긁힘','떨어짐','이탈','처짐','눌림','깨','틀어','벗겨'
+];
+
+function hasDefectKeyword(text) {
+  if (!text) return false;
+  return DEFECT_KEYWORDS.some(k => text.includes(k));
+}
+
 // ─── 제품코드 추출 ───
 // 시작 글자: T, V, S, K, P, F, E, C, O, M, H, G (제품군 코드 실무 기준)
 const PRODUCT_CODE_PREFIX = /^[TVSKPFECOMHGtvskpfecomhg]/;
 function extractProductCode(text) {
   if (!text) return null;
-  // 지정된 시작 글자로 시작하는 5자 이상 영숫자 코드만 추출
   const candidates = (text.match(/[TVSKPFECOMHGtvskpfecomhg][A-Z0-9a-z]{4,}/g) || [])
     .map(c => c.toUpperCase());
-  // 긴 코드부터 매칭 (더 구체적인 코드 우선)
   const sorted = candidates.sort((a, b) => b.length - a.length);
+  // 1순위: PRODUCT_CODE_MAP 정확 매칭
   for (const c of sorted) {
     if (PRODUCT_CODE_MAP[c.trim()]) return c.trim();
   }
-  return null;
+  // 2순위: map에 없어도 가장 긴 후보 반환 (product_code_raw 공백 방지)
+  return sorted[0] || null;
 }
 
 // ─── 순번(seq_no) 기반 증상 추출 ───
@@ -50,8 +65,7 @@ function extractSymptomBySeq(text, seqNo) {
   let t = String(text).replace(/\t/g, ' ');
   const seq = parseInt(seqNo) || 1;
 
-  // ── 전략 1: "NN-" 또는 "NN." 구간 추출 ──
-  // 예) "02- 틸트 소음 발생 < 시공팀 조치" → "틸트 소음 발생"
+  // ── 전략 1: "NN-" 또는 "NN." 구간 추출 (증상 키워드 없어도 허용) ──
   const seqStr = String(seq).padStart(2, '0');
   const seqRegex = new RegExp(`(?:^|\\s)${seqStr}[\\-\\.:]\\s*(.+?)(?=\\s*\\d{2}[\\-\\.:]|<|$)`, 's');
   const m1 = t.match(seqRegex);
@@ -65,7 +79,6 @@ function extractSymptomBySeq(text, seqNo) {
   }
 
   // ── 전략 2: 제품 설명 블록 이후 한글 증상 추출 ──
-  // 패턴: [제품코드] [색상] [제품명] [수량][EA][-] [증상] > [서비스응답]
   const prodBlockRegex = /[TVSKPFECOMHGtvskpfecomhg][A-Z0-9]{4,}[^\n]{0,60}?\d+EA?\s*[-]?\s*([가-힣].+?)(?:>|<|\n|$)/s;
   const m2 = t.match(prodBlockRegex);
   if (m2) {
@@ -74,24 +87,26 @@ function extractSymptomBySeq(text, seqNo) {
       .replace(/[★▶◀※！!\[\]]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    if (symptom.length > 4) return symptom;
+    if (symptom.length > 4 && hasDefectKeyword(symptom)) return symptom;
   }
 
-  // ── 전략 3: 수량(숫자+EA 또는 단순 숫자) 이후 한글 텍스트 ──
+  // ── 전략 3: 수량(숫자+EA) 이후 한글 텍스트 (증상 키워드 필수) ──
   const countRegex = /\d+EA?\s*[-]?\s*([가-힣][가-힣\s\w\/(),.\-!]+)/;
   const m3 = t.match(countRegex);
   if (m3) {
-    return m3[1].split(/[><]/)[0]
+    const candidate = m3[1].split(/[><]/)[0]
       .replace(/[★▶◀※！!\[\]]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+    if (hasDefectKeyword(candidate)) return candidate;
   }
 
-  // ── 전략 4: 한글 문장 첫 번째 추출 (최후 fallback) ──
-  const krRegex = /([가-힣][가-힣\s\w\/(),.\-]{4,})/;
-  const m4 = t.match(krRegex);
-  if (m4) {
-    return m4[1].split(/[><]/)[0].replace(/\s+/g, ' ').trim();
+  // ── 전략 4: 한글 문장 중 증상 키워드 포함한 첫 번째 문장 ──
+  const krRegex = /([가-힣][가-힣\s\w\/(),.\-]{4,})/g;
+  let m4;
+  while ((m4 = krRegex.exec(t)) !== null) {
+    const candidate = m4[1].split(/[><]/)[0].replace(/\s+/g, ' ').trim();
+    if (hasDefectKeyword(candidate)) return candidate;
   }
 
   return '';
