@@ -451,7 +451,24 @@ async function handleClaimFile(file) {
       return;
     }
 
-    // 4. 중복 제거 없음 — 접수번호+순번 복합키로 개별 관리
+    // 4. seq_no 자동 보정 — 같은 접수번호 내 seq_no 중복 시 1, 2, 3... 자동 재배정
+    // (ERP 파일에 순번 컬럼이 없거나 모두 1일 경우 대비)
+    const receiptGroups = {};
+    allRows.forEach(r => {
+      const rid = String(r.receipt_id).trim();
+      if (!receiptGroups[rid]) receiptGroups[rid] = [];
+      receiptGroups[rid].push(r);
+    });
+    allRows = [];
+    Object.values(receiptGroups).forEach(group => {
+      const seqNos = group.map(r => r.seq_no);
+      const hasDupes = seqNos.length !== new Set(seqNos).size;
+      if (hasDupes) {
+        // 순번 중복 → 접수번호 내 순서대로 1, 2, 3... 자동 배정
+        group.forEach((r, i) => { r.seq_no = i + 1; });
+      }
+      allRows.push(...group);
+    });
     const totalRows = allRows.length;
     let matchedCount = 0;
     let unmatchedCount = 0;
@@ -486,7 +503,7 @@ async function handleClaimFile(file) {
         lot:              r.lot || null,
         code:             r.code || null,
         brand:            r.brand,
-        warranty_type:    r.warranty_type || null,
+        warranty_type:    r.warranty_type || null,   // migration_v3_extra_columns.sql 실행 필요
         defect_normalized: parseResult.normalized || null,
         defect_category:  parseResult.category || null,
         raw_symptom:      parseResult.rawSymptom || null,
@@ -645,10 +662,17 @@ async function uploadClaims() {
     }
 
     // Upsert claims_receipt by (receipt_id, seq_no) 복합키
+    // 안전장치: 혹시라도 남은 중복 제거 (마지막 행 우선)
+    const dedupMap = new Map();
+    claimParsedData.forEach(row => {
+      dedupMap.set(`${row.receipt_id}::${row.seq_no}`, row);
+    });
+    const finalData = Array.from(dedupMap.values());
+
     const batchSize = 500;
     let uploaded = 0;
-    for (let i = 0; i < claimParsedData.length; i += batchSize) {
-      const batch = claimParsedData.slice(i, i + batchSize);
+    for (let i = 0; i < finalData.length; i += batchSize) {
+      const batch = finalData.slice(i, i + batchSize);
       const res = await fetch(`${SUPA_URL}/rest/v1/claims_receipt?on_conflict=receipt_id,seq_no`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
@@ -659,7 +683,7 @@ async function uploadClaims() {
         throw new Error(`HTTP ${res.status}: ${errText}`);
       }
       uploaded += batch.length;
-      showStatus('claimStatus', 'loading', `claims_receipt: ${uploaded} / ${claimParsedData.length}건 완료...`);
+      showStatus('claimStatus', 'loading', `claims_receipt: ${uploaded} / ${finalData.length}건 완료...`);
     }
 
     // Upload symptom_pending (insert only if not already pending)
