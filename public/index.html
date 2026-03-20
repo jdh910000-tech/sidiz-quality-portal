@@ -313,7 +313,7 @@ body::before {
 .rct-card:nth-child(3) { animation-delay: 0.15s; }
 .rct-card:nth-child(4) { animation-delay: 0.2s; }
 .rct-card-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.rct-card-value { font-size: 2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.rct-card-value { font-size: 1.6rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
 .rct-card-sub { font-size: 11px; color: var(--text-muted); }
 .rct-rank-item {
   display: flex; align-items: center; gap: 10px;
@@ -495,23 +495,23 @@ body::before {
     </div>
 
     <!-- 요약 카드 4개 -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px" id="rctSummaryCards">
-      <div class="rct-card" style="border-top-color:var(--sidiz-blue-bright)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px" id="rctSummaryCards">
+      <div class="rct-card" style="border-top-color:var(--sidiz-blue-bright);padding:14px">
         <div class="rct-card-label">총 클레임</div>
         <div class="rct-card-value" id="rctCardTotal" style="color:var(--sidiz-blue-bright)">-</div>
         <div class="rct-card-sub" id="rctCardTotalSub">조회 전</div>
       </div>
-      <div class="rct-card" style="border-top-color:var(--accent-cyan)">
+      <div class="rct-card" style="border-top-color:var(--accent-cyan);padding:14px">
         <div class="rct-card-label">이번 달 신규</div>
         <div class="rct-card-value" id="rctCardMonth" style="color:var(--accent-cyan)">-</div>
         <div class="rct-card-sub" id="rctCardMonthSub">조회 전</div>
       </div>
-      <div class="rct-card" style="border-top-color:var(--accent-emerald)">
+      <div class="rct-card" style="border-top-color:var(--accent-emerald);padding:14px">
         <div class="rct-card-label">분류 완료</div>
         <div class="rct-card-value" id="rctCardClassified" style="color:var(--accent-emerald)">-</div>
         <div class="rct-card-sub" id="rctCardClassifiedSub">자동분류율</div>
       </div>
-      <div class="rct-card" style="border-top-color:var(--accent-amber)">
+      <div class="rct-card" style="border-top-color:var(--accent-amber);padding:14px">
         <div class="rct-card-label">미분류(검토 필요)</div>
         <div class="rct-card-value" id="rctCardPending" style="color:var(--accent-amber)">-</div>
         <div class="rct-card-sub">어드민에서 검토</div>
@@ -526,7 +526,7 @@ body::before {
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);display:inline-block"></span>
           불량 유형별 현황
         </h3>
-        <canvas id="rctCategoryChart" height="220"></canvas>
+        <canvas id="rctCategoryChart" height="150"></canvas>
       </div>
 
       <!-- 제품별 클레임 -->
@@ -535,71 +535,62 @@ body::before {
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-violet);display:inline-block"></span>
           제품별 클레임 현황
         </h3>
-        <canvas id="rctProductChart" height="220"></canvas>
+        <canvas id="rctProductChart" height="150"></canvas>
       </div>
     </div>
 
-    <!-- 일별 추이 (전체 너비) -->
-    <div class="chart-card" style="padding:20px;margin-bottom:16px">
-      <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+    <!-- defect_normalized 증상 칩 (스크롤 가능) -->
+    <div class="chart-card" style="padding:18px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;margin:0">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);display:inline-block"></span>
+          증상별 현황 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(칩 클릭 → 추이·상세 조회)</span>
+        </h3>
+        <span id="rctDefectChipTotal" style="font-size:11px;color:var(--text-muted)"></span>
+      </div>
+      <div id="rctDefectChips" style="display:flex;flex-wrap:wrap;gap:7px;max-height:200px;overflow-y:auto;padding-right:4px"></div>
+    </div>
+
+    <!-- 접수일별 클레임 추이 (전체 기간, 일 단위) -->
+    <div class="chart-card" style="padding:18px;margin-bottom:14px">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px" id="rctTrendTitle">
         <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span>
         접수일별 클레임 추이
       </h3>
-      <canvas id="rctTrendChart" height="120"></canvas>
+      <canvas id="rctTrendChart" height="90"></canvas>
     </div>
 
-    <!-- 증상 TOP 랭킹 + 제품 칩 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <!-- 증상 TOP10 랭킹 -->
-      <div class="chart-card" style="padding:20px">
-        <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-amber);display:inline-block"></span>
-          증상 TOP10 랭킹
-        </h3>
-        <div id="rctRankingList" style="display:flex;flex-direction:column;gap:8px"></div>
-      </div>
-
-      <!-- 제품 칩 -->
-      <div class="chart-card" style="padding:20px">
-        <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);display:inline-block"></span>
-          제품별 칩 (클릭하여 필터)
-        </h3>
-        <div id="rctProductChips" style="display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start"></div>
-      </div>
-    </div>
-
-    <!-- 드릴다운: 제품·증상별 추이 -->
-    <div id="rctDrillDown" style="display:none;margin-bottom:16px">
-      <div class="chart-card" style="padding:20px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-          <h3 style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;margin:0">
+    <!-- 증상 드릴다운 패널 (칩 클릭 시 표시) -->
+    <div id="rctDefectDetail" style="display:none;margin-bottom:14px">
+      <div class="chart-card" style="padding:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <h3 style="font-size:13px;font-weight:700;margin:0;display:flex;align-items:center;gap:6px">
             <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);display:inline-block"></span>
-            <span id="rctDrillDownTitle">제품·증상별 월별 추이</span>
+            <span id="rctDetailTitle">증상 상세</span>
           </h3>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select id="ddProductSel" onchange="onDrillDownChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">
-              <option value="">-- 제품구분 선택 --</option>
-            </select>
-            <select id="ddSymptomSel" onchange="onDrillDownChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">
-              <option value="">-- 증상 선택 --</option>
-            </select>
-            <button onclick="document.getElementById('rctDrillDown').style.display='none'" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:11px;cursor:pointer">✕ 닫기</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="rctDetailCount" style="font-size:11px;color:var(--text-muted)"></span>
+            <button onclick="closeDefectDetail()" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer">✕ 닫기</button>
           </div>
         </div>
-        <canvas id="rctDrillDownChart" height="100"></canvas>
-        <!-- 상세 목록 -->
-        <div id="rctDetailTable" style="margin-top:16px;max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none">
+        <!-- 증상 월별 추이 -->
+        <canvas id="rctDefectTrendChart" height="80" style="margin-bottom:14px"></canvas>
+        <!-- 편집 안내 -->
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;padding:8px 12px;background:rgba(0,87,184,0.06);border-radius:8px;border:1px solid rgba(0,87,184,0.15)">
+          ✏️ <strong>표준증상 · 카테고리 · 원문증상</strong> 셀을 클릭하면 편집할 수 있습니다. 저장 시 증상 사전에 자동 학습됩니다.
+        </div>
+        <!-- 상세 테이블 -->
+        <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
           <table style="width:100%;border-collapse:collapse;font-size:11px">
-            <thead>
-              <tr style="background:rgba(0,0,0,0.3)">
-                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">접수번호</th>
-                <th style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">접수일</th>
-                <th style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">제품구분</th>
-                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">증상(표준)</th>
-                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">원문 증상</th>
-                <th style="padding:8px 10px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">유무상</th>
-                <th style="padding:8px 10px;text-align:right;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">비용</th>
+            <thead style="position:sticky;top:0;z-index:2">
+              <tr style="background:rgba(13,27,42,0.97)">
+                <th style="padding:9px 10px;text-align:left;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수번호</th>
+                <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">순번</th>
+                <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수일</th>
+                <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">제품구분</th>
+                <th style="padding:9px 10px;text-align:left;color:var(--accent-emerald);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">표준증상 ✏️</th>
+                <th style="padding:9px 10px;text-align:center;color:var(--accent-cyan);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">카테고리 ✏️</th>
+                <th style="padding:9px 10px;text-align:left;color:var(--accent-amber);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">원문증상 ✏️</th>
               </tr>
             </thead>
             <tbody id="rctDetailTableBody"></tbody>
@@ -1234,8 +1225,8 @@ function _applyRctFilter() {
   _renderRctTrend();
   _renderRctCategory();
   _renderRctProductChart();
-  _renderRctRanking();
-  _renderRctProductChips();
+  _renderRctDefectChips();
+  closeDefectDetail();
 }
 
 function _renderRctSummary() {
@@ -1282,6 +1273,12 @@ function _renderRctTrend() {
   const labels = Object.keys(byDate).sort();
   const values = labels.map(l => byDate[l]);
 
+  const titleEl = document.getElementById('rctTrendTitle');
+  if (titleEl) {
+    const from = document.getElementById('rctDateFrom')?.value || '';
+    const to = document.getElementById('rctDateTo')?.value || '';
+    titleEl.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span> 접수일별 클레임 추이 <span style="font-size:10px;color:var(--text-muted);font-weight:400">(${from} ~ ${to}, 일별)</span>`;
+  }
   if (_rctChartTrend) _rctChartTrend.destroy();
   const ctx = document.getElementById('rctTrendChart');
   if (!ctx) return;
@@ -1397,125 +1394,70 @@ function _renderRctProductChart() {
   });
 }
 
-function _renderRctRanking() {
+let _rctSelectedDefect = null;
+let _rctDefectTrendChart = null;
+
+function _renderRctDefectChips() {
   const data = _rctFilteredData;
-  const norm = {};
+  // defect_normalized 기준 집계
+  const byDefect = {};
   data.forEach(d => {
-    const prodLabel = d.item || '미분류';
-    const symptomLabel = d.defect_normalized
-      ? d.defect_normalized
-      : (d.raw_symptom || '').trim().slice(0, 20) || '미분류';
-    const key = `${prodLabel}|||${symptomLabel}`;
-    if (!norm[key]) norm[key] = { prod: prodLabel, symptom: symptomLabel, cnt: 0 };
-    norm[key].cnt++;
+    const key = d.defect_normalized || '(미분류)';
+    if (!byDefect[key]) byDefect[key] = 0;
+    byDefect[key]++;
   });
-  const sorted = Object.values(norm).sort((a,b) => b.cnt - a.cnt).slice(0, 10);
-  const maxVal = sorted[0]?.cnt || 1;
-  const list = document.getElementById('rctRankingList');
-  if (!list) return;
-  list.innerHTML = sorted.map(({prod, symptom, cnt}, i) => {
-    const numClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'normal';
-    const pct = (cnt / maxVal * 100).toFixed(0);
-    const label = prod === '미분류' ? symptom : `${prod} · ${symptom}`;
-    return `<div class="rct-rank-item" style="animation-delay:${0.05 + i*0.06}s;cursor:pointer"
-      onclick="showDrillDown('${prod.replace(/'/g,"\\'")}','${symptom.replace(/'/g,"\\'")}')">
-      <div class="rct-rank-num ${numClass}">${i+1}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${label}">${label}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${cnt}건 · 클릭하여 추이 확인</div>
-      </div>
-      <div class="rct-rank-bar-wrap">
-        <div class="rct-rank-bar" style="width:${pct}%;animation-delay:${0.3+i*0.07}s"></div>
-      </div>
-      <div style="font-weight:900;font-size:12px;min-width:32px;text-align:right;color:var(--accent-cyan)">${cnt}</div>
-    </div>`;
-  }).join('');
-}
-
-function _renderRctProductChips() {
-  const data = _rctAllData;
-  const byProd = {};
-  data.forEach(d => {
-    const p = d.item || '기타';
-    byProd[p] = (byProd[p] || 0) + 1;
-  });
-  const sorted = Object.entries(byProd).sort((a,b) => b[1]-a[1]);
-  const chips = document.getElementById('rctProductChips');
+  const sorted = Object.entries(byDefect).sort((a,b) => b[1]-a[1]);
+  const chips = document.getElementById('rctDefectChips');
+  const total = document.getElementById('rctDefectChipTotal');
   if (!chips) return;
-  chips.innerHTML = [['all', data.length], ...sorted].map(([prod, cnt]) => {
-    const isActive = prod === _rctSelectedProduct;
-    return `<div class="rct-product-chip ${isActive ? 'active' : ''}" onclick="selectRctProduct('${prod}')">
-      <div class="chip-name">${prod === 'all' ? '전체' : prod}</div>
-      <div class="chip-count">${cnt}</div>
-      <div class="chip-sub">건</div>
-    </div>`;
+  if (total) total.textContent = `총 ${sorted.length}가지 증상`;
+
+  const CHIP_COLORS = ['var(--accent-emerald)','var(--accent-cyan)','var(--accent-amber)','var(--accent-rose)','var(--accent-violet)','var(--sidiz-blue-bright)'];
+  chips.innerHTML = sorted.map(([name, cnt], i) => {
+    const color = CHIP_COLORS[i % CHIP_COLORS.length];
+    const isActive = name === _rctSelectedDefect;
+    return `<div onclick="selectDefectChip('${name.replace(/'/g,"\\'")}')"
+      style="background:${isActive ? 'rgba(0,87,184,0.18)' : 'var(--sidiz-dark2)'};
+             border:1px solid ${isActive ? 'var(--sidiz-blue-bright)' : 'var(--border)'};
+             border-radius:10px;padding:8px 12px;cursor:pointer;transition:all 0.2s;
+             min-width:80px;text-align:center;
+             ${isActive ? 'box-shadow:0 0 12px rgba(0,87,184,0.2);' : ''}">
+        <div style="font-size:11px;font-weight:600;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px" title="${name}">${name}</div>
+        <div style="font-size:1.1rem;font-weight:900;color:var(--text-primary);line-height:1.2">${cnt}</div>
+        <div style="font-size:10px;color:var(--text-muted)">건</div>
+      </div>`;
   }).join('');
 }
 
-function selectRctProduct(prod) {
-  _rctSelectedProduct = prod;
-  document.getElementById('rctProductFilter').value = prod;
-  _renderRctProductChips();
-  _applyRctFilter();
-  // 드릴다운 초기화
-  const dd = document.getElementById('rctDrillDown');
-  if (dd) dd.style.display = 'none';
+function selectDefectChip(defectName) {
+  _rctSelectedDefect = defectName;
+  _renderRctDefectChips(); // re-render to update active state
+  _showDefectDetail(defectName);
 }
 
-// ── 드릴다운: 제품·증상별 월별 추이 ──
-let _rctDrillChart = null;
+function closeDefectDetail() {
+  _rctSelectedDefect = null;
+  _renderRctDefectChips();
+  const panel = document.getElementById('rctDefectDetail');
+  if (panel) panel.style.display = 'none';
+}
 
-function showDrillDown(prod, symptom) {
-  const panel = document.getElementById('rctDrillDown');
+function _showDefectDetail(defectName) {
+  const panel = document.getElementById('rctDefectDetail');
   if (!panel) return;
   panel.style.display = '';
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // 제품 드롭다운 채우기
-  const prods = [...new Set(_rctAllData.map(d => d.item).filter(Boolean))].sort();
-  const ddProd = document.getElementById('ddProductSel');
-  ddProd.innerHTML = '<option value="">-- 제품구분 선택 --</option>' +
-    prods.map(p => `<option value="${p}" ${p === prod ? 'selected' : ''}>${p}</option>`).join('');
+  // 해당 증상의 데이터
+  const matched = _rctFilteredData.filter(d =>
+    (d.defect_normalized || '(미분류)') === defectName
+  );
 
-  // 선택된 제품의 증상 목록 채우기
-  _updateDrillDownSymptoms(prod);
-  document.getElementById('ddSymptomSel').value = symptom;
+  // 타이틀 + 건수
+  document.getElementById('rctDetailTitle').textContent = `📌 ${defectName} — 상세 내역`;
+  document.getElementById('rctDetailCount').textContent = `총 ${matched.length}건`;
 
-  _renderDrillDown(prod, symptom);
-}
-
-function _updateDrillDownSymptoms(prod) {
-  const rows = prod ? _rctAllData.filter(d => d.item === prod) : _rctAllData;
-  const symptoms = [...new Set(rows.map(d => d.defect_normalized || d.raw_symptom || '').filter(s => s.length > 1))].sort();
-  const ddSym = document.getElementById('ddSymptomSel');
-  const cur = ddSym.value;
-  ddSym.innerHTML = '<option value="">-- 증상 선택 --</option>' +
-    symptoms.map(s => `<option value="${s}" ${s === cur ? 'selected' : ''}>${s}</option>`).join('');
-}
-
-function onDrillDownChange() {
-  const prod = document.getElementById('ddProductSel').value;
-  const symptom = document.getElementById('ddSymptomSel').value;
-  if (prod !== (document.getElementById('ddProductSel').dataset.lastProd || '')) {
-    document.getElementById('ddProductSel').dataset.lastProd = prod;
-    _updateDrillDownSymptoms(prod);
-  }
-  if (prod && symptom) _renderDrillDown(prod, symptom);
-}
-
-function _renderDrillDown(prod, symptom) {
-  if (!prod || !symptom) return;
-
-  document.getElementById('rctDrillDownTitle').textContent = `📈 ${prod} · ${symptom} — 월별 추이`;
-
-  // 해당 데이터 필터
-  const matched = _rctAllData.filter(d => {
-    const itemMatch = prod === '' || d.item === prod;
-    const symMatch = d.defect_normalized === symptom || (d.raw_symptom || '').includes(symptom);
-    return itemMatch && symMatch;
-  });
-
-  // 월별 집계
+  // 월별 추이 차트
   const byMonth = {};
   matched.forEach(d => {
     if (d.receipt_date) {
@@ -1523,69 +1465,161 @@ function _renderDrillDown(prod, symptom) {
       byMonth[m] = (byMonth[m] || 0) + 1;
     }
   });
-  const labels = Object.keys(byMonth).sort();
-  const values = labels.map(l => byMonth[l]);
+  const monthLabels = Object.keys(byMonth).sort();
+  const monthValues = monthLabels.map(l => byMonth[l]);
 
-  // 차트 렌더
-  if (_rctDrillChart) _rctDrillChart.destroy();
-  const ctx = document.getElementById('rctDrillDownChart');
-  if (!ctx) return;
-  _rctDrillChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: '클레임 건수',
-        data: values,
-        backgroundColor: 'rgba(255,107,122,0.3)',
-        borderColor: '#ff6b7a',
-        borderWidth: 2,
-        borderRadius: 5,
-      }, {
-        label: '추이선',
-        data: values,
-        type: 'line',
-        borderColor: '#ffb347',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 4,
-        pointBackgroundColor: '#ffb347',
-        tension: 0.3,
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 11 } } },
-        y: { grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+  if (_rctDefectTrendChart) _rctDefectTrendChart.destroy();
+  const ctx = document.getElementById('rctDefectTrendChart');
+  if (ctx) {
+    _rctDefectTrendChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: monthLabels,
+        datasets: [{
+          label: '건수',
+          data: monthValues,
+          backgroundColor: 'rgba(255,107,122,0.25)',
+          borderColor: '#ff6b7a',
+          borderWidth: 2,
+          borderRadius: 5,
+        }, {
+          label: '추이',
+          data: monthValues,
+          type: 'line',
+          borderColor: '#ffb347',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#ffb347',
+          tension: 0.3,
+        }]
       },
-      plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: '#1a2234', callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}건` } }
-      },
-      animation: { duration: 800, easing: 'easeOutQuart' }
-    }
-  });
-
-  // 상세 목록 테이블
-  const tableBody = document.getElementById('rctDetailTableBody');
-  const tableWrap = document.getElementById('rctDetailTable');
-  if (tableBody && tableWrap) {
-    tableWrap.style.display = '';
-    const sortedRows = [...matched].sort((a,b) => (b.receipt_date||'').localeCompare(a.receipt_date||''));
-    tableBody.innerHTML = sortedRows.map(d => {
-      const costFmt = d.cost ? Number(d.cost).toLocaleString() + '원' : '-';
-      return `<tr style="border-bottom:1px solid rgba(36,59,90,0.3)" onmouseover="this.style.background='rgba(0,87,184,0.05)'" onmouseout="this.style.background=''">
-        <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan)">${d.receipt_id || '-'}</td>
-        <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px">${d.receipt_date || '-'}</td>
-        <td style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600">${d.item || '-'}</td>
-        <td style="padding:7px 10px;font-size:11px;color:var(--accent-emerald)">${d.defect_normalized || '-'}</td>
-        <td style="padding:7px 10px;font-size:10px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.raw_symptom||'').replace(/"/g,'&quot;')}">${d.raw_symptom || '-'}</td>
-        <td style="padding:7px 10px;text-align:center;font-size:10px">${d.warranty_type || '-'}</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-amber)">${costFmt}</td>
-      </tr>`;
-    }).join('');
+      options: {
+        responsive: true,
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+        },
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a2234' } },
+        animation: { duration: 700 }
+      }
+    });
   }
+
+  // 상세 테이블 (접수일 오름차순)
+  const sorted = [...matched].sort((a,b) => (a.receipt_date||'').localeCompare(b.receipt_date||''));
+  const tbody = document.getElementById('rctDetailTableBody');
+  if (!tbody) return;
+
+  const CATS = ['작동성','소음','파손','유격','수평','체결','외관','기타'];
+
+  tbody.innerHTML = sorted.map((d, idx) => {
+    const rowId = `row_${idx}`;
+    return `<tr id="${rowId}" style="border-bottom:1px solid rgba(36,59,90,0.3)" onmouseover="this.style.background='rgba(0,87,184,0.04)'" onmouseout="this.style.background=''">
+      <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);white-space:nowrap">${d.receipt_id||'-'}</td>
+      <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px">${d.seq_no||'-'}</td>
+      <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap">${d.receipt_date||'-'}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600;white-space:nowrap">${d.item||'-'}</td>
+      <td style="padding:7px 10px;cursor:pointer;color:var(--accent-emerald)"
+          onclick="startEdit(this,'defect_normalized','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\') }',${d.seq_no||1},'${(d.raw_symptom||'').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\\/g,'\\\\')}','${(d.defect_normalized||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','${(d.defect_category||'기타').replace(/'/g,"\\'")}')"
+          title="클릭하여 편집">${d.defect_normalized||'<span style="color:var(--text-muted);font-style:italic">미분류</span>'}</td>
+      <td style="padding:7px 10px;text-align:center;cursor:pointer;color:var(--accent-cyan)"
+          onclick="startEdit(this,'defect_category','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}',${d.seq_no||1},'${(d.raw_symptom||'').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\\/g,'\\\\')}','${(d.defect_normalized||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','${(d.defect_category||'기타').replace(/'/g,"\\'")}')"
+          title="클릭하여 편집">${d.defect_category||'기타'}</td>
+      <td style="padding:7px 10px;cursor:pointer;color:var(--accent-amber);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          onclick="startEdit(this,'raw_symptom','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}',${d.seq_no||1},'${(d.raw_symptom||'').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\\/g,'\\\\')}','${(d.defect_normalized||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','${(d.defect_category||'기타').replace(/'/g,"\\'")}')"
+          title="${(d.raw_symptom||'').replace(/"/g,'&quot;')}">${d.raw_symptom||'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 인라인 편집 ──
+const DEFECT_CATS = ['작동성','소음','파손','유격','수평','체결','외관','기타'];
+
+function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, currentCat) {
+  if (cell.querySelector('input,select')) return; // already editing
+  const originalText = cell.textContent.trim();
+  const originalHTML = cell.innerHTML;
+
+  let input;
+  if (field === 'defect_category') {
+    input = document.createElement('select');
+    input.style.cssText = 'background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--sidiz-blue-bright);border-radius:6px;padding:3px 6px;font-size:11px;width:100%';
+    DEFECT_CATS.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      if (c === originalText) opt.selected = true;
+      input.appendChild(opt);
+    });
+  } else {
+    input = document.createElement('input');
+    input.type = 'text';
+    input.value = originalText === '미분류' ? '' : originalText;
+    input.style.cssText = 'background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--sidiz-blue-bright);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;min-width:120px;box-sizing:border-box';
+  }
+
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+
+  const saveEdit = async () => {
+    const newValue = input.value.trim();
+    if (!newValue || newValue === originalText) { cell.innerHTML = originalHTML; return; }
+
+    cell.innerHTML = '<span style="color:var(--text-muted)">저장 중...</span>';
+
+    try {
+      // 1. Supabase claims_receipt 업데이트
+      const updates = { [field]: newValue };
+      const patchUrl = `${SupabaseClient.SUPABASE_URL}/rest/v1/claims_receipt?receipt_id=eq.${encodeURIComponent(receiptId)}&seq_no=eq.${seqNo}`;
+      const res = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: { 'apikey': SupabaseClient.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SupabaseClient.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) throw new Error(`PATCH ${res.status}`);
+
+      // 2. 학습: defect_normalized 또는 defect_category 변경 시 사전 업데이트
+      const learnNorm = field === 'defect_normalized' ? newValue : currentNorm;
+      const learnCat  = field === 'defect_category'  ? newValue : currentCat;
+      if ((field === 'defect_normalized' || field === 'defect_category') && rawSymptom && rawSymptom.length > 2) {
+        await SupabaseClient.upsertSymptomPattern(rawSymptom, learnNorm, learnCat, 'dashboard');
+      }
+
+      // 3. 로컬 캐시 업데이트
+      const cachedRow = _rctAllData.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
+      if (cachedRow) cachedRow[field] = newValue;
+      const filteredRow = _rctFilteredData.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
+      if (filteredRow) filteredRow[field] = newValue;
+
+      cell.innerHTML = `<span style="color:var(--accent-emerald)">${newValue}</span>`;
+      cell.style.color = 'var(--accent-emerald)';
+      setTimeout(() => { cell.style.color = ''; }, 2000);
+
+      // 칩 재렌더
+      _renderRctDefectChips();
+
+    } catch(e) {
+      cell.innerHTML = originalHTML;
+      alert('저장 실패: ' + e.message);
+    }
+  };
+
+  input.addEventListener('blur', saveEdit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { cell.innerHTML = originalHTML; }
+  });
+}
+
+function _renderRctProductChips() {
+  // kept for compatibility but chips are now defect-based
+}
+
+function selectRctProduct(prod) {
+  _rctSelectedProduct = prod;
+  document.getElementById('rctProductFilter').value = prod;
+  _applyRctFilter();
 }
 
 // 레거시 호환 함수
