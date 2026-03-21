@@ -570,6 +570,8 @@ function renderReviewTable() {
   }
 
   const uniqueItems = getUniqueItems();
+  const itemDl = document.getElementById('item-datalist');
+  if (itemDl) itemDl.innerHTML = uniqueItems.map(p => `<option value="${escHtml(p)}">`).join('');
   tbody.innerHTML = pageData.map(row => {
     const sugCat = row.suggested_category || '';
     const sugNorm = row.suggested_normalized || '';
@@ -583,10 +585,9 @@ function renderReviewTable() {
       <td class="check-cell"><input type="checkbox" class="row-check" data-id="${escHtml(row.id)}"></td>
       <td><span class="mono">${escHtml(row.receipt_id||row.id||'—')}</span></td>
       <td>
-        <select class="table-select item-select" data-id="${escHtml(row.id)}" style="min-width:80px;font-size:11px">
-          <option value="">미선택</option>
-          ${itemOpts}
-        </select>
+        <input class="table-input item-input" data-id="${escHtml(row.id)}"
+          type="text" value="${escHtml(row.item||'')}" placeholder="제품 입력/선택"
+          list="item-datalist" autocomplete="off" style="min-width:90px">
       </td>
       <td class="raw-symptom-cell raw-popup-cell" data-rawtext="${escHtml(rawText)}" style="cursor:pointer" title="클릭하여 전체보기">
         <div class="raw-symptom-text" style="color:var(--amber)">${escHtml(preview)}</div>
@@ -599,10 +600,9 @@ function renderReviewTable() {
           list="norm-datalist" autocomplete="off">
       </td>
       <td>
-        <select class="table-select cat-select" data-id="${escHtml(row.id)}">
-          <option value="">선택...</option>
-          ${CATEGORIES.map(c => `<option value="${c}" ${c===sugCat?'selected':''}>${c}</option>`).join('')}
-        </select>
+        <input class="table-input cat-input" data-id="${escHtml(row.id)}"
+          type="text" value="${escHtml(sugCat)}" placeholder="카테고리 입력/선택"
+          list="cat-datalist" autocomplete="off" style="min-width:90px">
       </td>
       <td>
         <div class="action-cell">
@@ -646,11 +646,11 @@ async function approveSingle(id) {
   if (!row) return;
 
   const normInput = document.querySelector(`.norm-input[data-id="${id}"]`);
-  const catSelect = document.querySelector(`.cat-select[data-id="${id}"]`);
-  const itemSelect = document.querySelector(`.item-select[data-id="${id}"]`);
+  const catInput  = document.querySelector(`.cat-input[data-id="${id}"]`);
+  const itemInput = document.querySelector(`.item-input[data-id="${id}"]`);
   const normalized = (normInput?.value || '').trim();
-  const category   = (catSelect?.value || '').trim();
-  const selectedItem = (itemSelect?.value || '').trim();
+  const category   = (catInput?.value || '').trim();
+  const selectedItem = (itemInput?.value || '').trim();
 
   if (!normalized) { toast('⚠️ 표준증상명을 입력하세요', 'warning'); return; }
   if (!category)   { toast('⚠️ 카테고리를 선택하세요', 'warning'); return; }
@@ -756,7 +756,7 @@ async function bulkApprove() {
   for (const cb of checked) {
     const id = cb.dataset.id;
     const normInput = document.querySelector(`.norm-input[data-id="${id}"]`);
-    const catSelect = document.querySelector(`.cat-select[data-id="${id}"]`);
+    const catSelect = document.querySelector(`.cat-input[data-id="${id}"]`);
     const normalized = (normInput?.value || '').trim();
     const category   = (catSelect?.value || '').trim();
     if (!normalized || !category) { fail++; continue; }
@@ -1168,8 +1168,19 @@ async function bulkDeleteDict() {
 })();
 </script>
 
-<!-- 표준증상명 자동완성 datalist -->
+<!-- 자동완성 datalist -->
 <datalist id="norm-datalist"></datalist>
+<datalist id="item-datalist"></datalist>
+<datalist id="cat-datalist">
+  <option value="작동성">
+  <option value="소음">
+  <option value="파손">
+  <option value="유격">
+  <option value="수평">
+  <option value="체결">
+  <option value="외관">
+  <option value="기타">
+</datalist>
 
 <!-- 요구내역 전체보기 팝업 -->
 <div id="rawPopup" style="display:none;position:fixed;z-index:9999;width:380px;max-width:92vw;background:#1a2744;border:1px solid rgba(74,158,255,0.35);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,0.6);padding:16px 18px">
