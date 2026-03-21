@@ -312,6 +312,7 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
         <span class="bulk-count" id="selected-count">선택 0건</span>
         <button class="btn btn-secondary btn-sm" id="btn-select-all">전체 선택</button>
         <button class="btn btn-emerald btn-sm" id="btn-bulk-approve" disabled>선택 항목 일괄 승인</button>
+        <button class="btn btn-rose btn-sm" id="btn-bulk-reject" disabled>선택 항목 일괄 거절</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -793,10 +794,32 @@ async function bulkApprove() {
   toast(`✅ 일괄 승인 완료 — ${ok}건 성공${fail ? `, ${fail}건 실패` : ''}`);
 }
 
+async function bulkReject() {
+  const checked = [...document.querySelectorAll('.row-check:checked')];
+  if (!checked.length) { toast('선택된 항목이 없습니다', 'warning'); return; }
+  if (!confirm(`선택한 ${checked.length}건을 전부 거절 처리하시겠습니까?`)) return;
+  let ok = 0, fail = 0;
+  const now = new Date().toISOString();
+  for (const cb of checked) {
+    try {
+      await sbFetch(`/rest/v1/symptom_pending?id=eq.${encodeURIComponent(cb.dataset.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'rejected', reviewed_at: now })
+      });
+      reviewData = reviewData.filter(r => String(r.id) !== String(cb.dataset.id));
+      ok++;
+    } catch { fail++; }
+  }
+  renderReviewTable();
+  loadStats();
+  toast(`❌ 일괄 거절 완료 — ${ok}건${fail ? `, ${fail}건 실패` : ''}`);
+}
+
 function updateSelectedCount() {
   const count = document.querySelectorAll('.row-check:checked').length;
   document.getElementById('selected-count').textContent = `선택 ${count}건`;
   document.getElementById('btn-bulk-approve').disabled = count === 0;
+  document.getElementById('btn-bulk-reject').disabled = count === 0;
 }
 
 // ═══════════════════════════════════════════
@@ -1034,6 +1057,7 @@ document.getElementById('btn-select-all').addEventListener('click', () => {
 });
 
 document.getElementById('btn-bulk-approve').addEventListener('click', bulkApprove);
+document.getElementById('btn-bulk-reject').addEventListener('click', bulkReject);
 
 // Dictionary events
 document.getElementById('dict-tbody').addEventListener('click', e => {
