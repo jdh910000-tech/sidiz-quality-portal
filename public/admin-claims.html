@@ -526,6 +526,30 @@ async function loadReview() {
       '/rest/v1/symptom_pending?status=eq.pending&order=created_at.desc&limit=500'
     );
     reviewData = data || [];
+
+    // claims_receipt에서 claim_detail(요구내역 원문) 병합
+    if (reviewData.length > 0) {
+      const receiptIds = [...new Set(reviewData.map(r => r.receipt_id).filter(Boolean))];
+      if (receiptIds.length > 0) {
+        try {
+          const claims = await sbFetch(
+            `/rest/v1/claims_receipt?receipt_id=in.(${receiptIds.join(',')})&select=receipt_id,seq_no,claim_detail`
+          );
+          const claimMap = {};
+          (claims || []).forEach(c => {
+            claimMap[`${c.receipt_id}::${c.seq_no}`] = c.claim_detail;
+          });
+          reviewData = reviewData.map(r => ({
+            ...r,
+            claim_detail: claimMap[`${r.receipt_id}::${r.seq_no}`] || r.raw_symptom || ''
+          }));
+        } catch(e2) {
+          // claim_detail 로드 실패 시 raw_symptom으로 fallback
+          reviewData = reviewData.map(r => ({ ...r, claim_detail: r.raw_symptom || '' }));
+        }
+      }
+    }
+
     reviewPage = 1;
     renderReviewTable();
   } catch(e) {
@@ -548,8 +572,8 @@ function renderReviewTable() {
   tbody.innerHTML = pageData.map(row => {
     const sugCat = row.suggested_category || '';
     const sugNorm = row.suggested_normalized || '';
-    const rawText = row.raw_symptom || '';
-    const preview = rawText.length > 28 ? rawText.substring(0, 28) + '…' : (rawText || '—');
+    const rawText = row.claim_detail || row.raw_symptom || '';  // 요구내역 원문 우선
+    const preview = rawText.length > 30 ? rawText.substring(0, 30) + '…' : (rawText || '—');
     const itemOpts = uniqueItems.map(p =>
       `<option value="${escHtml(p)}" ${p===(row.item||'')?'selected':''}>${escHtml(p)}</option>`
     ).join('');
@@ -634,14 +658,19 @@ async function approveSingle(id) {
   const now = new Date().toISOString();
 
   try {
-    // 1. UPSERT normalized pattern to dictionary
+    // 1. UPSERT extracted symptom (핵심 매칭 키워드)
     await upsertPattern(rawPattern, normalized, category);
-    // 2. Also add original raw_symptom as pattern if different
+    // 2. raw_symptom 원문 (방향성 제거 전)
     if (row.raw_symptom && row.raw_symptom !== rawPattern) {
       await upsertPattern(row.raw_symptom, normalized, category);
     }
+    // 3. claim_detail(요구내역 원문)도 패턴 등록 → 다음 업로드 시 전문 매칭 가능
+    const cd = row.claim_detail || '';
+    if (cd && cd !== rawPattern && cd !== row.raw_symptom) {
+      await upsertPattern(cd.substring(0, 500), normalized, category);
+    }
 
-    // 3. UPDATE symptom_pending
+    // 4. UPDATE symptom_pending
     await sbFetch(`/rest/v1/symptom_pending?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -736,6 +765,11 @@ async function bulkApprove() {
       await upsertPattern(rawPattern, normalized, category);
       if (row?.raw_symptom && row.raw_symptom !== rawPattern) {
         await upsertPattern(row.raw_symptom, normalized, category);
+      }
+      // claim_detail(요구내역 원문)도 패턴 등록
+      const cd = row?.claim_detail || '';
+      if (cd && cd !== rawPattern && cd !== row?.raw_symptom) {
+        await upsertPattern(cd.substring(0, 500), normalized, category);
       }
       await sbFetch(`/rest/v1/symptom_pending?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH',

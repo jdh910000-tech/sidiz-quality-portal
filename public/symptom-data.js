@@ -200,7 +200,10 @@ function parseRequirement(text, dict, seqNo) {
     ? extractSymptomBySeq(text, seqNo)
     : extractSymptomText(text);
   const stripped = stripDirectional(rawSymptom);
-  const matchResult = dict ? matchSymptomDict(stripped, dict) : null;
+  // 1차: 추출된 증상 키워드로 매칭, 2차: 요구내역 전문으로 매칭 (claim_detail 패턴 대응)
+  const matchResult = dict
+    ? (matchSymptomDict(stripped, dict) || matchSymptomDict(text, dict))
+    : null;
   if (matchResult) {
     return { productCode, item, rawSymptom, normalized: matchResult.normalized, category: matchResult.category, matched: true, matchedPattern: matchResult.pattern };
   }
