@@ -322,7 +322,7 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
               <th class="check-cell"><input type="checkbox" id="chk-all" title="전체 선택"></th>
               <th>접수번호</th>
               <th>제품</th>
-              <th>원문 증상</th>
+              <th>요구내역</th>
               <th>추천 카테고리</th>
               <th>표준증상명 (입력)</th>
               <th>카테고리 (선택)</th>
@@ -376,6 +376,8 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
         <option>외관</option><option>기타</option>
       </select>
       <button class="btn btn-secondary btn-sm" id="btn-dict-refresh">새로고침</button>
+      <button class="btn btn-danger btn-sm" id="btn-dict-bulk-delete" disabled>🗑 선택 삭제</button>
+      <span class="bulk-count" id="dict-selected-count">선택 0건</span>
     </div>
 
     <div class="table-wrap">
@@ -383,6 +385,7 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
         <table id="dict-table">
           <thead>
             <tr>
+              <th class="check-cell"><input type="checkbox" id="dict-chk-all" title="전체 선택"></th>
               <th>원문 패턴</th>
               <th>표준증상명</th>
               <th>카테고리</th>
@@ -393,7 +396,7 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
             </tr>
           </thead>
           <tbody id="dict-tbody">
-            <tr class="loading-row"><td colspan="7">⏳ 데이터 로딩 중...</td></tr>
+            <tr class="loading-row"><td colspan="8">⏳ 데이터 로딩 중...</td></tr>
           </tbody>
         </table>
       </div>
@@ -541,19 +544,34 @@ function renderReviewTable() {
     return;
   }
 
+  const uniqueItems = getUniqueItems();
   tbody.innerHTML = pageData.map(row => {
     const sugCat = row.suggested_category || '';
-    const sugNorm = row.suggested_normalized || row.raw_symptom || '';
+    const sugNorm = row.suggested_normalized || '';
+    const rawText = row.raw_symptom || '';
+    const preview = rawText.length > 28 ? rawText.substring(0, 28) + '…' : (rawText || '—');
+    const itemOpts = uniqueItems.map(p =>
+      `<option value="${escHtml(p)}" ${p===(row.item||'')?'selected':''}>${escHtml(p)}</option>`
+    ).join('');
     return `
     <tr data-id="${escHtml(row.id)}" data-receipt="${escHtml(row.receipt_id||'')}">
       <td class="check-cell"><input type="checkbox" class="row-check" data-id="${escHtml(row.id)}"></td>
       <td><span class="mono">${escHtml(row.receipt_id||row.id||'—')}</span></td>
-      <td><span class="badge badge-blue">${escHtml(row.product_name||row.product_code||'—')}</span></td>
-      <td class="raw-symptom-cell"><div class="raw-symptom-text">${escHtml(row.raw_symptom||'—')}</div></td>
+      <td>
+        <select class="table-select item-select" data-id="${escHtml(row.id)}" style="min-width:80px;font-size:11px">
+          <option value="">미선택</option>
+          ${itemOpts}
+        </select>
+      </td>
+      <td class="raw-symptom-cell raw-popup-cell" data-rawtext="${escHtml(rawText)}" style="cursor:pointer" title="클릭하여 전체보기">
+        <div class="raw-symptom-text" style="color:var(--amber)">${escHtml(preview)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">🔍 전체보기</div>
+      </td>
       <td>${catBadge(sugCat)}</td>
       <td>
         <input class="table-input norm-input" data-id="${escHtml(row.id)}"
-          type="text" value="${escHtml(sugNorm)}" placeholder="표준증상명 입력">
+          type="text" value="${escHtml(sugNorm)}" placeholder="표준증상명 입력"
+          list="norm-datalist" autocomplete="off">
       </td>
       <td>
         <select class="table-select cat-select" data-id="${escHtml(row.id)}">
@@ -604,8 +622,10 @@ async function approveSingle(id) {
 
   const normInput = document.querySelector(`.norm-input[data-id="${id}"]`);
   const catSelect = document.querySelector(`.cat-select[data-id="${id}"]`);
+  const itemSelect = document.querySelector(`.item-select[data-id="${id}"]`);
   const normalized = (normInput?.value || '').trim();
   const category   = (catSelect?.value || '').trim();
+  const selectedItem = (itemSelect?.value || '').trim();
 
   if (!normalized) { toast('⚠️ 표준증상명을 입력하세요', 'warning'); return; }
   if (!category)   { toast('⚠️ 카테고리를 선택하세요', 'warning'); return; }
@@ -634,15 +654,11 @@ async function approveSingle(id) {
 
     // 4. UPDATE claims_receipt if receipt_id exists and defect_normalized is null
     if (row.receipt_id) {
+      const patchBody = { defect_normalized: normalized, defect_category: category };
+      if (selectedItem) patchBody.item = selectedItem;
       await sbFetch(
         `/rest/v1/claims_receipt?receipt_id=eq.${encodeURIComponent(row.receipt_id)}&defect_normalized=is.null`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({
-            defect_normalized: normalized,
-            defect_category: category
-          })
-        }
+        { method: 'PATCH', body: JSON.stringify(patchBody) }
       );
     }
 
@@ -787,7 +803,7 @@ function renderDictTable() {
   const pageData = filtered.slice(start, start + DICT_PAGE_SIZE);
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>검색 결과가 없습니다</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>검색 결과가 없습니다</p></div></td></tr>`;
     renderPagination('dict-pagination', 0, 0, null);
     return;
   }
@@ -796,6 +812,7 @@ function renderDictTable() {
     const created = row.created_at ? new Date(row.created_at).toLocaleDateString('ko-KR') : '—';
     return `
     <tr data-id="${escHtml(row.id)}">
+      <td class="check-cell"><input type="checkbox" class="dict-check" data-id="${escHtml(row.id)}"></td>
       <td><span class="mono">${escHtml(row.raw_pattern||'—')}</span></td>
       <td>${escHtml(row.normalized||'—')}</td>
       <td>${catBadge(row.category)}</td>
@@ -954,6 +971,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 // Review table events (delegated)
 document.getElementById('review-tbody').addEventListener('click', e => {
+  // 요구내역 팝업 셀 클릭
+  const popCell = e.target.closest('.raw-popup-cell');
+  if (popCell) { showRawPopup(e, popCell.dataset.rawtext || ''); return; }
+
   const btn = e.target.closest('button');
   if (!btn) return;
   const id = btn.dataset.id;
@@ -1001,10 +1022,105 @@ document.getElementById('dict-cat-filter').addEventListener('change', function()
   renderDictTable();
 });
 
+// 사전 체크박스 일괄선택
+document.getElementById('dict-chk-all').addEventListener('change', function() {
+  document.querySelectorAll('.dict-check').forEach(c => c.checked = this.checked);
+  updateDictSelectedCount();
+});
+
+document.getElementById('dict-tbody').addEventListener('change', e => {
+  if (e.target.classList.contains('dict-check')) updateDictSelectedCount();
+});
+
+document.getElementById('btn-dict-bulk-delete').addEventListener('click', bulkDeleteDict);
+
+// 외부 클릭 시 팝업 닫기
+document.addEventListener('click', e => {
+  const popup = document.getElementById('rawPopup');
+  if (popup && popup.style.display === 'block' && !popup.contains(e.target)) {
+    popup.style.display = 'none';
+  }
+});
+
+// ─── 고유 제품 목록 ───
+function getUniqueItems() {
+  return [...new Set(reviewData.map(r => r.item).filter(Boolean))].sort();
+}
+
+// ─── 표준증상명 자동완성 (datalist) ───
+async function loadNormTerms() {
+  try {
+    const data = await sbFetch('/rest/v1/symptom_dictionary?select=normalized&order=usage_count.desc&limit=300');
+    const terms = [...new Set((data || []).map(r => r.normalized).filter(Boolean))];
+    const dl = document.getElementById('norm-datalist');
+    if (dl) dl.innerHTML = terms.map(t => `<option value="${escHtml(t)}">`).join('');
+  } catch(e) { console.warn('loadNormTerms failed', e); }
+}
+
+// ─── 요구내역 팝업 ───
+function showRawPopup(e, text) {
+  e.stopPropagation();
+  const popup = document.getElementById('rawPopup');
+  if (!popup) return;
+  document.getElementById('rawPopupText').textContent = text || '(내용 없음)';
+  popup.style.display = 'block';
+  const x = e.clientX, y = e.clientY;
+  const pw = 380, ww = window.innerWidth, wh = window.innerHeight;
+  const ph = popup.offsetHeight || 200;
+  let left = x + 12, top = y + 12;
+  if (left + pw > ww - 10) left = x - pw - 12;
+  if (top + ph > wh - 10) top = y - ph - 12;
+  popup.style.left = left + 'px';
+  popup.style.top  = top  + 'px';
+}
+function closeRawPopup() {
+  const popup = document.getElementById('rawPopup');
+  if (popup) popup.style.display = 'none';
+}
+
+// ─── 사전 체크 카운트 / 일괄삭제 ───
+function updateDictSelectedCount() {
+  const count = document.querySelectorAll('.dict-check:checked').length;
+  document.getElementById('dict-selected-count').textContent = `선택 ${count}건`;
+  document.getElementById('btn-dict-bulk-delete').disabled = count === 0;
+}
+
+async function bulkDeleteDict() {
+  const checked = [...document.querySelectorAll('.dict-check:checked')];
+  if (!checked.length) { toast('선택된 항목이 없습니다', 'warning'); return; }
+  if (!confirm(`선택한 ${checked.length}건의 패턴을 삭제하시겠습니까?`)) return;
+  let ok = 0, fail = 0;
+  for (const cb of checked) {
+    try {
+      await sbFetch(`/rest/v1/symptom_dictionary?id=eq.${encodeURIComponent(cb.dataset.id)}`, { method: 'DELETE' });
+      dictData = dictData.filter(r => String(r.id) !== String(cb.dataset.id));
+      ok++;
+    } catch { fail++; }
+  }
+  renderDictTable();
+  loadStats();
+  document.getElementById('dict-chk-all').checked = false;
+  updateDictSelectedCount();
+  toast(`🗑 일괄 삭제 완료 — ${ok}건 성공${fail ? `, ${fail}건 실패` : ''}`);
+}
+
 // ─── INIT ───
 (async function init() {
-  await Promise.all([loadStats(), loadReview()]);
+  await Promise.all([loadStats(), loadReview(), loadNormTerms()]);
 })();
 </script>
+
+<!-- 표준증상명 자동완성 datalist -->
+<datalist id="norm-datalist"></datalist>
+
+<!-- 요구내역 전체보기 팝업 -->
+<div id="rawPopup" style="display:none;position:fixed;z-index:9999;width:380px;max-width:92vw;background:#1a2744;border:1px solid rgba(74,158,255,0.35);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,0.6);padding:16px 18px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <span style="font-size:11px;font-weight:700;color:var(--amber);letter-spacing:0.4px">📋 요구내역 전체보기</span>
+    <button onclick="closeRawPopup()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:17px;line-height:1;padding:0 3px" title="닫기">✕</button>
+  </div>
+  <div id="rawPopupText" style="font-size:12px;color:var(--text);line-height:1.75;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto"></div>
+</div>
+
 </body>
 </html>
