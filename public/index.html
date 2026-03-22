@@ -432,37 +432,97 @@ body::before {
 
   <!-- Product -->
   <div id="claim-product" class="claim-content" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="prodYearSelect" onchange="onProdYearChange(this.value)" style="background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:8px;font-size:13px">
-          <option value="all">전체 연도</option>
-          <option value="2026" selected>2026년</option>
-          <option value="2025">2025년</option>
-        </select>
-        <select id="prodBrandSelect" onchange="onProdBrandChange(this.value)" style="background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-primary);padding:6px 12px;border-radius:8px;font-size:13px">
-          <option value="all">전체 브랜드</option>
-        </select>
-        <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
+      <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 접수일 · Supabase 실시간</span>
+    </div>
+
+    <!-- 필터 바 -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--sidiz-dark2);padding:14px 16px;border-radius:12px;border:1px solid var(--border)">
+      <select id="prodItemSelect" onchange="onProdItemChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
+        <option value="all">전체 제품</option>
+      </select>
+      <select id="prodCatSelect" onchange="onProdCatChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:120px">
+        <option value="all">전체 판정유형</option>
+      </select>
+      <select id="prodBrandSel" onchange="onProdBrandChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:120px">
+        <option value="all">전체 브랜드</option>
+      </select>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
+        <input type="date" id="prodDateFrom" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px">
+        <span style="color:var(--text-muted)">~</span>
+        <input type="date" id="prodDateTo" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px">
+        <button onclick="loadProdDashboard()" style="background:var(--sidiz-blue);color:white;border:none;padding:7px 18px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">조회</button>
+        <button onclick="setProdQuick('1w')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1주</button>
+        <button onclick="setProdQuick('1m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1개월</button>
+        <button onclick="setProdQuick('3m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 3개월</button>
+        <button onclick="setProdQuick('all')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">전체</button>
       </div>
     </div>
 
-    <!-- 판정유형(category) 필터 — 다중 선택 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <label style="font-size:12px;color:var(--text-muted);font-weight:500">판정유형:</label>
-      <div id="prodCategoryFilter" style="display:flex;gap:3px;background:var(--sidiz-dark2);padding:3px;border-radius:10px;border:1px solid var(--border);flex-wrap:wrap">
-        <button class="sub-tab active" data-cat="전체" onclick="toggleCategoryMulti('전체',this)">전체</button>
+    <!-- 요약 카드 3개 -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+      <div class="rct-card" style="border-top-color:var(--sidiz-blue-bright);padding:16px">
+        <div class="rct-card-label">클레임 건수</div>
+        <div class="rct-card-value" id="prodCardClaims" style="color:var(--sidiz-blue-bright)">-</div>
+        <div class="rct-card-sub" id="prodCardClaimsSub">조회 전</div>
       </div>
-      <span id="prodFilterCount" style="font-size:11px;color:var(--text-muted);margin-left:8px"></span>
+      <div class="rct-card" style="border-top-color:var(--accent-emerald);padding:16px">
+        <div class="rct-card-label">매출량</div>
+        <div class="rct-card-value" id="prodCardSales" style="color:var(--accent-emerald)">-</div>
+        <div class="rct-card-sub" id="prodCardSalesSub">조회 전</div>
+      </div>
+      <div class="rct-card" style="border-top-color:var(--accent-amber);padding:16px">
+        <div class="rct-card-label">불량지수</div>
+        <div class="rct-card-value" id="prodCardDefect" style="color:var(--accent-amber)">-</div>
+        <div class="rct-card-sub">클레임/매출 × 1000</div>
+      </div>
     </div>
 
-    <div class="stats-row" id="productStats">
-      <div class="stat-item"><div class="stat-label">총 클레임</div><div class="stat-value" style="color:var(--sidiz-blue-bright)" id="prodTotalCount">-</div><div class="stat-sub" id="prodTotalSub">로딩 중...</div></div>
-      <div class="stat-item"><div class="stat-label">국내</div><div class="stat-value" style="color:var(--accent-cyan)" id="prodKrCount">-</div><div class="stat-sub">국내 건수</div></div>
-      <div class="stat-item"><div class="stat-label">베트남</div><div class="stat-value" style="color:var(--accent-amber)" id="prodVnCount">-</div><div class="stat-sub">베트남 건수</div></div>
+    <!-- 차트 2개: 막대 + 파이 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="chart-card" style="padding:20px">
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);display:inline-block"></span>
+          불량 유형별 현황
+        </h3>
+        <canvas id="prodBarChart" height="160"></canvas>
+      </div>
+      <div class="chart-card" style="padding:20px">
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-violet);display:inline-block"></span>
+          부품별 현황
+        </h3>
+        <canvas id="prodPieChart" height="160"></canvas>
+      </div>
     </div>
 
-    <div class="accordion" id="productAccordion"><div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ Supabase에서 데이터를 불러오는 중...</div></div>
+    <!-- 클레임 추이 -->
+    <div class="chart-card" style="padding:18px;margin-bottom:16px">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span>
+        클레임 추이 <span id="prodTrendTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
+      </h3>
+      <canvas id="prodTrendChart" height="90"></canvas>
+    </div>
+
+    <!-- 월별 상세 표 -->
+    <div class="chart-card" style="padding:18px;margin-bottom:16px">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);display:inline-block"></span>
+        월별 클레임 건수 추이 <span id="prodTableTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
+      </h3>
+      <div style="overflow-x:auto" id="prodMonthlyTableWrap">
+        <div style="text-align:center;padding:40px;color:var(--text-muted)">조회 조건을 선택하고 조회 버튼을 눌러주세요.</div>
+      </div>
+    </div>
+
+    <!-- 빈 상태 -->
+    <div id="prodEmptyState" style="text-align:center;padding:60px 20px;color:var(--text-muted);display:none">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <div style="font-size:15px;margin-bottom:8px">데이터가 없습니다</div>
+      <div style="font-size:12px">기간을 선택하고 조회하거나, 먼저 데이터를 업로드해 주세요.</div>
+    </div>
   </div>
 
   <!-- Receipt Date -->
@@ -1136,6 +1196,7 @@ function showClaimTab(tab,btn) {
   document.querySelectorAll('#section-claim .sub-tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   if (tab === 'receipt') initReceiptDateDefaults();
+  if (tab === 'product' && !_prodLoaded) { loadProdTab(); _prodLoaded = true; }
 }
 
 function showKpiTab(tab,btn) {
@@ -1722,227 +1783,286 @@ function _updateReceiptUI() {}
   } catch(_) {}
 })();
 
-// ─── 제품별 클레임 — Supabase claims(회수일) 실시간 ───
-let _allProductClaims = [];
-let _selectedCategories = new Set(['전체']);
-let _productCharts = {};
-let _defectDict = []; // 표준 하자명 사전
+// ─── 제품별 클레임 탭 — claims_receipt 기반 (접수일 기준) ───
+let _prodAllData = [];
+let _prodSalesData = [];
+let _prodBarChart = null;
+let _prodPieChart = null;
+let _prodTrendChart = null;
+let _prodLoaded = false;
 
-// 사전 로드
-fetch('defect-dictionary.json').then(r => r.json()).then(d => { _defectDict = d; console.log('✅ 하자 사전 로드:', d.length + '개 패턴'); }).catch(() => console.log('⚠ 하자 사전 없음 — 원본 표기 사용'));
-
-// 표준 하자명 찾기 — inspection_result 기반 그룹핑 개선
-function _findStandardName(item, defectType, rawText) {
-  if (!rawText || rawText === '미분류') return '미분류';
-  
-  // inspection_result가 긴 CS메모인 경우(80자 이상) → 첫 줄만 사용
-  let shortText = rawText;
-  if (rawText.length > 80) {
-    // 첫 번째 의미있는 줄 추출 (날짜/코드 줄 스킵)
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    shortText = lines[0] || rawText.slice(0, 60);
-  }
-  
-  // 핵심 판정내용 추출: "판정내용 , 부가설명" 형태에서 앞부분만
-  const corePart = shortText.split(/[,，]/).map(s => s.trim()).filter(s => s.length > 3)[0] || shortText;
-  const coreClean = corePart.replace(/[\s,.·\/\(\)\-]+/g, '').toLowerCase();
-  
-  // 1단계: 사전에서 item + defect_type 매칭
-  for (const entry of _defectDict) {
-    if (entry.item === item && entry.defect_type === defectType) {
-      const patClean = entry.pattern.replace(/[\s,.·\/\(\)\-]+/g, '').toLowerCase();
-      if (coreClean.includes(patClean) || patClean.includes(coreClean)) {
-        return entry.standard_name;
-      }
-    }
-  }
-  // 2단계: item만 매칭
-  for (const entry of _defectDict) {
-    if (entry.item === item) {
-      const patClean = entry.pattern.replace(/[\s,.·\/\(\)\-]+/g, '').toLowerCase();
-      if (coreClean.includes(patClean) || patClean.includes(coreClean)) {
-        return entry.standard_name;
-      }
-    }
-  }
-  // 3단계: 사전에 없으면 corePart 사용 (60자 제한)
-  const result = corePart.length > 60 ? corePart.slice(0, 60) + '...' : corePart;
-  return result;
-}
-
-async function loadProductAccordion() {
+async function loadProdTab() {
   try {
-    const claims = await SupabaseClient.fetchClaims('select=*&order=claim_date.desc&limit=5000');
-    if (!claims || claims.length === 0) {
-      document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">📭 claims 테이블에 데이터가 없습니다.</div>';
-      return;
-    }
-    _allProductClaims = claims;
-    const VALID_PROD_CATS = ['제조','설계','서비스','사양재검토','고객불만','세트교환요구','영업지원(BS)','취소(조치)','취소(유상)','취소(재접수)'];
-    const categories = [...new Set(claims.map(c => c.category).filter(c => c && VALID_PROD_CATS.includes(c)))].sort();
-    const fc = document.getElementById('prodCategoryFilter');
-    fc.innerHTML = '<button class="sub-tab active" data-cat="전체" onclick="toggleCategoryMulti(\'전체\',this)">전체</button>' +
-      categories.map(cat => `<button class="sub-tab" data-cat="${cat}" onclick="toggleCategoryMulti('${cat}',this)">${cat}</button>`).join('');
-    // 브랜드 드롭다운 자동 생성
-    const brands = [...new Set(claims.map(c => c.brand).filter(Boolean))].sort();
-    const bs = document.getElementById('prodBrandSelect');
-    if (bs) { bs.innerHTML = '<option value="all">전체 브랜드</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join(''); }
-    renderProductAccordion(claims);
+    // claims_receipt 전체 로드 (필터는 프론트에서)
+    const rows = await SupabaseClient.fetchReceiptClaims('select=*&order=receipt_date.desc&limit=10000');
+    _prodAllData = rows || [];
+    // sales_monthly 로드
+    const sales = await SupabaseClient.fetchSalesMonthly();
+    _prodSalesData = sales || [];
+    // 제품 드롭다운
+    const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))].sort();
+    const itemSel = document.getElementById('prodItemSelect');
+    if (itemSel) itemSel.innerHTML = '<option value="all">전체 제품</option>' + items.map(i => `<option value="${i}">${i}</option>`).join('');
+    // 판정유형 드롭다운
+    const cats = [...new Set(_prodAllData.map(r => r.category).filter(Boolean))].sort();
+    const catSel = document.getElementById('prodCatSelect');
+    if (catSel) catSel.innerHTML = '<option value="all">전체 판정유형</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    // 브랜드 드롭다운
+    const brands = [...new Set(_prodAllData.map(r => r.brand).filter(Boolean))].sort();
+    const brandSel = document.getElementById('prodBrandSel');
+    if (brandSel) brandSel.innerHTML = '<option value="all">전체 브랜드</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    // 기본 기간: 최근 3개월
+    setProdQuick('3m');
   } catch(e) {
-    document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-rose)">⚠️ 로딩 실패: ' + e.message + '</div>';
+    console.error('loadProdTab error:', e);
   }
 }
 
-function toggleCategoryMulti(cat, btn) {
-  if (cat === '전체') {
-    _selectedCategories = new Set(['전체']);
-    document.querySelectorAll('#prodCategoryFilter .sub-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-  } else {
-    _selectedCategories.delete('전체');
-    document.querySelector('#prodCategoryFilter [data-cat="전체"]').classList.remove('active');
-    if (_selectedCategories.has(cat)) { _selectedCategories.delete(cat); btn.classList.remove('active'); }
-    else { _selectedCategories.add(cat); btn.classList.add('active'); }
-    if (_selectedCategories.size === 0) {
-      _selectedCategories = new Set(['전체']);
-      document.querySelector('#prodCategoryFilter [data-cat="전체"]').classList.add('active');
-    }
-  }
-  applyProductFilter();
+function onProdItemChange() { loadProdDashboard(); }
+function onProdCatChange() { loadProdDashboard(); }
+function onProdBrandChange() { loadProdDashboard(); }
+
+function setProdQuick(period) {
+  const today = new Date();
+  const to = today.toISOString().split('T')[0];
+  let from = to;
+  if (period === '1w') { const d = new Date(today); d.setDate(d.getDate()-7); from = d.toISOString().split('T')[0]; }
+  else if (period === '1m') { const d = new Date(today); d.setMonth(d.getMonth()-1); from = d.toISOString().split('T')[0]; }
+  else if (period === '3m') { const d = new Date(today); d.setMonth(d.getMonth()-3); from = d.toISOString().split('T')[0]; }
+  else if (period === 'all') { from = '2020-01-01'; }
+  const df = document.getElementById('prodDateFrom'); if (df) df.value = from;
+  const dt = document.getElementById('prodDateTo'); if (dt) dt.value = to;
+  loadProdDashboard();
 }
 
-let _selectedProdYear = 'all';
-let _selectedProdBrand = 'all';
-
-function onProdYearChange(year) {
-  _selectedProdYear = year;
-  applyProductFilter();
-}
-
-function onProdBrandChange(brand) {
-  _selectedProdBrand = brand;
-  applyProductFilter();
-}
-
-function applyProductFilter() {
-  let filtered = _allProductClaims;
-  // 연도 필터
-  if (_selectedProdYear && _selectedProdYear !== 'all') {
-    filtered = filtered.filter(c => c.claim_date && c.claim_date.startsWith(_selectedProdYear));
-  }
-  // 브랜드 필터
-  if (_selectedProdBrand && _selectedProdBrand !== 'all') {
-    filtered = filtered.filter(c => c.brand === _selectedProdBrand);
-  }
-  // 카테고리 필터
-  if (!_selectedCategories.has('전체')) {
-    filtered = filtered.filter(c => _selectedCategories.has(c.category));
-    document.getElementById('prodFilterCount').textContent = `(${[..._selectedCategories].join(', ')} · ${filtered.length}건)`;
-  } else {
-    document.getElementById('prodFilterCount').textContent = '';
-  }
-  renderProductAccordion(filtered);
-}
-
-function renderProductAccordion(claims) {
-  const krCnt = claims.filter(c => c.country === '국내').length;
-  const vnCnt = claims.filter(c => c.country === '베트남').length;
-  document.getElementById('prodTotalCount').textContent = claims.length.toLocaleString();
-  document.getElementById('prodKrCount').textContent = krCnt.toLocaleString();
-  document.getElementById('prodVnCount').textContent = vnCnt.toLocaleString();
-  const fl = _selectedCategories.has('전체') ? '' : ' · ' + [..._selectedCategories].join(', ');
-  document.getElementById('prodTotalSub').textContent = 'Supabase 실시간' + fl;
-  Object.values(_productCharts).forEach(c => c.destroy()); _productCharts = {};
-  const byItem = {};
-  claims.forEach(c => { const item = c.item || '미분류'; if (!byItem[item]) byItem[item] = []; byItem[item].push(c); });
-  const sorted = Object.entries(byItem).sort((a, b) => b[1].length - a[1].length);
-  if (sorted.length === 0) { document.getElementById('productAccordion').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">해당 판정유형에 데이터가 없습니다.</div>'; return; }
-  const allMonths = [...new Set(claims.map(c => c.claim_date?.slice(0, 7)).filter(Boolean))].sort();
-  let html = '';
-  sorted.forEach(([item, itemClaims], i) => {
-    const count = itemClaims.length;
-    const krN = itemClaims.filter(c => c.country === '국내').length;
-    const vnN = itemClaims.filter(c => c.country === '베트남').length;
-    const regionFlag = vnN > krN ? '🇻🇳' : '🇰🇷';
-    // ★ 표준 하자명 사전으로 그룹핑
-    const detailMonthly = {};
-    itemClaims.forEach(c => {
-      const dt = c.defect_type || '미분류';
-      const cat = c.category || '미분류';
-      const irRaw = c.inspection_result || c.claim_detail || '미분류';
-      const stdName = _findStandardName(item, dt, irRaw);
-      const key = dt + '|||' + cat + '|||' + stdName;
-      const m = c.claim_date?.slice(0, 7) || '미분류';
-      if (!detailMonthly[key]) detailMonthly[key] = { defect_type: dt, category: cat, detail: stdName, total: 0, months: {} };
-      detailMonthly[key].total++;
-      detailMonthly[key].months[m] = (detailMonthly[key].months[m] || 0) + 1;
-    });
-    const detailSorted = Object.values(detailMonthly).sort((a, b) => b.total - a.total);
-    // defect_type별 그룹 (rowspan용)
-    const defectGroups = {};
-    detailSorted.forEach(d => {
-      if (!defectGroups[d.defect_type]) defectGroups[d.defect_type] = { items: [], total: 0 };
-      defectGroups[d.defect_type].items.push(d); defectGroups[d.defect_type].total += d.total;
-    });
-    const dgSorted = Object.entries(defectGroups).sort((a, b) => b[1].total - a[1].total);
-    const recentMonths = allMonths.slice(-2);
-    function getStatus(d) {
-      if (recentMonths.length < 2) return 'new';
-      const prev = d.months[recentMonths[0]] || 0; const curr = d.months[recentMonths[1]] || 0;
-      if (curr === 0 && prev > 0) return 'done'; if (curr > prev) return 'progress'; return 'new';
-    }
-    const mh = allMonths.map(m => `<th style="text-align:center">${parseInt(m.slice(5))}월</th>`).join('');
-    let rows = '';
-    dgSorted.forEach(([dt, group]) => {
-      group.items.forEach((d, idx) => {
-        const st = getStatus(d); const sl = st==='done'?'개선완료':st==='progress'?'증가중':'신규';
-        const txt = d.detail.length > 35 ? d.detail.slice(0,35)+'...' : d.detail;
-        rows += '<tr>';
-        if (idx===0) rows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:top;border-right:1px solid var(--border)">${dt}<br><span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sidiz-blue-bright);font-weight:700">${group.total}건</span></td>`;
-        rows += `<td style="text-align:center;font-size:10px;white-space:nowrap">${d.category||'-'}</td>`;
-        rows += `<td style="text-align:left;font-size:10px;max-width:200px;white-space:normal;line-height:1.4" title="${d.detail.replace(/"/g,'&quot;')}">${txt}</td>`;
-        rows += `<td style="text-align:center;white-space:nowrap"><span class="tag ${st}" style="display:inline-block;min-width:52px;text-align:center">${sl}</span></td>`;
-        rows += allMonths.map(m => `<td style="text-align:center">${d.months[m] || '-'}</td>`).join('');
-        rows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${d.total}</td></tr>`;
-      });
-    });
-    html += `<div class="accordion-item" id="acc-${i}">
-      <div class="accordion-header" onclick="toggleAccordionProduct(${i},'${item.replace(/'/g,"\\'")}')">
-        <div class="accordion-header-left"><span style="font-size:18px">${regionFlag}</span><div><div class="accordion-product-name">${item} <span style="font-size:11px;color:var(--text-muted);font-weight:400">국내${krN} / 베트남${vnN}</span></div></div></div>
-        <div class="accordion-meta"><span class="accordion-product-count blue">${count}건</span><span class="accordion-arrow">▼</span></div>
-      </div>
-      <div class="accordion-body">
-        <div style="margin-bottom:20px"><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">📊 월별 클레임 건수 추이</div><div style="height:180px;position:relative"><canvas id="prodChart-${i}" height="180"></canvas></div></div>
-        <div><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">하자유형 — 판정유형 — 판정내용별 월별 건수</div><div style="overflow-x:auto"><table class="data-table" style="font-size:11px"><thead><tr><th style="text-align:left">하자유형</th><th style="text-align:center">판정유형</th><th style="text-align:left">판정내용 (상세)</th><th style="text-align:center">상태</th>${mh}<th style="text-align:center;font-weight:700">합계</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-      </div></div>`;
+function _getProdFiltered() {
+  const item = document.getElementById('prodItemSelect')?.value || 'all';
+  const cat = document.getElementById('prodCatSelect')?.value || 'all';
+  const brand = document.getElementById('prodBrandSel')?.value || 'all';
+  const from = document.getElementById('prodDateFrom')?.value || '';
+  const to = document.getElementById('prodDateTo')?.value || '';
+  return _prodAllData.filter(r => {
+    if (item !== 'all' && r.item !== item) return false;
+    if (cat !== 'all' && r.category !== cat) return false;
+    if (brand !== 'all' && r.brand !== brand) return false;
+    if (from && r.receipt_date < from) return false;
+    if (to && r.receipt_date > to) return false;
+    return true;
   });
-  document.getElementById('productAccordion').innerHTML = html;
 }
 
-function toggleAccordionProduct(i, item) {
-  const el = document.getElementById('acc-' + i); el.classList.toggle('open');
-  const cid = 'prodChart-' + i;
-  if (el.classList.contains('open') && !_productCharts[cid]) setTimeout(() => renderProductMonthlyChart(cid, item), 100);
+function _getProdSalesFiltered() {
+  const from = document.getElementById('prodDateFrom')?.value || '';
+  const to = document.getElementById('prodDateTo')?.value || '';
+  const fromYM = from ? from.slice(0,7) : '';
+  const toYM = to ? to.slice(0,7) : '';
+  return _prodSalesData.filter(s => {
+    if (fromYM && s.year_month < fromYM) return false;
+    if (toYM && s.year_month > toYM) return false;
+    return true;
+  });
 }
 
-function renderProductMonthlyChart(cid, item) {
-  const ctx = document.getElementById(cid); if (!ctx) return;
-  let filtered = _allProductClaims.filter(c => c.item === item);
-  if (!_selectedCategories.has('전체')) filtered = filtered.filter(c => _selectedCategories.has(c.category));
-  const months = [...new Set(filtered.map(c => c.claim_date?.slice(0, 7)).filter(Boolean))].sort();
-  const krM = {}; const vnM = {};
-  filtered.forEach(c => { const m = c.claim_date?.slice(0,7); if(!m) return; if(c.country==='베트남') vnM[m]=(vnM[m]||0)+1; else krM[m]=(krM[m]||0)+1; });
-  // X축 1~12월 고정 (선택 연도 기준)
-  const chartYear = _selectedProdYear && _selectedProdYear !== 'all' ? _selectedProdYear : (filtered.length > 0 ? filtered[0].claim_date?.slice(0,4) || '2026' : '2026');
-  const fixedMonths = Array.from({length:12}, (_,i) => chartYear + '-' + String(i+1).padStart(2,'0'));
-  const fixedLabels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  _productCharts[cid] = new Chart(ctx, { type:'bar', data:{ labels:fixedLabels,
-    datasets:[{label:'국내',data:fixedMonths.map(m=>krM[m]||0),backgroundColor:'rgba(45,125,210,0.75)',borderColor:'rgba(45,125,210,1)',borderWidth:1,borderRadius:4},
-      {label:'베트남',data:fixedMonths.map(m=>vnM[m]||0),backgroundColor:'rgba(216,87,72,0.7)',borderColor:'rgba(216,87,72,1)',borderWidth:1,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',align:'end',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true,padding:12}},
-      tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,cornerRadius:8,padding:10}},
-      scales:{x:{stacked:true,grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10}}},
-        y:{stacked:true,grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}}}});
+async function loadProdDashboard() {
+  const filtered = _getProdFiltered();
+  const salesFiltered = _getProdSalesFiltered();
+  const totalSales = salesFiltered.reduce((s, r) => s + (r.sales_count || 0), 0);
+  const defectIdx = totalSales > 0 ? ((filtered.length / totalSales) * 1000).toFixed(2) : '-';
+  const item = document.getElementById('prodItemSelect')?.value || 'all';
+  const from = document.getElementById('prodDateFrom')?.value || '';
+  const to = document.getElementById('prodDateTo')?.value || '';
+
+  // 카드 업데이트
+  const cardClaims = document.getElementById('prodCardClaims');
+  const cardSales = document.getElementById('prodCardSales');
+  const cardDefect = document.getElementById('prodCardDefect');
+  const cardClaimsSub = document.getElementById('prodCardClaimsSub');
+  const cardSalesSub = document.getElementById('prodCardSalesSub');
+  if (cardClaims) cardClaims.textContent = filtered.length.toLocaleString() + '건';
+  if (cardSales) cardSales.textContent = totalSales.toLocaleString() + '건';
+  if (cardDefect) cardDefect.textContent = defectIdx !== '-' ? defectIdx : '-';
+  if (cardClaimsSub) cardClaimsSub.textContent = (item !== 'all' ? item : '전체 제품') + (from ? ` · ${from.slice(0,7)}~` : '');
+  if (cardSalesSub) cardSalesSub.textContent = '기간 내 총 매출량';
+
+  // 빈 상태
+  const emptyState = document.getElementById('prodEmptyState');
+  if (emptyState) emptyState.style.display = filtered.length === 0 ? 'block' : 'none';
+
+  // 차트들
+  renderProdBarChart(filtered);
+  renderProdPieChart(filtered);
+  renderProdTrendChart(filtered, salesFiltered);
+  renderProdMonthlyTable(filtered, salesFiltered);
+
+  // 추이 타이틀
+  const trendTitle = document.getElementById('prodTrendTitle');
+  if (trendTitle) trendTitle.textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
+}
+
+function renderProdBarChart(claims) {
+  if (_prodBarChart) { _prodBarChart.destroy(); _prodBarChart = null; }
+  const ctx = document.getElementById('prodBarChart'); if (!ctx) return;
+  const defects = {};
+  claims.forEach(c => { const d = c.defect_type || '기타'; defects[d] = (defects[d] || 0) + 1; });
+  const sorted = Object.entries(defects).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  const COLORS = ['rgba(255,107,122,0.8)','rgba(255,179,71,0.8)','rgba(167,139,250,0.8)','rgba(0,196,140,0.8)','rgba(0,198,215,0.8)','rgba(45,125,210,0.8)','rgba(255,159,64,0.8)','rgba(201,203,207,0.6)','rgba(255,205,86,0.8)','rgba(75,192,192,0.8)'];
+  _prodBarChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: sorted.map(e=>e[0]), datasets: [{ label: '건수', data: sorted.map(e=>e[1]), backgroundColor: COLORS, borderRadius: 4, borderWidth: 1 }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1} },
+      scales: { x:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"}},beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#a0b4cb',font:{size:10}}} } }
+  });
+}
+
+function renderProdPieChart(claims) {
+  if (_prodPieChart) { _prodPieChart.destroy(); _prodPieChart = null; }
+  const ctx = document.getElementById('prodPieChart'); if (!ctx) return;
+  const parts = {};
+  claims.forEach(c => { const p = c.product_code_raw || '기타'; parts[p] = (parts[p] || 0) + 1; });
+  const sorted = Object.entries(parts).sort((a,b) => b[1]-a[1]).slice(0, 12);
+  const PIE_COLORS = ['#4a9eff','#00c48c','#ffb347','#ff6b7a','#a78bfa','#00c6d7','#f59e0b','#6366f1','#10b981','#ef4444','#8b5cf6','#06b6d4'];
+  _prodPieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: sorted.map(e=>e[0]), datasets: [{ data: sorted.map(e=>e[1]), backgroundColor: PIE_COLORS, borderColor: '#17293f', borderWidth: 2 }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{position:'right',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true,padding:8,boxWidth:10}},
+        tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:function(ctx){return ctx.label+': '+ctx.parsed+'건';} }} } }
+  });
+}
+
+function renderProdTrendChart(claims, salesFiltered) {
+  if (_prodTrendChart) { _prodTrendChart.destroy(); _prodTrendChart = null; }
+  const ctx = document.getElementById('prodTrendChart'); if (!ctx) return;
+  const monthMap = {};
+  claims.forEach(c => { const m = c.receipt_date?.slice(0,7); if(m) monthMap[m] = (monthMap[m]||0)+1; });
+  const salesMap = {};
+  salesFiltered.forEach(s => { salesMap[s.year_month] = (salesMap[s.year_month]||0) + (s.sales_count||0); });
+  const months = [...new Set([...Object.keys(monthMap), ...Object.keys(salesMap)])].sort();
+  const labels = months.map(m => m.slice(5)+'월');
+  _prodTrendChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels,
+      datasets: [
+        { label:'클레임 건수', data:months.map(m=>monthMap[m]||0), backgroundColor:'rgba(74,158,255,0.6)', borderColor:'rgba(74,158,255,1)', borderWidth:1, borderRadius:4, yAxisID:'y' },
+        { label:'불량지수(×1000)', data:months.map(m => salesMap[m] > 0 ? +((monthMap[m]||0)/salesMap[m]*1000).toFixed(2) : null), type:'line', borderColor:'rgba(255,179,71,1)', backgroundColor:'rgba(255,179,71,0.1)', borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'y1' }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{position:'top',align:'end',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true}},
+        tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1} },
+      scales: {
+        x:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10}}},
+        y:{position:'left',grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true,title:{display:true,text:'건수',color:'#6b83a0',font:{size:10}}},
+        y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'rgba(255,179,71,0.8)',font:{size:10,family:"'JetBrains Mono'"}},beginAtZero:true,title:{display:true,text:'불량지수',color:'rgba(255,179,71,0.8)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+function _groupInspectionResult(raw) {
+  if (!raw) return '미분류';
+  // 날짜/담당자/기호 제거 후 앞 40자로 그룹 키 생성
+  let s = raw.replace(/\d{4}[-\/\.]\d{2}[-\/\.]\d{2}/g,'').replace(/[★▶◀>><>\[\]※【】·•\t]/g,' ').replace(/\s+/g,' ').trim();
+  return s.length > 40 ? s.slice(0,40) : s;
+}
+
+function renderProdMonthlyTable(claims, salesFiltered) {
+  const wrap = document.getElementById('prodMonthlyTableWrap'); if (!wrap) return;
+  if (claims.length === 0) { wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">조회된 데이터가 없습니다.</div>'; return; }
+
+  const allMonths = [...new Set(claims.map(c => c.receipt_date?.slice(0,7)).filter(Boolean))].sort();
+  const salesMap = {};
+  salesFiltered.forEach(s => { salesMap[s.year_month] = (salesMap[s.year_month]||0)+(s.sales_count||0); });
+
+  // 그룹핑: defect_type + category + inspection_result 그룹
+  const groupMap = {};
+  claims.forEach(c => {
+    const dt = c.defect_type || '미분류';
+    const cat = c.category || '미분류';
+    const ir = _groupInspectionResult(c.inspection_result || c.claim_detail);
+    const key = dt + '||' + cat + '||' + ir;
+    const m = c.receipt_date?.slice(0,7) || '미분류';
+    if (!groupMap[key]) groupMap[key] = { defect_type: dt, category: cat, detail: ir, total: 0, months: {} };
+    groupMap[key].total++;
+    groupMap[key].months[m] = (groupMap[key].months[m]||0)+1;
+  });
+
+  const rows = Object.values(groupMap).sort((a,b) => b.total - a.total);
+
+  // defect_type 그룹 (rowspan)
+  const dtGroups = {};
+  rows.forEach(r => {
+    if (!dtGroups[r.defect_type]) dtGroups[r.defect_type] = { items:[], total:0 };
+    dtGroups[r.defect_type].items.push(r);
+    dtGroups[r.defect_type].total += r.total;
+  });
+  const dtSorted = Object.entries(dtGroups).sort((a,b) => b[1].total - a[1].total);
+
+  const recentMonths = allMonths.slice(-2);
+  function getStatus(r) {
+    if (recentMonths.length < 2) return 'new';
+    const prev = r.months[recentMonths[0]]||0; const curr = r.months[recentMonths[1]]||0;
+    if (curr===0 && prev>0) return 'done'; if (curr>prev) return 'progress'; return 'new';
+  }
+
+  const mh = allMonths.map(m => `<th style="text-align:center;white-space:nowrap">${parseInt(m.slice(5))}월</th>`).join('');
+
+  let tableRows = '';
+  dtSorted.forEach(([dt, group]) => {
+    group.items.forEach((r, idx) => {
+      const st = getStatus(r);
+      const sl = st==='done'?'개선완료':st==='progress'?'증가중':'신규';
+      const stColor = st==='done'?'var(--accent-emerald)':st==='progress'?'var(--accent-rose)':'var(--accent-cyan)';
+      const detailTxt = r.detail.length > 38 ? r.detail.slice(0,38)+'…' : r.detail;
+      tableRows += '<tr>';
+      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:top;border-right:1px solid var(--border);white-space:nowrap">${dt}<br><span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sidiz-blue-bright);font-weight:700">${group.total}건</span></td>`;
+      tableRows += `<td style="text-align:center;font-size:10px;white-space:nowrap">${r.category}</td>`;
+      tableRows += `<td style="text-align:left;font-size:10px;max-width:220px;white-space:normal;line-height:1.4" title="${r.detail.replace(/"/g,'&quot;')}">${detailTxt}</td>`;
+      tableRows += `<td style="text-align:center;white-space:nowrap"><span style="display:inline-block;min-width:52px;text-align:center;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;color:${stColor};background:${stColor}22;border:1px solid ${stColor}44">${sl}</span></td>`;
+      tableRows += allMonths.map(m => `<td style="text-align:center;font-size:11px">${r.months[m]||'-'}</td>`).join('');
+      tableRows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${r.total}</td></tr>`;
+    });
+  });
+
+  // 매출량 행
+  const salesRow = `<tr style="background:rgba(0,196,140,0.05)">
+    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
+    ${allMonths.map(m => `<td style="text-align:center;font-size:11px;color:var(--accent-emerald)">${salesMap[m]?salesMap[m].toLocaleString():'-'}</td>`).join('')}
+    <td style="text-align:center;font-size:11px;color:var(--accent-emerald);font-weight:700">${salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0).toLocaleString()}</td>
+  </tr>`;
+  // 불량지수 행
+  const defectRow = `<tr style="background:rgba(255,179,71,0.05)">
+    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×1000)</td>
+    ${allMonths.map(m => {
+      const clm = claims.filter(c=>c.receipt_date?.slice(0,7)===m).length;
+      const sal = salesMap[m]||0;
+      return `<td style="text-align:center;font-size:11px;color:var(--accent-amber)">${sal>0?(clm/sal*1000).toFixed(1):'-'}</td>`;
+    }).join('')}
+    <td style="text-align:center;font-size:11px;color:var(--accent-amber);font-weight:700">${salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0)>0?(claims.length/salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0)*1000).toFixed(2):'-'}</td>
+  </tr>`;
+
+  wrap.innerHTML = `
+    <table class="data-table" style="font-size:11px;min-width:700px">
+      <thead>
+        <tr style="background:rgba(13,27,42,0.97)">
+          <th style="text-align:left;white-space:nowrap">하자유형</th>
+          <th style="text-align:center;white-space:nowrap">판정유형</th>
+          <th style="text-align:left;white-space:nowrap">판정내용 (상세)</th>
+          <th style="text-align:center;white-space:nowrap">상태</th>
+          ${mh}
+          <th style="text-align:center;white-space:nowrap;font-weight:700">합계</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+      <tfoot>${salesRow}${defectRow}</tfoot>
+    </table>`;
+
+  const tableTitle = document.getElementById('prodTableTitle');
+  if (tableTitle) {
+    const item = document.getElementById('prodItemSelect')?.value || 'all';
+    tableTitle.textContent = `(${item !== 'all' ? item : '전체 제품'} · ${allMonths[0]||'-'}~${allMonths[allMonths.length-1]||'-'})`;
+  }
 }
 
 function toggleAccordion(i) { document.getElementById('acc-'+i).classList.toggle('open'); }
@@ -2055,8 +2175,7 @@ async function initSupabase() {
         if(kbs) kbs.innerHTML = '<option value="all">전체</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
       }
     } catch(e) { console.warn('홈 KPI 업데이트 실패:', e); }
-    // 제품별 아코디언 로드
-    await loadProductAccordion();
+    // 제품별 클레임 탭은 탭 클릭 시 lazy 로드 (_prodLoaded 플래그로 제어)
     // KPI 고객클레임 현황 초기화
     if (window.KpiModule) await window.KpiModule.initKpiSection();
     if (window.CostModule) await window.CostModule.renderCostSection('2026');
