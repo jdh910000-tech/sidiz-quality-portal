@@ -28,6 +28,25 @@ async function supabaseCount(table) {
 // ─── claims (회수일 기준, 기존) ───
 async function fetchClaims(params) { return supabaseFetch('claims', params || 'select=*&order=claim_date.desc&limit=5000'); }
 
+// ─── claims 전체 로드 (Range 헤더 페이지네이션, max_rows 제한 우회) ───
+async function fetchAllClaims() {
+  const PAGE = 1000;
+  let all = [], offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/claims?select=*&order=claim_date.asc`,
+      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
+    );
+    if (!res.ok) break;
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    all = all.concat(rows);
+    if (rows.length < PAGE) break;  // 마지막 페이지
+    offset += PAGE;
+  }
+  return all;
+}
+
 // ─── claims_receipt (접수일 기준, 신규) ───
 async function fetchReceiptClaims(params) { return supabaseFetch('claims_receipt', params || 'select=*&order=receipt_date.desc&limit=5000'); }
 
@@ -167,7 +186,7 @@ window.SupabaseClient = {
   SUPABASE_URL, SUPABASE_ANON_KEY,
   supabaseFetch, supabaseCount,
   // 회수일
-  fetchClaims,
+  fetchClaims, fetchAllClaims,
   // 접수일
   fetchReceiptClaims, fetchReceiptByDateRange, fetchReceiptByUploadedDate, fetchReceiptByDefect,
   fetchReceiptByCategory, fetchReceiptByNormalized,

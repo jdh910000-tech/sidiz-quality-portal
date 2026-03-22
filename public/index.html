@@ -1197,6 +1197,7 @@ body::before {
 
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="supabase-client.js"></script>
 <script src="symptom-data.js"></script>
 <script src="kpi-data.js"></script>
@@ -1861,8 +1862,8 @@ function _getProdSelectedCats() {
 
 async function loadProdTab() {
   try {
-    // claims 테이블에서 전체 로드 (claim_date 기준)
-    const rows = await SupabaseClient.fetchClaims('select=*&order=claim_date.asc&limit=10000');
+    // claims 테이블 전체 로드 (페이지네이션으로 Supabase max_rows 제한 우회)
+    const rows = await SupabaseClient.fetchAllClaims();
     _prodAllData = rows || [];
 
     // 제품 드롭다운 (item 기준)
@@ -1963,18 +1964,35 @@ async function loadProdDashboard() {
 function renderProdBarChart(claims) {
   if (_prodBarChart) { _prodBarChart.destroy(); _prodBarChart = null; }
   const ctx = document.getElementById('prodBarChart'); if (!ctx) return;
-  // 불량 유형별 현황: claims.defect_type 기준
-  const DEFECT_COLORS = ['rgba(255,107,122,0.85)','rgba(255,179,71,0.85)','rgba(167,139,250,0.85)','rgba(0,196,140,0.85)','rgba(0,198,215,0.85)','rgba(74,158,255,0.85)','rgba(245,158,11,0.85)','rgba(99,102,241,0.85)','rgba(236,72,153,0.85)','rgba(107,131,160,0.7)'];
-  const defects = {};
-  claims.forEach(c => { const d = c.defect_type || '기타'; defects[d] = (defects[d] || 0) + 1; });
-  const sorted = Object.entries(defects).sort((a,b) => b[1]-a[1]);
+  // 불량 유형별 현황: claims.category 기준
+  const CAT_COLORS = ['rgba(74,158,255,0.85)','rgba(0,196,140,0.85)','rgba(255,179,71,0.85)','rgba(167,139,250,0.85)','rgba(0,198,215,0.85)','rgba(255,107,122,0.85)','rgba(245,158,11,0.85)','rgba(99,102,241,0.85)','rgba(236,72,153,0.85)','rgba(107,131,160,0.7)'];
+  const cats = {};
+  claims.forEach(c => { const d = c.category || '기타'; cats[d] = (cats[d] || 0) + 1; });
+  const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
   if (sorted.length === 0) return;
   _prodBarChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: sorted.map(e=>e[0]), datasets: [{ label: '건수', data: sorted.map(e=>e[1]), backgroundColor: sorted.map((_,i)=>DEFECT_COLORS[i%DEFECT_COLORS.length]), borderRadius: 4, borderWidth: 1 }] },
+    data: { labels: sorted.map(e=>e[0]), datasets: [{ label: '건수', data: sorted.map(e=>e[1]), backgroundColor: sorted.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]), borderRadius: 4, borderWidth: 1 }] },
     options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins: { legend:{display:false}, tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:ctx=>' '+ctx.parsed.x+'건'}} },
-      scales: { x:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:11},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#a0b4cb',font:{size:11}}} } }
+      plugins: {
+        legend: { display:false },
+        tooltip: { backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1, callbacks:{ label: ctx=>' '+ctx.parsed.x+'건' } },
+        datalabels: {
+          anchor: 'end', align: 'end',
+          color: '#f0f4f8',
+          font: { size:11, weight:'bold', family:"'JetBrains Mono'" },
+          formatter: v => v + '건',
+          clamp: true,
+          padding: { right: 4 }
+        }
+      },
+      layout: { padding: { right: 52 } },
+      scales: {
+        x: { grid:{color:'rgba(36,59,90,0.3)'}, ticks:{color:'#6b83a0',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}, beginAtZero:true },
+        y: { grid:{display:false}, ticks:{color:'#a0b4cb',font:{size:11,weight:'600'}} }
+      }
+    },
+    plugins: [ ChartDataLabels ]
   });
 }
 
