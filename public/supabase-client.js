@@ -50,13 +50,60 @@ async function fetchAllClaims() {
 // ─── claims_receipt (접수일 기준, 신규) ───
 async function fetchReceiptClaims(params) { return supabaseFetch('claims_receipt', params || 'select=*&order=receipt_date.desc&limit=5000'); }
 
+// ─── claims_receipt 전체 로드 (Range 헤더 페이지네이션, max_rows 제한 우회) ───
+async function fetchAllReceiptClaims() {
+  const PAGE = 1000;
+  let all = [], offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/claims_receipt?select=*&order=receipt_date.asc`,
+      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
+    );
+    if (!res.ok) break;
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    all = all.concat(rows);
+    if (rows.length < PAGE) break;  // 마지막 페이지
+    offset += PAGE;
+  }
+  return all;
+}
+
 async function fetchReceiptByDateRange(from, to) {
-  return supabaseFetch('claims_receipt', `select=*&receipt_date=gte.${from}&receipt_date=lte.${to}&order=receipt_date.desc&limit=5000`);
+  const PAGE = 1000;
+  let all = [], offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/claims_receipt?select=*&receipt_date=gte.${from}&receipt_date=lte.${to}&order=receipt_date.asc`,
+      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
+    );
+    if (!res.ok) break;
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    all = all.concat(rows);
+    if (rows.length < PAGE) break;
+    offset += PAGE;
+  }
+  return all;
 }
 
 // ─── claims_receipt (업로드일 기준) ───
 async function fetchReceiptByUploadedDate(from, to) {
-  return supabaseFetch('claims_receipt', `select=*&uploaded_at=gte.${from}&uploaded_at=lte.${to}&order=uploaded_at.desc&limit=5000`);
+  const PAGE = 1000;
+  let all = [], offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/claims_receipt?select=*&uploaded_at=gte.${from}&uploaded_at=lte.${to}&order=uploaded_at.asc`,
+      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
+    );
+    if (!res.ok) break;
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    all = all.concat(rows);
+    if (rows.length < PAGE) break;
+    offset += PAGE;
+  }
+  return all;
 }
 
 async function fetchReceiptByDefect(item, defectType) {
@@ -188,7 +235,7 @@ window.SupabaseClient = {
   // 회수일
   fetchClaims, fetchAllClaims,
   // 접수일
-  fetchReceiptClaims, fetchReceiptByDateRange, fetchReceiptByUploadedDate, fetchReceiptByDefect,
+  fetchReceiptClaims, fetchAllReceiptClaims, fetchReceiptByDateRange, fetchReceiptByUploadedDate, fetchReceiptByDefect,
   fetchReceiptByCategory, fetchReceiptByNormalized,
   // 매출량
   fetchSalesMonthly,
