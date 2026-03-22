@@ -439,24 +439,39 @@ body::before {
 
     <!-- 필터 바 -->
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--sidiz-dark2);padding:14px 16px;border-radius:12px;border:1px solid var(--border)">
+      <!-- 제품 선택 -->
       <select id="prodItemSelect" onchange="onProdItemChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
         <option value="all">전체 제품</option>
       </select>
-      <select id="prodCatSelect" onchange="onProdCatChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:120px">
-        <option value="all">전체 판정유형</option>
-      </select>
-      <select id="prodBrandSel" onchange="onProdBrandChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:120px">
+      <!-- 판정유형 다중선택 -->
+      <div style="position:relative" id="prodCatWrapper">
+        <button id="prodCatBtn" onclick="toggleProdCatDD(event)" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:130px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:6px">
+          <span id="prodCatLabel">전체 판정유형</span><span style="font-size:9px;opacity:0.6">▾</span>
+        </button>
+        <div id="prodCatDD" style="display:none;position:absolute;top:38px;left:0;background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;padding:6px 4px;z-index:200;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.4)">
+          <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--text-primary);border-radius:4px" onmouseover="this.style.background='rgba(74,158,255,0.08)'" onmouseout="this.style.background=''">
+            <input type="checkbox" id="prodCatAll" onchange="prodCatAllChanged(this)" checked style="accent-color:var(--sidiz-blue)"> 전체
+          </label>
+          <div id="prodCatItems"></div>
+        </div>
+      </div>
+      <!-- 브랜드 고정 -->
+      <select id="prodBrandSel" onchange="onProdBrandChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:110px">
         <option value="all">전체 브랜드</option>
+        <option value="시디즈">시디즈</option>
+        <option value="퍼시스">퍼시스</option>
+        <option value="일룸">일룸</option>
+        <option value="데스커">데스커</option>
       </select>
       <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
         <input type="date" id="prodDateFrom" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px">
         <span style="color:var(--text-muted)">~</span>
         <input type="date" id="prodDateTo" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px">
         <button onclick="loadProdDashboard()" style="background:var(--sidiz-blue);color:white;border:none;padding:7px 18px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">조회</button>
-        <button onclick="setProdQuick('1w')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1주</button>
-        <button onclick="setProdQuick('1m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1개월</button>
-        <button onclick="setProdQuick('3m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 3개월</button>
-        <button onclick="setProdQuick('all')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">전체</button>
+        <button onclick="setProdQuick('1w')" class="prod-quick-btn" id="pq-1w" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1주</button>
+        <button onclick="setProdQuick('1m')" class="prod-quick-btn" id="pq-1m" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1개월</button>
+        <button onclick="setProdQuick('3m')" class="prod-quick-btn" id="pq-3m" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 3개월</button>
+        <button onclick="setProdQuick('all')" class="prod-quick-btn" id="pq-all" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">전체</button>
       </div>
     </div>
 
@@ -1791,35 +1806,83 @@ let _prodPieChart = null;
 let _prodTrendChart = null;
 let _prodLoaded = false;
 
+// 판정유형 다중선택 드롭다운 토글
+function toggleProdCatDD(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('prodCatDD');
+  if (!dd) return;
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+// 외부 클릭 시 닫기
+document.addEventListener('click', function(e) {
+  const wrapper = document.getElementById('prodCatWrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    const dd = document.getElementById('prodCatDD');
+    if (dd) dd.style.display = 'none';
+  }
+});
+// 전체 체크박스 변경
+function prodCatAllChanged(cb) {
+  document.querySelectorAll('.prod-cat-cb').forEach(el => { el.checked = cb.checked; });
+  _updateProdCatLabel();
+  loadProdDashboard();
+}
+// 개별 체크박스 변경
+function prodCatCbChanged() {
+  const cbs = document.querySelectorAll('.prod-cat-cb');
+  const allCb = document.getElementById('prodCatAll');
+  if (allCb) allCb.checked = [...cbs].every(c => c.checked);
+  _updateProdCatLabel();
+  loadProdDashboard();
+}
+function _updateProdCatLabel() {
+  const cbs = [...document.querySelectorAll('.prod-cat-cb')];
+  const checked = cbs.filter(c => c.checked).map(c => c.value);
+  const label = document.getElementById('prodCatLabel');
+  if (!label) return;
+  if (checked.length === 0 || checked.length === cbs.length) label.textContent = '전체 판정유형';
+  else if (checked.length === 1) label.textContent = checked[0];
+  else label.textContent = checked[0] + ' 외 ' + (checked.length-1) + '개';
+}
+function _getProdSelectedCats() {
+  const cbs = [...document.querySelectorAll('.prod-cat-cb')];
+  const checked = cbs.filter(c => c.checked).map(c => c.value);
+  return checked.length === cbs.length ? [] : checked; // 빈 배열 = 전체
+}
+
 async function loadProdTab() {
   try {
-    // claims_receipt 전체 로드 (필터는 프론트에서)
-    const rows = await SupabaseClient.fetchReceiptClaims('select=*&order=receipt_date.desc&limit=10000');
+    const rows = await SupabaseClient.fetchReceiptClaims('select=*&order=receipt_date.asc&limit=10000');
     _prodAllData = rows || [];
-    // sales_monthly 로드
     const sales = await SupabaseClient.fetchSalesMonthly();
     _prodSalesData = sales || [];
+
     // 제품 드롭다운
     const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))].sort();
     const itemSel = document.getElementById('prodItemSelect');
     if (itemSel) itemSel.innerHTML = '<option value="all">전체 제품</option>' + items.map(i => `<option value="${i}">${i}</option>`).join('');
-    // 판정유형 드롭다운
-    const cats = [...new Set(_prodAllData.map(r => r.category).filter(Boolean))].sort();
-    const catSel = document.getElementById('prodCatSelect');
-    if (catSel) catSel.innerHTML = '<option value="all">전체 판정유형</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-    // 브랜드 드롭다운
-    const brands = [...new Set(_prodAllData.map(r => r.brand).filter(Boolean))].sort();
-    const brandSel = document.getElementById('prodBrandSel');
-    if (brandSel) brandSel.innerHTML = '<option value="all">전체 브랜드</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
-    // 기본 기간: 최근 3개월
-    setProdQuick('3m');
+
+    // 판정유형 다중선택 체크박스 (defect_category 기준)
+    const cats = [...new Set(_prodAllData.map(r => r.defect_category).filter(Boolean))].sort();
+    const catItems = document.getElementById('prodCatItems');
+    if (catItems) {
+      const CAT_COLOR = { '작동성':'#4a9eff','소음':'#ffb347','파손':'#ff6b7a','유격':'#a78bfa','수평':'#00c6d7','체결':'#00c48c','외관':'#f59e0b','기타':'#6b83a0' };
+      catItems.innerHTML = cats.map(c => `
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--text-primary);border-radius:4px" onmouseover="this.style.background='rgba(74,158,255,0.08)'" onmouseout="this.style.background=''">
+          <input type="checkbox" class="prod-cat-cb" value="${c}" onchange="prodCatCbChanged()" checked style="accent-color:${CAT_COLOR[c]||'var(--sidiz-blue)'}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${CAT_COLOR[c]||'#6b83a0'};display:inline-block;flex-shrink:0"></span>
+          ${c}
+        </label>`).join('');
+    }
+
+    // 기본 기간: 전체
+    setProdQuick('all');
   } catch(e) {
     console.error('loadProdTab error:', e);
   }
 }
 
 function onProdItemChange() { loadProdDashboard(); }
-function onProdCatChange() { loadProdDashboard(); }
 function onProdBrandChange() { loadProdDashboard(); }
 
 function setProdQuick(period) {
@@ -1832,18 +1895,24 @@ function setProdQuick(period) {
   else if (period === 'all') { from = '2020-01-01'; }
   const df = document.getElementById('prodDateFrom'); if (df) df.value = from;
   const dt = document.getElementById('prodDateTo'); if (dt) dt.value = to;
+  // 빠른 선택 버튼 하이라이트
+  document.querySelectorAll('.prod-quick-btn').forEach(b => {
+    b.style.background = 'var(--sidiz-dark2)'; b.style.color = 'var(--text-muted)';
+  });
+  const active = document.getElementById('pq-'+period);
+  if (active) { active.style.background = 'rgba(74,158,255,0.15)'; active.style.color = 'var(--sidiz-blue-bright)'; }
   loadProdDashboard();
 }
 
 function _getProdFiltered() {
   const item = document.getElementById('prodItemSelect')?.value || 'all';
-  const cat = document.getElementById('prodCatSelect')?.value || 'all';
+  const cats = _getProdSelectedCats(); // 빈 배열 = 전체
   const brand = document.getElementById('prodBrandSel')?.value || 'all';
   const from = document.getElementById('prodDateFrom')?.value || '';
   const to = document.getElementById('prodDateTo')?.value || '';
   return _prodAllData.filter(r => {
     if (item !== 'all' && r.item !== item) return false;
-    if (cat !== 'all' && r.category !== cat) return false;
+    if (cats.length > 0 && !cats.includes(r.defect_category)) return false;
     if (brand !== 'all' && r.brand !== brand) return false;
     if (from && r.receipt_date < from) return false;
     if (to && r.receipt_date > to) return false;
@@ -1873,98 +1942,117 @@ async function loadProdDashboard() {
   const to = document.getElementById('prodDateTo')?.value || '';
 
   // 카드 업데이트
-  const cardClaims = document.getElementById('prodCardClaims');
-  const cardSales = document.getElementById('prodCardSales');
-  const cardDefect = document.getElementById('prodCardDefect');
-  const cardClaimsSub = document.getElementById('prodCardClaimsSub');
-  const cardSalesSub = document.getElementById('prodCardSalesSub');
-  if (cardClaims) cardClaims.textContent = filtered.length.toLocaleString() + '건';
-  if (cardSales) cardSales.textContent = totalSales.toLocaleString() + '건';
-  if (cardDefect) cardDefect.textContent = defectIdx !== '-' ? defectIdx : '-';
-  if (cardClaimsSub) cardClaimsSub.textContent = (item !== 'all' ? item : '전체 제품') + (from ? ` · ${from.slice(0,7)}~` : '');
-  if (cardSalesSub) cardSalesSub.textContent = '기간 내 총 매출량';
+  const el = id => document.getElementById(id);
+  if (el('prodCardClaims')) el('prodCardClaims').textContent = filtered.length.toLocaleString() + '건';
+  if (el('prodCardSales')) el('prodCardSales').textContent = totalSales.toLocaleString() + '건';
+  if (el('prodCardDefect')) el('prodCardDefect').textContent = defectIdx !== '-' ? defectIdx : '-';
+  if (el('prodCardClaimsSub')) el('prodCardClaimsSub').textContent = (item !== 'all' ? item : '전체 제품') + (from ? ` · ${from.slice(0,7)}~` : '');
+  if (el('prodCardSalesSub')) el('prodCardSalesSub').textContent = '기간 내 총 매출량 (전체 제품)';
+  if (el('prodEmptyState')) el('prodEmptyState').style.display = filtered.length === 0 ? 'block' : 'none';
 
-  // 빈 상태
-  const emptyState = document.getElementById('prodEmptyState');
-  if (emptyState) emptyState.style.display = filtered.length === 0 ? 'block' : 'none';
-
-  // 차트들
   renderProdBarChart(filtered);
   renderProdPieChart(filtered);
-  renderProdTrendChart(filtered, salesFiltered);
+  renderProdTrendChart(filtered, from, to);
   renderProdMonthlyTable(filtered, salesFiltered);
 
-  // 추이 타이틀
-  const trendTitle = document.getElementById('prodTrendTitle');
-  if (trendTitle) trendTitle.textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
+  if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
 }
 
 function renderProdBarChart(claims) {
   if (_prodBarChart) { _prodBarChart.destroy(); _prodBarChart = null; }
   const ctx = document.getElementById('prodBarChart'); if (!ctx) return;
+  const CAT_COLOR_MAP = { '작동성':'rgba(74,158,255,0.8)','소음':'rgba(255,179,71,0.8)','파손':'rgba(255,107,122,0.8)','유격':'rgba(167,139,250,0.8)','수평':'rgba(0,198,215,0.8)','체결':'rgba(0,196,140,0.8)','외관':'rgba(245,158,11,0.8)','기타':'rgba(107,131,160,0.6)' };
   const defects = {};
-  claims.forEach(c => { const d = c.defect_type || '기타'; defects[d] = (defects[d] || 0) + 1; });
-  const sorted = Object.entries(defects).sort((a,b) => b[1]-a[1]).slice(0, 10);
-  const COLORS = ['rgba(255,107,122,0.8)','rgba(255,179,71,0.8)','rgba(167,139,250,0.8)','rgba(0,196,140,0.8)','rgba(0,198,215,0.8)','rgba(45,125,210,0.8)','rgba(255,159,64,0.8)','rgba(201,203,207,0.6)','rgba(255,205,86,0.8)','rgba(75,192,192,0.8)'];
+  claims.forEach(c => { const d = c.defect_category || '기타'; defects[d] = (defects[d] || 0) + 1; });
+  const sorted = Object.entries(defects).sort((a,b) => b[1]-a[1]);
+  if (sorted.length === 0) return;
   _prodBarChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: sorted.map(e=>e[0]), datasets: [{ label: '건수', data: sorted.map(e=>e[1]), backgroundColor: COLORS, borderRadius: 4, borderWidth: 1 }] },
+    data: { labels: sorted.map(e=>e[0]), datasets: [{ label: '건수', data: sorted.map(e=>e[1]), backgroundColor: sorted.map(e=>CAT_COLOR_MAP[e[0]]||'rgba(107,131,160,0.6)'), borderRadius: 4, borderWidth: 1 }] },
     options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins: { legend:{display:false}, tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1} },
-      scales: { x:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"}},beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#a0b4cb',font:{size:10}}} } }
+      plugins: { legend:{display:false}, tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:ctx=>' '+ctx.parsed.x+'건'}} },
+      scales: { x:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:11},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#a0b4cb',font:{size:11}}} } }
   });
 }
 
 function renderProdPieChart(claims) {
   if (_prodPieChart) { _prodPieChart.destroy(); _prodPieChart = null; }
   const ctx = document.getElementById('prodPieChart'); if (!ctx) return;
+  // 부품별: product_code_raw 기준 (item이 같아도 세부 부품코드로)
   const parts = {};
-  claims.forEach(c => { const p = c.product_code_raw || '기타'; parts[p] = (parts[p] || 0) + 1; });
-  const sorted = Object.entries(parts).sort((a,b) => b[1]-a[1]).slice(0, 12);
-  const PIE_COLORS = ['#4a9eff','#00c48c','#ffb347','#ff6b7a','#a78bfa','#00c6d7','#f59e0b','#6366f1','#10b981','#ef4444','#8b5cf6','#06b6d4'];
+  claims.forEach(c => {
+    const p = c.product_code_raw || (c.item ? c.item+'(기타)' : '미상');
+    parts[p] = (parts[p] || 0) + 1;
+  });
+  const sorted = Object.entries(parts).sort((a,b) => b[1]-a[1]).slice(0, 15);
+  if (sorted.length === 0) return;
+  const PIE_COLORS = ['#4a9eff','#00c48c','#ffb347','#ff6b7a','#a78bfa','#00c6d7','#f59e0b','#6366f1','#10b981','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316'];
   _prodPieChart = new Chart(ctx, {
     type: 'doughnut',
     data: { labels: sorted.map(e=>e[0]), datasets: [{ data: sorted.map(e=>e[1]), backgroundColor: PIE_COLORS, borderColor: '#17293f', borderWidth: 2 }] },
     options: { responsive:true, maintainAspectRatio:false,
-      plugins: { legend:{position:'right',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true,padding:8,boxWidth:10}},
-        tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:function(ctx){return ctx.label+': '+ctx.parsed+'건';} }} } }
+      plugins: { legend:{position:'right',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true,padding:6,boxWidth:8}},
+        tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}건`}} } }
   });
 }
 
-function renderProdTrendChart(claims, salesFiltered) {
+function renderProdTrendChart(claims, from, to) {
   if (_prodTrendChart) { _prodTrendChart.destroy(); _prodTrendChart = null; }
   const ctx = document.getElementById('prodTrendChart'); if (!ctx) return;
-  const monthMap = {};
-  claims.forEach(c => { const m = c.receipt_date?.slice(0,7); if(m) monthMap[m] = (monthMap[m]||0)+1; });
-  const salesMap = {};
-  salesFiltered.forEach(s => { salesMap[s.year_month] = (salesMap[s.year_month]||0) + (s.sales_count||0); });
-  const months = [...new Set([...Object.keys(monthMap), ...Object.keys(salesMap)])].sort();
-  const labels = months.map(m => m.slice(5)+'월');
+  if (claims.length === 0) return;
+
+  // 기간에 따라 일별/주별/월별 자동 선택
+  const fromD = from ? new Date(from) : new Date(Math.min(...claims.map(c=>new Date(c.receipt_date))));
+  const toD = to ? new Date(to) : new Date(Math.max(...claims.map(c=>new Date(c.receipt_date))));
+  const diffDays = Math.ceil((toD - fromD) / 86400000);
+
+  let dateMap = {};
+  let labelFn, keyFn;
+
+  if (diffDays <= 60) {
+    // 60일 이하: 일별
+    keyFn = c => c.receipt_date;
+    labelFn = k => k.slice(5); // MM-DD
+  } else if (diffDays <= 180) {
+    // 61~180일: 주별
+    keyFn = c => { const d = new Date(c.receipt_date); const mon = new Date(d); mon.setDate(d.getDate() - d.getDay() + 1); return mon.toISOString().split('T')[0]; };
+    labelFn = k => k.slice(5)+'주';
+  } else {
+    // 181일 초과: 월별
+    keyFn = c => c.receipt_date?.slice(0,7);
+    labelFn = k => parseInt(k.slice(5))+'월';
+  }
+
+  claims.forEach(c => { if (!c.receipt_date) return; const k = keyFn(c); dateMap[k] = (dateMap[k]||0)+1; });
+  const keys = Object.keys(dateMap).sort();
+  if (keys.length === 0) return;
+
   _prodTrendChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels,
-      datasets: [
-        { label:'클레임 건수', data:months.map(m=>monthMap[m]||0), backgroundColor:'rgba(74,158,255,0.6)', borderColor:'rgba(74,158,255,1)', borderWidth:1, borderRadius:4, yAxisID:'y' },
-        { label:'불량지수(×1000)', data:months.map(m => salesMap[m] > 0 ? +((monthMap[m]||0)/salesMap[m]*1000).toFixed(2) : null), type:'line', borderColor:'rgba(255,179,71,1)', backgroundColor:'rgba(255,179,71,0.1)', borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'y1' }
-      ]
+    data: { labels: keys.map(labelFn),
+      datasets: [{ label:'클레임 건수', data:keys.map(k=>dateMap[k]), backgroundColor:'rgba(74,158,255,0.55)', borderColor:'rgba(74,158,255,1)', borderWidth:1, borderRadius:3 }]
     },
     options: { responsive:true, maintainAspectRatio:false,
-      plugins: { legend:{position:'top',align:'end',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true}},
-        tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1} },
+      plugins: { legend:{display:false}, tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:ctx=>' '+ctx.parsed.y+'건'}} },
       scales: {
-        x:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10}}},
-        y:{position:'left',grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10,family:"'JetBrains Mono'"},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true,title:{display:true,text:'건수',color:'#6b83a0',font:{size:10}}},
-        y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'rgba(255,179,71,0.8)',font:{size:10,family:"'JetBrains Mono'"}},beginAtZero:true,title:{display:true,text:'불량지수',color:'rgba(255,179,71,0.8)',font:{size:10}}}
+        x:{grid:{color:'rgba(36,59,90,0.2)'},ticks:{color:'#6b83a0',font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:diffDays<=60?31:diffDays<=180?12:12}},
+        y:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
       }
     }
   });
 }
 
-function _groupInspectionResult(raw) {
-  if (!raw) return '미분류';
-  // 날짜/담당자/기호 제거 후 앞 40자로 그룹 키 생성
-  let s = raw.replace(/\d{4}[-\/\.]\d{2}[-\/\.]\d{2}/g,'').replace(/[★▶◀>><>\[\]※【】·•\t]/g,' ').replace(/\s+/g,' ').trim();
-  return s.length > 40 ? s.slice(0,40) : s;
+function _groupRawSymptom(raw) {
+  if (!raw) return '(증상 미입력)';
+  // 날짜, 제품코드(대문자+숫자), 담당자명, 특수기호 제거
+  let s = raw
+    .replace(/\d{4}[-\/\.]\d{2}[-\/\.]\d{2}/g,'')
+    .replace(/[A-Z][A-Z0-9]{4,}/g,'')
+    .replace(/[★▶◀>><>\[\]※【】·•\t■□◇♣]/g,' ')
+    .replace(/[a-zA-Z]{1,4}\d{0,2}[가-힣]{2,4}(\([^)]*\))?/g,' ')
+    .replace(/\s+/g,' ').trim();
+  // 앞 50자로 그룹 키
+  return s.length > 50 ? s.slice(0,50) : (s || '(기타)');
 }
 
 function renderProdMonthlyTable(claims, salesFiltered) {
@@ -1975,22 +2063,21 @@ function renderProdMonthlyTable(claims, salesFiltered) {
   const salesMap = {};
   salesFiltered.forEach(s => { salesMap[s.year_month] = (salesMap[s.year_month]||0)+(s.sales_count||0); });
 
-  // 그룹핑: defect_type + category + inspection_result 그룹
+  // 그룹핑: defect_category(하자유형) + defect_category(판정유형) + raw_symptom 그룹
   const groupMap = {};
   claims.forEach(c => {
-    const dt = c.defect_type || '미분류';
-    const cat = c.category || '미분류';
-    const ir = _groupInspectionResult(c.inspection_result || c.claim_detail);
-    const key = dt + '||' + cat + '||' + ir;
+    const dt = c.defect_category || '미분류';
+    const detail = _groupRawSymptom(c.raw_symptom || c.claim_detail);
+    const key = dt + '||' + detail;
     const m = c.receipt_date?.slice(0,7) || '미분류';
-    if (!groupMap[key]) groupMap[key] = { defect_type: dt, category: cat, detail: ir, total: 0, months: {} };
+    if (!groupMap[key]) groupMap[key] = { defect_type: dt, detail, total: 0, months: {} };
     groupMap[key].total++;
     groupMap[key].months[m] = (groupMap[key].months[m]||0)+1;
   });
 
   const rows = Object.values(groupMap).sort((a,b) => b.total - a.total);
 
-  // defect_type 그룹 (rowspan)
+  // defect_category 그룹 (rowspan)
   const dtGroups = {};
   rows.forEach(r => {
     if (!dtGroups[r.defect_type]) dtGroups[r.defect_type] = { items:[], total:0 };
@@ -2003,51 +2090,53 @@ function renderProdMonthlyTable(claims, salesFiltered) {
   function getStatus(r) {
     if (recentMonths.length < 2) return 'new';
     const prev = r.months[recentMonths[0]]||0; const curr = r.months[recentMonths[1]]||0;
-    if (curr===0 && prev>0) return 'done'; if (curr>prev) return 'progress'; return 'new';
+    if (curr===0 && prev>0) return 'done'; if (curr>prev) return 'up'; return 'stable';
   }
+  const STATUS = { done:['개선완료','var(--accent-emerald)'], up:['증가중','var(--accent-rose)'], stable:['유지중','var(--accent-cyan)'], new:['신규','var(--accent-amber)'] };
 
-  const mh = allMonths.map(m => `<th style="text-align:center;white-space:nowrap">${parseInt(m.slice(5))}월</th>`).join('');
+  const CAT_COLOR_MAP = { '작동성':'var(--sidiz-blue-bright)','소음':'var(--accent-amber)','파손':'var(--accent-rose)','유격':'var(--accent-violet)','수평':'var(--accent-cyan)','체결':'var(--accent-emerald)','외관':'#f59e0b','기타':'var(--text-muted)','미분류':'var(--text-muted)' };
+  const mh = allMonths.map(m => `<th style="text-align:center;white-space:nowrap;min-width:40px">${parseInt(m.slice(5))}월</th>`).join('');
 
   let tableRows = '';
   dtSorted.forEach(([dt, group]) => {
+    const dtColor = CAT_COLOR_MAP[dt] || 'var(--text-muted)';
     group.items.forEach((r, idx) => {
-      const st = getStatus(r);
-      const sl = st==='done'?'개선완료':st==='progress'?'증가중':'신규';
-      const stColor = st==='done'?'var(--accent-emerald)':st==='progress'?'var(--accent-rose)':'var(--accent-cyan)';
-      const detailTxt = r.detail.length > 38 ? r.detail.slice(0,38)+'…' : r.detail;
+      const [sl, stColor] = STATUS[getStatus(r)] || STATUS['stable'];
+      const detailTxt = r.detail.length > 40 ? r.detail.slice(0,40)+'…' : r.detail;
       tableRows += '<tr>';
-      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:top;border-right:1px solid var(--border);white-space:nowrap">${dt}<br><span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sidiz-blue-bright);font-weight:700">${group.total}건</span></td>`;
-      tableRows += `<td style="text-align:center;font-size:10px;white-space:nowrap">${r.category}</td>`;
-      tableRows += `<td style="text-align:left;font-size:10px;max-width:220px;white-space:normal;line-height:1.4" title="${r.detail.replace(/"/g,'&quot;')}">${detailTxt}</td>`;
-      tableRows += `<td style="text-align:center;white-space:nowrap"><span style="display:inline-block;min-width:52px;text-align:center;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;color:${stColor};background:${stColor}22;border:1px solid ${stColor}44">${sl}</span></td>`;
+      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);white-space:nowrap;text-align:center">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33">${dt}</span>
+        <div style="font-family:'JetBrains Mono';font-size:12px;color:${dtColor};font-weight:700;margin-top:3px">${group.total}건</div>
+      </td>`;
+      tableRows += `<td style="text-align:left;font-size:11px;max-width:260px;white-space:normal;line-height:1.45;padding:6px 8px" title="${r.detail.replace(/"/g,'&quot;')}">${detailTxt}</td>`;
+      tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px"><span style="display:inline-block;min-width:54px;text-align:center;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;color:${stColor};background:${stColor}22;border:1px solid ${stColor}44">${sl}</span></td>`;
       tableRows += allMonths.map(m => `<td style="text-align:center;font-size:11px">${r.months[m]||'-'}</td>`).join('');
       tableRows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${r.total}</td></tr>`;
     });
   });
 
   // 매출량 행
+  const totalSalesAll = salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0);
   const salesRow = `<tr style="background:rgba(0,196,140,0.05)">
-    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
-    ${allMonths.map(m => `<td style="text-align:center;font-size:11px;color:var(--accent-emerald)">${salesMap[m]?salesMap[m].toLocaleString():'-'}</td>`).join('')}
-    <td style="text-align:center;font-size:11px;color:var(--accent-emerald);font-weight:700">${salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0).toLocaleString()}</td>
+    <td colspan="3" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
+    ${allMonths.map(m => `<td style="text-align:center;font-size:11px;color:var(--accent-emerald);font-weight:600">${salesMap[m]?salesMap[m].toLocaleString():'-'}</td>`).join('')}
+    <td style="text-align:center;font-size:11px;color:var(--accent-emerald);font-weight:700">${totalSalesAll.toLocaleString()}</td>
   </tr>`;
-  // 불량지수 행
   const defectRow = `<tr style="background:rgba(255,179,71,0.05)">
-    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×1000)</td>
+    <td colspan="3" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×1000)</td>
     ${allMonths.map(m => {
       const clm = claims.filter(c=>c.receipt_date?.slice(0,7)===m).length;
       const sal = salesMap[m]||0;
-      return `<td style="text-align:center;font-size:11px;color:var(--accent-amber)">${sal>0?(clm/sal*1000).toFixed(1):'-'}</td>`;
+      return `<td style="text-align:center;font-size:11px;color:var(--accent-amber);font-weight:600">${sal>0?(clm/sal*1000).toFixed(1):'-'}</td>`;
     }).join('')}
-    <td style="text-align:center;font-size:11px;color:var(--accent-amber);font-weight:700">${salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0)>0?(claims.length/salesFiltered.reduce((s,r)=>s+(r.sales_count||0),0)*1000).toFixed(2):'-'}</td>
+    <td style="text-align:center;font-size:11px;color:var(--accent-amber);font-weight:700">${totalSalesAll>0?(claims.length/totalSalesAll*1000).toFixed(2):'-'}</td>
   </tr>`;
 
   wrap.innerHTML = `
     <table class="data-table" style="font-size:11px;min-width:700px">
       <thead>
         <tr style="background:rgba(13,27,42,0.97)">
-          <th style="text-align:left;white-space:nowrap">하자유형</th>
-          <th style="text-align:center;white-space:nowrap">판정유형</th>
+          <th style="text-align:center;white-space:nowrap;min-width:80px">하자유형</th>
           <th style="text-align:left;white-space:nowrap">판정내용 (상세)</th>
           <th style="text-align:center;white-space:nowrap">상태</th>
           ${mh}
