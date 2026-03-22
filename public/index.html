@@ -486,14 +486,14 @@ body::before {
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);display:inline-block"></span>
           불량 유형별 현황
         </h3>
-        <canvas id="prodBarChart" height="160"></canvas>
+        <div style="position:relative;height:220px"><canvas id="prodBarChart"></canvas></div>
       </div>
       <div class="chart-card" style="padding:20px">
         <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-violet);display:inline-block"></span>
           부품별 현황
         </h3>
-        <canvas id="prodPieChart" height="160"></canvas>
+        <div style="position:relative;height:220px"><canvas id="prodPieChart"></canvas></div>
       </div>
     </div>
 
@@ -503,7 +503,7 @@ body::before {
         <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span>
         클레임 추이 <span id="prodTrendTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
       </h3>
-      <canvas id="prodTrendChart" height="90"></canvas>
+      <div style="position:relative;height:200px"><canvas id="prodTrendChart"></canvas></div>
     </div>
 
     <!-- 월별 상세 표 -->
