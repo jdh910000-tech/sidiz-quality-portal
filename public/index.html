@@ -512,20 +512,29 @@ body::before {
       </div>
     </div>
 
-    <!-- 클레임 추이 -->
+    <!-- 일별 클레임 추이 (라인차트) -->
     <div class="chart-card" style="padding:18px;margin-bottom:16px">
       <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px">
         <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span>
-        클레임 추이 <span id="prodTrendTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
+        일별 클레임 추이 <span id="prodTrendTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
       </h3>
-      <div style="position:relative;height:200px"><canvas id="prodTrendChart"></canvas></div>
+      <div style="position:relative;height:220px"><canvas id="prodTrendChart"></canvas></div>
+    </div>
+
+    <!-- 월별 클레임 건수 막대차트 (1~12월 고정) -->
+    <div class="chart-card" style="padding:18px;margin-bottom:16px">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);display:inline-block"></span>
+        월별 클레임 건수 <span id="prodMonthlyBarTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
+      </h3>
+      <div style="position:relative;height:200px"><canvas id="prodMonthlyBarChart"></canvas></div>
     </div>
 
     <!-- 월별 상세 표 -->
     <div class="chart-card" style="padding:18px;margin-bottom:16px">
       <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
-        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);display:inline-block"></span>
-        월별 클레임 건수 추이 <span id="prodTableTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-violet);display:inline-block"></span>
+        월별 클레임 상세 현황 <span id="prodTableTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
       </h3>
       <div style="overflow-x:auto" id="prodMonthlyTableWrap">
         <div style="text-align:center;padding:40px;color:var(--text-muted)">조회 조건을 선택하고 조회 버튼을 눌러주세요.</div>
@@ -1803,6 +1812,7 @@ let _prodAllData = [];
 let _prodBarChart = null;
 let _prodPieChart = null;
 let _prodTrendChart = null;
+let _prodMonthlyBarChart = null;
 let _prodLoaded = false;
 
 // 판정유형 다중선택 드롭다운 토글
@@ -1921,11 +1931,12 @@ function _getProdFiltered() {
 async function loadProdDashboard() {
   const filtered = _getProdFiltered();
   const item = document.getElementById('prodItemSelect')?.value || 'all';
+  const brand = document.getElementById('prodBrandSel')?.value || 'all';
   const from = document.getElementById('prodDateFrom')?.value || '';
   const to = document.getElementById('prodDateTo')?.value || '';
-
-  // 카드 업데이트 (매출량/불량지수는 데이터 준비 전 '-' 표시)
   const el = id => document.getElementById(id);
+
+  // 카드 업데이트
   if (el('prodCardClaims')) el('prodCardClaims').textContent = filtered.length.toLocaleString() + '건';
   if (el('prodCardSales')) el('prodCardSales').textContent = '-';
   if (el('prodCardDefect')) el('prodCardDefect').textContent = '-';
@@ -1933,9 +1944,17 @@ async function loadProdDashboard() {
   if (el('prodCardSalesSub')) el('prodCardSalesSub').textContent = '제품별 매출량 데이터 준비 중';
   if (el('prodEmptyState')) el('prodEmptyState').style.display = filtered.length === 0 ? 'block' : 'none';
 
+  // 월별 막대차트용: 기간 필터 무관, 제품/브랜드만 적용
+  const allItemFiltered = _prodAllData.filter(r => {
+    if (item !== 'all' && r.item !== item) return false;
+    if (brand !== 'all' && r.brand !== brand) return false;
+    return true;
+  });
+
   renderProdBarChart(filtered);
   renderProdPieChart(filtered);
   renderProdTrendChart(filtered, from, to);
+  renderProdMonthlyBarChart(allItemFiltered, item);
   renderProdMonthlyTable(filtered);
 
   if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
@@ -1985,19 +2004,21 @@ function renderProdTrendChart(claims, from, to) {
   const ctx = document.getElementById('prodTrendChart'); if (!ctx) return;
   if (claims.length === 0) return;
 
-  // 일별 클레임 추이 (claim_date 기준)
+  // 일별 클레임 추이 (claim_date 기준, 라인차트)
   const dateMap = {};
   claims.forEach(c => { if (!c.claim_date) return; dateMap[c.claim_date] = (dateMap[c.claim_date]||0)+1; });
   const keys = Object.keys(dateMap).sort();
   if (keys.length === 0) return;
 
-  // x축 레이블: MM/DD 형태
-  const labelFn = k => k.slice(5).replace('-','/');
-
   _prodTrendChart = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: keys.map(labelFn),
-      datasets: [{ label:'클레임 건수', data:keys.map(k=>dateMap[k]), backgroundColor:'rgba(74,158,255,0.55)', borderColor:'rgba(74,158,255,1)', borderWidth:1, borderRadius:3 }]
+    type: 'line',
+    data: { labels: keys.map(k => k.slice(5).replace('-','/')),
+      datasets: [{
+        label:'클레임 건수', data:keys.map(k=>dateMap[k]),
+        borderColor:'rgba(0,198,215,1)', backgroundColor:'rgba(0,198,215,0.08)',
+        borderWidth:2, pointRadius:4, pointBackgroundColor:'rgba(0,198,215,1)',
+        tension:0.35, fill:true
+      }]
     },
     options: { responsive:true, maintainAspectRatio:false,
       plugins: { legend:{display:false}, tooltip:{
@@ -2012,17 +2033,94 @@ function renderProdTrendChart(claims, from, to) {
   });
 }
 
-function _groupRawSymptom(raw) {
-  if (!raw) return '(증상 미입력)';
-  // 날짜, 제품코드(대문자+숫자), 담당자명, 특수기호 제거
-  let s = raw
-    .replace(/\d{4}[-\/\.]\d{2}[-\/\.]\d{2}/g,'')
-    .replace(/[A-Z][A-Z0-9]{4,}/g,'')
-    .replace(/[★▶◀>><>\[\]※【】·•\t■□◇♣]/g,' ')
-    .replace(/[a-zA-Z]{1,4}\d{0,2}[가-힣]{2,4}(\([^)]*\))?/g,' ')
-    .replace(/\s+/g,' ').trim();
-  // 앞 50자로 그룹 키
-  return s.length > 50 ? s.slice(0,50) : (s || '(기타)');
+// ─── inspection_result 유사 그룹핑 ───
+function _normalizeInspectionResult(raw) {
+  if (!raw) return '(판정내용 없음)';
+  const s = raw.trim();
+  // 팔걸이 기포 파손 계열
+  if (/팔걸이.{0,6}기포.{0,6}파손|기포.{0,6}파손/.test(s)) return '팔걸이 기포 파손';
+  // 사선조립 인서트 헛돔 계열
+  if (/사선.{0,4}조립.{0,10}인서트|인서트.{0,6}헛돔/.test(s)) return '사선조립 인서트 헛돔';
+  // 봉제 라인 벌어짐 계열
+  if (/봉제.{0,4}라인|봉제라인/.test(s)) return '봉제 라인 벌어짐';
+  // 상대물 없어서 확인불가 계열
+  if (/상대물.{0,10}확인불가|회수품.{0,10}확인불가/.test(s)) return '상대물 없어서 확인불가';
+  // 등판 볼트 파손/풀림 계열
+  if (/등판.{0,15}볼트/.test(s)) return '등판 볼트 파손/풀림';
+  // 좌판 골격 파손 계열
+  if (/좌판.{0,6}골격.{0,6}파손/.test(s)) return '좌판 골격 파손';
+  // 틸트 파손 계열
+  if (/틸트.{0,6}파손|틸트.{0,6}하우징/.test(s)) return '틸트 파손';
+  // 틸트 유격/락킹 계열
+  if (/틸트.{0,6}유격|틸트.{0,6}락|틸트.{0,6}사양변경/.test(s)) return '틸트 유격/락킹';
+  // 팔걸이 유격/소음 계열
+  if (/팔걸이.{0,10}유격|팔걸이.{0,10}소음|VN.{0,6}팔걸이/.test(s)) return '팔걸이 유격 및 소음';
+  // 팔걸이 커버 유격
+  if (/팔걸이.{0,6}커버.{0,6}유격/.test(s)) return '팔걸이 커버 유격';
+  // 좌판 오염/변색
+  if (/좌판.{0,6}오염|좌판.{0,6}변색/.test(s)) return '좌판 오염/변색';
+  // 좌판 봉제/소음
+  if (/좌판.{0,6}골격.{0,6}소음/.test(s)) return '좌판 골격 소음';
+  // 암후레임 간섭
+  if (/암후레임|높이.{0,6}조절.{0,6}불가/.test(s)) return '암후레임 간섭 높이 조절 불가';
+  // 헤드 조절 각도 변경
+  if (/헤드.{0,6}조절.{0,6}각도/.test(s)) return '헤드 조절 각도 변경 전 사양';
+  // 좌판+팔걸이 사양변경
+  if (/좌판.{0,6}팔걸이.{0,6}사양|사양.{0,6}변경/.test(s)) return '사양 변경 교체';
+  // 리미트 볼트 이탈
+  if (/리미트.{0,6}볼트/.test(s)) return '리미트 볼트 이탈';
+  // 베트남 상품
+  if (/베트남.{0,10}정품화/.test(s)) return '베트남 상품 정품화 불가';
+  // 단순 변심
+  if (/단순.{0,4}변심/.test(s)) return '단순 변심';
+  // 메쉬 텐션 불만
+  if (/메쉬.{0,6}텐션/.test(s)) return '메쉬 텐션 불만';
+  // 조립 미숙
+  if (/조립.{0,6}미숙/.test(s)) return '조립 미숙';
+  // 샤프트 파손
+  if (/샤프트.{0,6}파손/.test(s)) return '샤프트 파손';
+  // 고정핀 파손
+  if (/고정핀/.test(s)) return '고정핀 파손';
+  // 틸팅 레버 작동
+  if (/틸팅.{0,6}레버/.test(s)) return '틸팅 레버 작동 불가';
+  // 앞 40자로 그룹핑 (나머지)
+  return s.length > 40 ? s.slice(0,40)+'…' : s;
+}
+
+// ─── 월별 클레임 막대차트 (1~12월 고정, 기간 필터 무관) ───
+function renderProdMonthlyBarChart(allData, item) {
+  if (_prodMonthlyBarChart) { _prodMonthlyBarChart.destroy(); _prodMonthlyBarChart = null; }
+  const ctx = document.getElementById('prodMonthlyBarChart'); if (!ctx) return;
+  const year = new Date().getFullYear();
+  const monthLabels = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const monthCounts = new Array(12).fill(0);
+  allData.forEach(c => {
+    if (!c.claim_date) return;
+    const d = new Date(c.claim_date);
+    if (d.getFullYear() !== year) return; // 해당 연도만
+    monthCounts[d.getMonth()]++;
+  });
+  const el = document.getElementById('prodMonthlyBarTitle');
+  if (el) el.textContent = `(${item !== 'all' ? item : '전체 제품'} · ${year}년 누적)`;
+  _prodMonthlyBarChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: monthLabels,
+      datasets: [{ label:'클레임 건수', data: monthCounts,
+        backgroundColor: monthCounts.map(v => v > 0 ? 'rgba(0,196,140,0.7)' : 'rgba(36,59,90,0.3)'),
+        borderColor: 'rgba(0,196,140,1)', borderWidth:1, borderRadius:4
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{
+        backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,
+        callbacks:{ label: ctx => ' ' + ctx.parsed.y + '건' }
+      }},
+      scales: {
+        x:{grid:{color:'rgba(36,59,90,0.2)'},ticks:{color:'#a0b4cb',font:{size:11}}},
+        y:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
+      }
+    }
+  });
 }
 
 function renderProdMonthlyTable(claims) {
@@ -2032,14 +2130,15 @@ function renderProdMonthlyTable(claims) {
   // claim_date 기준 월 목록
   const allMonths = [...new Set(claims.map(c => c.claim_date?.slice(0,7)).filter(Boolean))].sort();
 
-  // 그룹핑: defect_type(하자유형) + inspection_result(판정내용 상세)
+  // 그룹핑: defect_type(하자유형) + category(판정유형) + 정규화된 inspection_result
   const groupMap = {};
   claims.forEach(c => {
     const dt = c.defect_type || '미분류';
-    const detail = c.inspection_result || '(판정내용 없음)';
-    const key = dt + '||' + detail;
+    const cat = c.category || '미분류';
+    const detail = _normalizeInspectionResult(c.inspection_result);
+    const key = dt + '||' + cat + '||' + detail;
     const m = c.claim_date?.slice(0,7) || '미분류';
-    if (!groupMap[key]) groupMap[key] = { defect_type: dt, detail, total: 0, months: {} };
+    if (!groupMap[key]) groupMap[key] = { defect_type: dt, category: cat, detail, total: 0, months: {} };
     groupMap[key].total++;
     groupMap[key].months[m] = (groupMap[key].months[m]||0)+1;
   });
@@ -2065,6 +2164,7 @@ function renderProdMonthlyTable(claims) {
   const STATUS = { done:['개선완료','var(--accent-emerald)'], up:['증가중','var(--accent-rose)'], stable:['유지중','var(--accent-cyan)'] };
 
   const DEFECT_COLORS = { '파손':'var(--accent-rose)','소음':'var(--accent-amber)','유격':'var(--accent-violet)','작동성':'var(--sidiz-blue-bright)','수평':'var(--accent-cyan)','체결':'var(--accent-emerald)','외관':'#f59e0b','기타':'var(--text-muted)','미분류':'var(--text-muted)' };
+  const CAT_COLOR_MAP = { '설계':'#4a9eff','부품':'#ff6b7a','공정':'#ffb347','재료':'#a78bfa','기타':'#6b83a0','미분류':'#6b83a0' };
   const mh = allMonths.map(m => `<th style="text-align:center;white-space:nowrap;min-width:40px">${parseInt(m.slice(5))}월</th>`).join('');
 
   let tableRows = '';
@@ -2072,36 +2172,38 @@ function renderProdMonthlyTable(claims) {
     const dtColor = DEFECT_COLORS[dt] || '#a0b4cb';
     group.items.forEach((r, idx) => {
       const [sl, stColor] = STATUS[getStatus(r)] || STATUS['stable'];
-      const detailTxt = r.detail.length > 45 ? r.detail.slice(0,45)+'…' : r.detail;
+      const catColor = CAT_COLOR_MAP[r.category] || '#a0b4cb';
       tableRows += '<tr>';
       if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);white-space:nowrap;text-align:center;padding:8px 10px">
         <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33">${dt}</span>
         <div style="font-family:'JetBrains Mono';font-size:12px;color:${dtColor};font-weight:700;margin-top:4px">${group.total}건</div>
       </td>`;
-      tableRows += `<td style="text-align:left;font-size:11px;max-width:280px;white-space:normal;line-height:1.5;padding:6px 8px" title="${r.detail.replace(/"/g,'&quot;')}">${detailTxt}</td>`;
+      tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;color:${catColor};background:${catColor}18;border:1px solid ${catColor}33">${r.category}</span></td>`;
+      tableRows += `<td style="text-align:left;font-size:11px;max-width:260px;white-space:normal;line-height:1.5;padding:6px 8px" title="${r.detail.replace(/"/g,'&quot;')}">${r.detail}</td>`;
       tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 6px"><span style="display:inline-block;min-width:54px;text-align:center;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;color:${stColor};background:${stColor}22;border:1px solid ${stColor}44">${sl}</span></td>`;
       tableRows += allMonths.map(m => `<td style="text-align:center;font-size:11px">${r.months[m]||'-'}</td>`).join('');
       tableRows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${r.total}</td></tr>`;
     });
   });
 
-  // 매출량/불량지수 행 (데이터 없음)
+  // 매출량/불량지수 행 (데이터 준비 중)
   const salesRow = `<tr style="background:rgba(0,196,140,0.05)">
-    <td colspan="3" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
+    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
     ${allMonths.map(()=>`<td style="text-align:center;font-size:11px;color:var(--text-muted)">-</td>`).join('')}
     <td style="text-align:center;font-size:11px;color:var(--text-muted)">준비 중</td>
   </tr>`;
   const defectRow = `<tr style="background:rgba(255,179,71,0.05)">
-    <td colspan="3" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×1000)</td>
+    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×1000)</td>
     ${allMonths.map(()=>`<td style="text-align:center;font-size:11px;color:var(--text-muted)">-</td>`).join('')}
     <td style="text-align:center;font-size:11px;color:var(--text-muted)">준비 중</td>
   </tr>`;
 
   wrap.innerHTML = `
-    <table class="data-table" style="font-size:11px;min-width:700px">
+    <table class="data-table" style="font-size:11px;min-width:800px">
       <thead>
         <tr style="background:rgba(13,27,42,0.97)">
           <th style="text-align:center;white-space:nowrap;min-width:80px">하자유형</th>
+          <th style="text-align:center;white-space:nowrap;min-width:70px">판정유형</th>
           <th style="text-align:left;white-space:nowrap">판정내용 (상세)</th>
           <th style="text-align:center;white-space:nowrap">상태</th>
           ${mh}
