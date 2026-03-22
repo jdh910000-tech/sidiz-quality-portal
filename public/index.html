@@ -479,6 +479,17 @@ body::before {
 
     <!-- 필터 바 -->
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;background:var(--sidiz-dark2);padding:14px 16px;border-radius:12px;border:1px solid var(--border)">
+      <!-- 날짜 기준 토글 -->
+      <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0">
+        <button id="rctModeReceipt" onclick="setRctDateMode('receipt')"
+          style="padding:7px 13px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:var(--sidiz-blue);color:white;transition:all 0.15s">
+          📅 접수일
+        </button>
+        <button id="rctModeUploaded" onclick="setRctDateMode('uploaded')"
+          style="padding:7px 13px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:var(--sidiz-card);color:var(--text-muted);transition:all 0.15s">
+          📤 업로드일
+        </button>
+      </div>
       <select id="rctProductFilter" onchange="onRctProductChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
         <option value="all">전체 제품</option>
       </select>
@@ -1138,9 +1149,32 @@ function showKpiTab(tab,btn) {
 let _rctAllData = [];           // 전체 데이터 캐시
 let _rctFilteredData = [];      // 필터된 데이터
 let _rctSelectedProduct = 'all';
+let _rctDateMode = 'receipt';   // 'receipt' = 접수일 기준 | 'uploaded' = 업로드일 기준
 let _rctChartTrend = null;
 let _rctChartCat = null;
 let _rctChartProd = null;
+
+// 날짜 기준 모드 전환
+function setRctDateMode(mode) {
+  _rctDateMode = mode;
+  const btnReceipt  = document.getElementById('rctModeReceipt');
+  const btnUploaded = document.getElementById('rctModeUploaded');
+  if (mode === 'receipt') {
+    btnReceipt.style.background  = 'var(--sidiz-blue)';
+    btnReceipt.style.color       = 'white';
+    btnUploaded.style.background = 'var(--sidiz-card)';
+    btnUploaded.style.color      = 'var(--text-muted)';
+  } else {
+    btnUploaded.style.background = 'var(--sidiz-blue)';
+    btnUploaded.style.color      = 'white';
+    btnReceipt.style.background  = 'var(--sidiz-card)';
+    btnReceipt.style.color       = 'var(--text-muted)';
+  }
+  // 헤더 타이틀 동기화
+  const titleEl = document.querySelector('#claim-receipt .section-title span');
+  if (titleEl) titleEl.textContent = mode === 'uploaded' ? '(업로드일 기준)' : '(접수일 기준)';
+  loadReceiptDashboard();
+}
 
 // 날짜 기본값 세팅 (이번달 1일 ~ 오늘)
 function initReceiptDateDefaults() {
@@ -1182,7 +1216,9 @@ async function loadReceiptDashboard() {
   if (btn) { btn.textContent = '로딩중...'; btn.disabled = true; }
 
   try {
-    const data = await SupabaseClient.fetchReceiptByDateRange(from, to);
+    const data = _rctDateMode === 'uploaded'
+      ? await SupabaseClient.fetchReceiptByUploadedDate(from, to)
+      : await SupabaseClient.fetchReceiptByDateRange(from, to);
     _rctAllData = data || [];
 
     // 제품 필터 드롭다운 업데이트
@@ -1235,7 +1271,8 @@ function _renderRctSummary() {
   const total = data.length;
   const today = new Date();
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-  const monthCount = data.filter(d => d.receipt_date && d.receipt_date.startsWith(thisMonth)).length;
+  const dateField = _rctDateMode === 'uploaded' ? 'uploaded_at' : 'receipt_date';
+  const monthCount = data.filter(d => d[dateField] && d[dateField].startsWith(thisMonth)).length;
   const classified = data.filter(d => d.defect_normalized).length;
   const pending = data.filter(d => !d.defect_normalized).length;
   const rate = total > 0 ? ((classified / total) * 100).toFixed(1) : '0.0';
@@ -1265,10 +1302,11 @@ function _animateCounter(id, target) {
 
 function _renderRctTrend() {
   const data = _rctFilteredData;
-  // 날짜별 집계
+  // 날짜별 집계 (모드에 따라 접수일 / 업로드일 기준 전환)
+  const dateField = _rctDateMode === 'uploaded' ? 'uploaded_at' : 'receipt_date';
   const byDate = {};
   data.forEach(d => {
-    const dt = d.receipt_date || 'unknown';
+    const dt = d[dateField] || 'unknown';
     if (dt !== 'unknown') byDate[dt] = (byDate[dt] || 0) + 1;
   });
   const labels = Object.keys(byDate).sort();
@@ -1278,7 +1316,8 @@ function _renderRctTrend() {
   if (titleEl) {
     const from = document.getElementById('rctDateFrom')?.value || '';
     const to = document.getElementById('rctDateTo')?.value || '';
-    titleEl.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span> 접수일별 클레임 추이 <span style="font-size:10px;color:var(--text-muted);font-weight:400">(${from} ~ ${to}, 일별)</span>`;
+    const modeLabel = _rctDateMode === 'uploaded' ? '업로드일별' : '접수일별';
+    titleEl.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);display:inline-block"></span> ${modeLabel} 클레임 추이 <span style="font-size:10px;color:var(--text-muted);font-weight:400">(${from} ~ ${to}, 일별)</span>`;
   }
   if (_rctChartTrend) _rctChartTrend.destroy();
   const ctx = document.getElementById('rctTrendChart');

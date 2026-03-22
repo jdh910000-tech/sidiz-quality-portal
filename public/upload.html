@@ -497,6 +497,7 @@ async function handleClaimFile(file) {
         defect_normalized: parseResult.normalized || null,
         defect_category:  parseResult.category || null,
         raw_symptom:      parseResult.rawSymptom || null,
+        uploaded_at:      new Date().toISOString().split('T')[0],  // 업로드일 (오늘 날짜)
       };
       claimParsedData.push(dbRow);
 

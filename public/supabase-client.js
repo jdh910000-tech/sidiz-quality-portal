@@ -35,6 +35,11 @@ async function fetchReceiptByDateRange(from, to) {
   return supabaseFetch('claims_receipt', `select=*&receipt_date=gte.${from}&receipt_date=lte.${to}&order=receipt_date.desc&limit=5000`);
 }
 
+// ─── claims_receipt (업로드일 기준) ───
+async function fetchReceiptByUploadedDate(from, to) {
+  return supabaseFetch('claims_receipt', `select=*&uploaded_at=gte.${from}&uploaded_at=lte.${to}&order=uploaded_at.desc&limit=5000`);
+}
+
 async function fetchReceiptByDefect(item, defectType) {
   return supabaseFetch('claims_receipt', `select=*&item=ilike.*${encodeURIComponent(item)}*&defect_type=ilike.*${encodeURIComponent(defectType)}*&order=receipt_date.desc&limit=500`);
 }
@@ -164,7 +169,7 @@ window.SupabaseClient = {
   // 회수일
   fetchClaims,
   // 접수일
-  fetchReceiptClaims, fetchReceiptByDateRange, fetchReceiptByDefect,
+  fetchReceiptClaims, fetchReceiptByDateRange, fetchReceiptByUploadedDate, fetchReceiptByDefect,
   fetchReceiptByCategory, fetchReceiptByNormalized,
   // 매출량
   fetchSalesMonthly,
