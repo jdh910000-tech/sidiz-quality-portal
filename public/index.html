@@ -463,6 +463,12 @@ body::before {
         <option value="일룸">일룸</option>
         <option value="데스커">데스커</option>
       </select>
+      <!-- 국가 선택 -->
+      <select id="prodCountrySel" onchange="onProdCountryChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:110px">
+        <option value="all">전체 국가</option>
+        <option value="국내">🇰🇷 국내</option>
+        <option value="베트남">🇻🇳 베트남</option>
+      </select>
       <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
         <input type="date" id="prodDateFrom" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px">
         <span style="color:var(--text-muted)">~</span>
@@ -1893,6 +1899,7 @@ async function loadProdTab() {
 
 function onProdItemChange() { loadProdDashboard(); }
 function onProdBrandChange() { loadProdDashboard(); }
+function onProdCountryChange() { loadProdDashboard(); }
 
 function setProdQuick(period) {
   const today = new Date();
@@ -1914,16 +1921,18 @@ function setProdQuick(period) {
 }
 
 function _getProdFiltered() {
-  const item = document.getElementById('prodItemSelect')?.value || 'all';
-  const cats = _getProdSelectedCats(); // 빈 배열 = 전체
-  const brand = document.getElementById('prodBrandSel')?.value || 'all';
-  const from = document.getElementById('prodDateFrom')?.value || '';
-  const to = document.getElementById('prodDateTo')?.value || '';
+  const item    = document.getElementById('prodItemSelect')?.value || 'all';
+  const cats    = _getProdSelectedCats();
+  const brand   = document.getElementById('prodBrandSel')?.value || 'all';
+  const country = document.getElementById('prodCountrySel')?.value || 'all';
+  const from    = document.getElementById('prodDateFrom')?.value || '';
+  const to      = document.getElementById('prodDateTo')?.value || '';
   return _prodAllData.filter(r => {
     if (item !== 'all' && r.item !== item) return false;
-    if (cats.length > 0 && !cats.includes(r.category)) return false;  // claims.category
+    if (cats.length > 0 && !cats.includes(r.category)) return false;
     if (brand !== 'all' && r.brand !== brand) return false;
-    if (from && r.claim_date < from) return false;   // claim_date 기준
+    if (country !== 'all' && r.country !== country) return false;
+    if (from && r.claim_date < from) return false;
     if (to && r.claim_date > to) return false;
     return true;
   });
@@ -1945,10 +1954,12 @@ async function loadProdDashboard() {
   if (el('prodCardSalesSub')) el('prodCardSalesSub').textContent = '제품별 매출량 데이터 준비 중';
   if (el('prodEmptyState')) el('prodEmptyState').style.display = filtered.length === 0 ? 'block' : 'none';
 
-  // 월별 막대차트용: 기간 필터 무관, 제품/브랜드만 적용
+  // 월별 막대차트용: 기간 필터 무관, 제품/브랜드/국가만 적용
+  const country = document.getElementById('prodCountrySel')?.value || 'all';
   const allItemFiltered = _prodAllData.filter(r => {
     if (item !== 'all' && r.item !== item) return false;
     if (brand !== 'all' && r.brand !== brand) return false;
+    if (country !== 'all' && r.country !== country) return false;
     return true;
   });
 
