@@ -317,39 +317,40 @@ async function handleFile(file) {
       return true;
     });
 
-    // ─── 단품코드 → item 매핑 ───
+    // ─── 단품코드 → item 매핑 (미매핑 시 제품구분 값 그대로 사용) ───
     let mappedCount = 0;
     rows = rows.map(r => {
-      const code  = String(r[COL_CODE] || '').trim().toUpperCase();
-      const item  = PRODUCT_CODE_MAP[code] || null;
-      const prod  = String(r[COL_PROD] || '').trim();
+      const code    = String(r[COL_CODE] || '').trim().toUpperCase();
+      const prod    = String(r[COL_PROD] || '').trim();
+      const mapped  = PRODUCT_CODE_MAP[code] || null;
+      // 매핑 성공 → 매핑값 사용 / 미매핑 → 제품구분 컬럼 값 fallback
+      const item    = mapped || prod || '기타';
       const country = prod === '베트남상품' ? '베트남' : '국내';
       // 날짜: Excel 숫자 시리얼 또는 문자열(YYYY/MM/DD, YYYYMMDD, YYYY-MM-DD) 모두 처리
       const dateCell = r[COL_DATE];
       let yearMonth = '';
       if (typeof dateCell === 'number') {
-        // Excel 날짜 시리얼 → JS Date 변환 (1900-01-01 기준)
         const d = new Date(Math.round((dateCell - 25569) * 86400 * 1000));
         yearMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
       } else {
         const dateRaw = String(dateCell || '').trim();
         if (/^\d{8}$/.test(dateRaw)) {
-          yearMonth = dateRaw.slice(0,4) + '-' + dateRaw.slice(4,6);           // YYYYMMDD
+          yearMonth = dateRaw.slice(0,4) + '-' + dateRaw.slice(4,6);
         } else {
-          yearMonth = dateRaw.slice(0,7).replace(/\//g, '-').replace(/\./g,'-'); // YYYY/MM or YYYY-MM
+          yearMonth = dateRaw.slice(0,7).replace(/\//g, '-').replace(/\./g,'-');
         }
       }
       const qtyRaw = String(r[COL_QTY] || '').replace(/,/g, '').trim();
       const qty = parseFloat(qtyRaw) || 0;
-      if (item) mappedCount++;
-      return { code, item, country, yearMonth, qty };
-    }).filter(r => r.item && /^\d{4}-\d{2}$/.test(r.yearMonth));
+      if (mapped) mappedCount++;
+      return { code, item, mapped: !!mapped, country, yearMonth, qty };
+    }).filter(r => /^\d{4}-\d{2}$/.test(r.yearMonth));
 
     // ─── item + yearMonth + country 그룹핑 ───
     const groupMap = {};
     rows.forEach(r => {
       const key = `${r.item}||${r.yearMonth}||${r.country}`;
-      if (!groupMap[key]) groupMap[key] = { item: r.item, year_month: r.yearMonth, country: r.country, sales_count: 0 };
+      if (!groupMap[key]) groupMap[key] = { item: r.item, year_month: r.yearMonth, country: r.country, sales_count: 0, mapped: r.mapped };
       groupMap[key].sales_count += r.qty;
     });
     _parsedRows = Object.values(groupMap).sort((a,b) => {
@@ -361,6 +362,8 @@ async function handleFile(file) {
     // ─── 요약 카드 ───
     const totalSales = _parsedRows.reduce((s,r) => s + r.sales_count, 0);
     const uniqueItems = new Set(_parsedRows.map(r => r.item)).size;
+    const mappedItems = _parsedRows.filter(r => r.mapped).length;
+    const unmappedItems = _parsedRows.length - mappedItems;
     document.getElementById('sumTotal').textContent = totalRows.toLocaleString();
     document.getElementById('sumFiltered').textContent = rows.length.toLocaleString();
     document.getElementById('sumSales').textContent = totalSales.toLocaleString();
@@ -371,7 +374,10 @@ async function handleFile(file) {
     const tbody = document.getElementById('previewBody');
     tbody.innerHTML = _parsedRows.map(r => `
       <tr>
-        <td style="font-weight:600;color:var(--cyan)">${r.item}</td>
+        <td style="font-weight:600;color:${r.mapped?'var(--cyan)':'var(--amber)'}">
+          ${r.item}
+          ${!r.mapped ? '<span style="font-size:9px;color:var(--muted);margin-left:4px">(제품구분)</span>' : ''}
+        </td>
         <td>${r.year_month}</td>
         <td><span class="badge ${r.country==='베트남'?'badge-vn':'badge-dom'}">${r.country}</span></td>
         <td style="text-align:right;color:var(--amber);font-weight:600">${Math.round(r.sales_count).toLocaleString()}</td>
@@ -380,7 +386,8 @@ async function handleFile(file) {
     document.getElementById('actionBtns').style.display = 'flex';
     document.getElementById('actionHint').textContent = `${_parsedRows.length}개 항목을 Supabase에 저장할 준비가 완료됐습니다.`;
 
-    showStatus('success', `✅ 분석 완료 — ${_parsedRows.length}개 항목 (총 매출수량 ${totalSales.toLocaleString()}개)`);
+    const unmappedNote = unmappedItems > 0 ? ` (단품코드 미매핑 ${unmappedItems}개는 제품구분 값으로 저장)` : '';
+    showStatus('success', `✅ 분석 완료 — ${_parsedRows.length}개 항목 (총 매출수량 ${totalSales.toLocaleString()}개)${unmappedNote}`);
   } catch(e) {
     showStatus('error', '파일 분석 오류: ' + e.message);
   }
