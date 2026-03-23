@@ -284,12 +284,32 @@ async function handleFile(file) {
     const totalRows = raw.length;
     showStatus('loading', `총 ${totalRows.toLocaleString()}행 파싱 완료. 필터링 중...`);
 
+    // ─── 컬럼명 유연 탐색 (공백·특수문자 차이 대응) ───
+    const cols = raw.length > 0 ? Object.keys(raw[0]) : [];
+    const findCol = (...candidates) => cols.find(c => candidates.some(k => c.trim() === k)) || null;
+
+    const COL_BIZ    = findCol('일반사업소');
+    const COL_BRAND  = findCol('브랜드구분');
+    const COL_PROD   = findCol('제품구분');
+    const COL_QTY    = findCol('매출수량');
+    const COL_CODE   = findCol('단품코드');
+    const COL_DATE   = findCol('매출일자');
+
+    // 컬럼 탐지 실패 시 디버그 표시
+    if (!COL_QTY || !COL_CODE || !COL_DATE) {
+      const missing = [!COL_BIZ&&'일반사업소',!COL_BRAND&&'브랜드구분',!COL_PROD&&'제품구분',!COL_QTY&&'매출수량',!COL_CODE&&'단품코드',!COL_DATE&&'매출일자'].filter(Boolean);
+      showStatus('error', `⚠️ 컬럼 탐지 실패: [${missing.join(', ')}] — 파일의 실제 컬럼명: ${cols.slice(0,12).join(' / ')}`);
+      return;
+    }
+
     // ─── 필터 적용 ───
     let rows = raw.filter(r => {
-      const biz   = String(r['일반사업소'] || '').trim();
-      const brand = String(r['브랜드구분'] || '').trim();
-      const prod  = String(r['제품구분']  || '').trim();
-      const qty   = parseFloat(r['매출수량']) || 0;
+      const biz   = String(r[COL_BIZ]   || '').trim();
+      const brand = String(r[COL_BRAND] || '').trim();
+      const prod  = String(r[COL_PROD]  || '').trim();
+      // 매출수량: 숫자 또는 쉼표 포함 문자열 모두 처리
+      const qtyRaw = String(r[COL_QTY] || '').replace(/,/g, '').trim();
+      const qty = parseFloat(qtyRaw) || 0;
       if (biz === '하자조치내수') return false;
       if (brand === '알로소') return false;
       if (/소파|철재|철제/.test(prod) || prod === '외주상품') return false;
@@ -300,16 +320,30 @@ async function handleFile(file) {
     // ─── 단품코드 → item 매핑 ───
     let mappedCount = 0;
     rows = rows.map(r => {
-      const code  = String(r['단품코드'] || '').trim().toUpperCase();
+      const code  = String(r[COL_CODE] || '').trim().toUpperCase();
       const item  = PRODUCT_CODE_MAP[code] || null;
-      const prod  = String(r['제품구분'] || '').trim();
+      const prod  = String(r[COL_PROD] || '').trim();
       const country = prod === '베트남상품' ? '베트남' : '국내';
-      const dateRaw = String(r['매출일자'] || '').trim();
-      const yearMonth = dateRaw.slice(0, 7).replace('/', '-');  // YYYY-MM
-      const qty = parseFloat(r['매출수량']) || 0;
+      // 날짜: Excel 숫자 시리얼 또는 문자열(YYYY/MM/DD, YYYYMMDD, YYYY-MM-DD) 모두 처리
+      const dateCell = r[COL_DATE];
+      let yearMonth = '';
+      if (typeof dateCell === 'number') {
+        // Excel 날짜 시리얼 → JS Date 변환 (1900-01-01 기준)
+        const d = new Date(Math.round((dateCell - 25569) * 86400 * 1000));
+        yearMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+      } else {
+        const dateRaw = String(dateCell || '').trim();
+        if (/^\d{8}$/.test(dateRaw)) {
+          yearMonth = dateRaw.slice(0,4) + '-' + dateRaw.slice(4,6);           // YYYYMMDD
+        } else {
+          yearMonth = dateRaw.slice(0,7).replace(/\//g, '-').replace(/\./g,'-'); // YYYY/MM or YYYY-MM
+        }
+      }
+      const qtyRaw = String(r[COL_QTY] || '').replace(/,/g, '').trim();
+      const qty = parseFloat(qtyRaw) || 0;
       if (item) mappedCount++;
       return { code, item, country, yearMonth, qty };
-    }).filter(r => r.item && r.yearMonth.match(/^\d{4}-\d{2}$/));
+    }).filter(r => r.item && /^\d{4}-\d{2}$/.test(r.yearMonth));
 
     // ─── item + yearMonth + country 그룹핑 ───
     const groupMap = {};
