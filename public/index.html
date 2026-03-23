@@ -1904,8 +1904,31 @@ async function loadProdTab() {
 }
 
 function onProdItemChange() { loadProdDashboard(); }
-function onProdBrandChange() { loadProdDashboard(); }
-function onProdCountryChange() { loadProdDashboard(); }
+function onProdBrandChange() { refreshProdItemDropdown(); loadProdDashboard(); }
+function onProdCountryChange() { refreshProdItemDropdown(); loadProdDashboard(); }
+
+// 브랜드·국가 필터에 따라 제품 드롭다운 동적 갱신
+function refreshProdItemDropdown() {
+  const brand   = document.getElementById('prodBrandSel')?.value || 'all';
+  const country = document.getElementById('prodCountrySel')?.value || 'all';
+  const curItem = document.getElementById('prodItemSelect')?.value || 'all';
+
+  // 현재 브랜드·국가에 해당하는 item 목록만 추출
+  const filtered = _prodAllData.filter(r => {
+    if (brand   !== 'all' && r.brand   !== brand)   return false;
+    if (country !== 'all' && r.country !== country) return false;
+    return true;
+  });
+  const items = [...new Set(filtered.map(r => r.item).filter(Boolean))].sort();
+
+  const itemSel = document.getElementById('prodItemSelect');
+  if (!itemSel) return;
+  itemSel.innerHTML = '<option value="all">전체 제품</option>' + items.map(i => `<option value="${i}">${i}</option>`).join('');
+
+  // 기존 선택값이 새 목록에 있으면 유지, 없으면 '전체'로 초기화
+  if (items.includes(curItem)) itemSel.value = curItem;
+  else itemSel.value = 'all';
+}
 
 function setProdQuick(period) {
   const today = new Date();
