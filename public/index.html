@@ -727,6 +727,19 @@ body::before {
       <select id="kpiBrandSelect" onchange="if(window.KpiModule) window.KpiModule.onKpiBrandChange(this.value)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;cursor:pointer">
         <option value="all">전체</option>
       </select>
+      <!-- Confluence 연동 버튼 그룹 -->
+      <div style="display:flex;gap:6px;margin-left:8px;padding-left:12px;border-left:1px solid var(--border)">
+        <button id="confluenceUploadBtn" onclick="confluenceUpload()"
+          style="padding:6px 14px;background:linear-gradient(135deg,#0052cc,#0079bf);color:white;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px"
+          title="현재 KPI 데이터를 Confluence 페이지에 자동 업로드합니다">
+          Confluence 업로드
+        </button>
+        <button onclick="confluenceIframeGuide()"
+          style="padding:6px 10px;background:rgba(0,82,204,0.12);color:#4a9eff;border:1px solid rgba(0,82,204,0.3);border-radius:8px;font-size:11px;cursor:pointer"
+          title="Confluence iframe 삽입 가이드">
+          iframe 가이드
+        </button>
+      </div>
     </div>
   </div>
   <div class="sub-tabs">
@@ -3036,6 +3049,135 @@ document.addEventListener('click', function(e) {
 });
 </script>
 
+// ─── Confluence 연동 함수들 ──────────────────────────────────────────────────
+
+async function confluenceUpload() {
+  const btn = document.getElementById('confluenceUploadBtn');
+  const year = document.getElementById('kpiYearSelect')?.value || '2026';
+  const monthRange = parseInt(document.getElementById('kpiMonthRange')?.value || '2');
+  const curM  = monthRange - 1; // 0-based
+  const prevM = curM - 1;
+
+  const kd = window.KPI_DATA?.[year];
+  if (!kd) { showConfluenceToast('error', 'KPI 데이터를 찾을 수 없습니다.'); return; }
+
+  // ── 판정유형별 클레임 행 구성 ──
+  const cats = ['제조','설계','서비스','고객불만','사양재검토'];
+  const claimRows = [];
+  let prevTotal = 0, curTotal = 0;
+
+  cats.forEach(cat => {
+    const pKr = prevM >= 0 ? (kd.detail_kr[cat]?.[prevM] || 0) : 0;
+    const cKr = kd.detail_kr[cat]?.[curM] || 0;
+    const pVn = prevM >= 0 ? (kd.detail_vn[cat]?.[prevM] || 0) : 0;
+    const cVn = kd.detail_vn[cat]?.[curM] || 0;
+    const prev = pKr + pVn, cur = cKr + cVn;
+    const diff = cur - prev;
+    prevTotal += prev; curTotal += cur;
+    claimRows.push({
+      label: cat,
+      prev:  prev > 0 ? prev.toString() : '-',
+      cur:   cur  > 0 ? cur.toString()  : '-',
+      change: diff !== 0 ? (diff > 0 ? `▲${diff}` : `▼${Math.abs(diff)}`) : '±0',
+      changeColor: diff > 0 ? '#e74c3c' : diff < 0 ? '#27ae60' : '#888'
+    });
+  });
+
+  // 합계 행
+  const totalDiff = curTotal - prevTotal;
+  claimRows.push({
+    label: '합계',
+    prev:  prevTotal > 0 ? prevTotal.toString() : '-',
+    cur:   curTotal  > 0 ? curTotal.toString()  : '-',
+    change: totalDiff !== 0 ? (totalDiff > 0 ? `▲${totalDiff}` : `▼${Math.abs(totalDiff)}`) : '±0',
+    changeColor: totalDiff > 0 ? '#e74c3c' : totalDiff < 0 ? '#27ae60' : '#888'
+  });
+
+  // 불량지수 행
+  const prevSales = prevM >= 0 ? ((kd.sales.kr[prevM]||0)+(kd.sales.vn[prevM]||0)) : 0;
+  const curSales  = (kd.sales.kr[curM]||0)+(kd.sales.vn[curM]||0);
+  claimRows.push({
+    label: '불량지수 (%)',
+    prev:  prevSales > 0 ? ((prevTotal/prevSales)*100).toFixed(2)+'%' : '-',
+    cur:   curSales  > 0 ? ((curTotal/curSales)*100).toFixed(2)+'%'  : '-',
+    change: '-',
+    changeColor: '#888'
+  });
+
+  // ── 실패비용 행 구성 (CostModule 데이터 참조) ──
+  const failureCostRows = [];
+  const cd = window.CostModule?.COST_DATA?.[year];
+  if (cd) {
+    [
+      { label: '제품 (하자보수비)',   key: 'haza_product'    },
+      { label: '자재 (하자보수비)',   key: 'haza_material'   },
+      { label: '클레임 보상',        key: 'haza_claim'      },
+      { label: '(반)하자보수비 계',  key: 'haza_subtotal'   },
+      { label: 'AS 컨택센터',        key: 'baros_contact'   },
+      { label: 'AS조치비(무상)',      key: 'baros_as'        },
+      { label: 'AS물류비',           key: 'baros_logistics' },
+      { label: '바로스 AS 계',       key: 'baros_subtotal'  },
+    ].forEach(ci => {
+      const arr = cd[ci.key]; if (!arr) return;
+      const prev = prevM >= 0 ? (arr[prevM]||0) : 0;
+      const cur  = arr[curM]||0;
+      const diff = Math.round((cur - prev)/10000);
+      failureCostRows.push({
+        label: ci.label,
+        prev:  prev > 0 ? Math.round(prev/10000).toLocaleString()+'만원' : '-',
+        cur:   cur  > 0 ? Math.round(cur/10000).toLocaleString()+'만원'  : '-',
+        change: diff !== 0 ? (diff > 0 ? `▲${diff}만` : `▼${Math.abs(diff)}만`) : '±0'
+      });
+    });
+  }
+
+  const reportMonth  = `${year}-${String(monthRange).padStart(2,'0')}`;
+  const analysisNote = document.getElementById('kpiClaimNoteArea')?.value || '';
+
+  // ── API 호출 ──
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 업로드 중...'; }
+  showConfluenceToast('loading', '⏳ Confluence 페이지에 업로드 중입니다...');
+
+  try {
+    const res = await fetch('/api/confluence-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportMonth, claimRows, analysisNote, failureCostRows, updatedAt: new Date().toLocaleString('ko-KR') })
+    });
+    const json = await res.json();
+    if (res.ok && json.success) {
+      showConfluenceToast('success', `✅ ${json.message}<br><a href="${json.pageUrl}" target="_blank" style="color:#90EE90;text-decoration:underline">🔗 Confluence 페이지 바로가기</a>`);
+    } else {
+      const missing = json.missing?.join(', ');
+      showConfluenceToast('error', `❌ 업로드 실패: ${json.error || '알 수 없는 오류'}${missing ? '<br><small>미설정 환경변수: '+missing+'</small>' : ''}`);
+    }
+  } catch(e) {
+    showConfluenceToast('error', `❌ 연결 오류: ${e.message}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span>Confluence 업로드</span>'; }
+  }
+}
+
+function confluenceIframeGuide() {
+  const modal = document.getElementById('confluenceGuideModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function showConfluenceToast(type, msg) {
+  const el = document.getElementById('confluenceToast');
+  if (!el) return;
+  el.innerHTML = msg;
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? 'rgba(30,130,76,0.97)'
+                       : type === 'error'   ? 'rgba(180,30,30,0.97)'
+                       : 'rgba(20,35,60,0.97)';
+  el.style.border = type === 'success' ? '1px solid rgba(39,174,96,0.5)'
+                  : type === 'error'   ? '1px solid rgba(231,76,60,0.5)'
+                  : '1px solid rgba(74,158,255,0.3)';
+  el.style.color = '#fff';
+  if (type !== 'loading') setTimeout(() => { el.style.display = 'none'; }, 7000);
+}
+
 <!-- 요구내역 팝오버 카드 -->
 <div id="detailPopover" style="display:none;position:fixed;z-index:9999;width:340px;max-width:90vw;background:#1a2744;border:1px solid rgba(74,158,255,0.35);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,0.55);padding:16px 18px;transition:opacity 0.15s">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -3046,4 +3188,26 @@ document.addEventListener('click', function(e) {
 </div>
 
 </body>
+
+<!-- ─── Confluence 토스트 & 모달 ─── -->
+<div id="confluenceToast" style="display:none;position:fixed;bottom:28px;right:28px;z-index:9999;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:380px;line-height:1.6"></div>
+
+<div id="confluenceGuideModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#17293f;border:1px solid #243b5a;border-radius:16px;padding:32px;max-width:560px;width:90%;position:relative">
+    <button onclick="document.getElementById('confluenceGuideModal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#6b83a0;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:#f0f4f8;display:flex;align-items:center;gap:8px"><span>🔗</span> Confluence iframe 삽입 가이드</h3>
+    <p style="font-size:12px;color:#6b83a0;margin-bottom:20px">Confluence Cloud 페이지에 대시보드를 직접 임베드하는 방법</p>
+    <ol style="font-size:13px;line-height:2.2;color:#a0b4cb;padding-left:20px;margin-bottom:16px">
+      <li>Confluence 페이지를 <strong style="color:#f0f4f8">편집 모드</strong>로 열기</li>
+      <li><code style="background:rgba(0,87,184,0.2);padding:2px 7px;border-radius:4px;font-size:11px;color:#4a9eff">삽입(+)</code> → <code style="background:rgba(0,87,184,0.2);padding:2px 7px;border-radius:4px;font-size:11px;color:#4a9eff">다른 매크로</code> → <strong style="color:#f0f4f8">iframe</strong> 검색 후 선택</li>
+      <li>URL 입력란에 아래 주소를 붙여넣기</li>
+    </ol>
+    <div style="background:#0d1b2a;border:1px solid #243b5a;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#00c6d7;word-break:break-all;user-select:all">https://sidiz-quality-portal.vercel.app/index.html</div>
+    <div style="background:rgba(255,179,71,0.07);border:1px solid rgba(255,179,71,0.2);border-radius:8px;padding:12px 14px;font-size:12px;color:#ffb347;line-height:1.7;margin-bottom:16px">
+      ⚠️ <strong>관리자 설정 필요:</strong> Confluence Cloud 관리자가 <em>허용된 iframe 소스(Allowlisted iframe sources)</em>에 <code style="background:rgba(255,179,71,0.15);padding:1px 5px;border-radius:3px">vercel.app</code> 도메인을 추가해야 합니다.<br>
+      경로: <strong>Confluence 설정 → 보안 → 허용된 iframe 소스</strong>
+    </div>
+    <button onclick="navigator.clipboard.writeText('https://sidiz-quality-portal.vercel.app/index.html').then(()=>{this.textContent='✅ 복사됐어요!';setTimeout(()=>this.textContent='📋 URL 복사',2000)})" style="width:100%;padding:11px;background:#0057b8;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 URL 복사</button>
+  </div>
+</div>
 </html>
