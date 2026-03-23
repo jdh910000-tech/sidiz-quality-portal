@@ -220,6 +220,58 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
     <div class="existing-data" id="costExisting"></div>
   </div>
 
+  <!-- ============ 회수일 기준 클레임 데이터 (claims 테이블) ============ -->
+<div class="upload-section">
+  <h2>회수일 기준 클레임 데이터 <span style="font-size:11px;color:var(--amber);font-weight:400;background:rgba(255,179,71,0.1);padding:2px 8px;border-radius:4px;margin-left:4px">claims 테이블</span></h2>
+  <p class="upload-desc">
+    ERP에서 <strong>회수일 기준</strong>으로 다운받은 엑셀 파일을 업로드합니다.<br>
+    <code>claims</code> 테이블에 저장되며, KPI 자동 분석 및 제품별 클레임 현황에 사용됩니다.<br>
+    필수 컬럼: <code>접수번호</code> · <code>순번</code> · <code>회수일자</code> · <code>판정형태</code> · <code>제품구분</code> · <code>브랜드</code> · <code>회사</code>
+  </p>
+  <div class="column-spec">
+    <strong>컬럼 매핑:</strong>
+    <code>접수번호</code>+<code>순번</code> → claim_id &nbsp;·&nbsp;
+    <code>회수일자</code> → claim_date &nbsp;·&nbsp;
+    <code>판정형태</code> → category &nbsp;·&nbsp;
+    <code>판정구분</code> → judgement_type &nbsp;·&nbsp;
+    <code>하자유형</code> → defect_type &nbsp;·&nbsp;
+    <code>제품구분</code> → item &nbsp;·&nbsp;
+    <code>제품코드</code> → model &nbsp;·&nbsp;
+    <code>금액</code> → cost &nbsp;·&nbsp;
+    <code>요구내역</code> → claim_detail &nbsp;·&nbsp;
+    <code>판정결과</code> → inspection_result &nbsp;·&nbsp;
+    <code>부품</code> → defective_part &nbsp;·&nbsp;
+    <code>LOT</code> → lot &nbsp;·&nbsp;
+    <code>브랜드</code> → brand &nbsp;·&nbsp;
+    <code>회사</code> → country (베트남 포함 시 → '베트남', 그 외 → '국내')
+  </div>
+  <div class="drop-zone" id="claimsTableDropZone"
+    ondragover="event.preventDefault();this.classList.add('drag-over')"
+    ondragleave="this.classList.remove('drag-over')"
+    ondrop="event.preventDefault();this.classList.remove('drag-over');handleClaimsTableFile(event.dataTransfer.files[0])">
+    <input type="file" accept=".xls,.xlsx" onchange="handleClaimsTableFile(this.files[0])">
+    <div class="icon">📋</div>
+    <p>회수일 기준 클레임 엑셀 파일을 드래그하거나 클릭하여 업로드</p>
+    <p class="hint">.xls / .xlsx 형식 지원 · 1월 등 과거 데이터 소급 업로드 가능</p>
+  </div>
+  <div class="parse-banner" id="claimsTableParseBanner">
+    <span><span class="lbl">원본 행수</span><span id="ctStatTotal">-</span></span>
+    <span><span class="lbl">유효 행수</span><span id="ctStatValid" style="color:var(--emerald)">-</span></span>
+    <span><span class="lbl">중복 제거</span><span id="ctStatDedup" style="color:#7eb8f7">-</span></span>
+    <span><span class="lbl">기간</span><span id="ctStatPeriod" style="color:var(--cyan)">-</span></span>
+  </div>
+  <div class="preview" id="claimsTablePreview">
+    <h3>📋 미리보기 <span id="claimsTablePreviewCount" style="font-weight:400;color:var(--muted)"></span></h3>
+    <div class="preview-table-wrap"><table class="preview-table" id="claimsTablePreviewTable"></table></div>
+    <div class="actions">
+      <button class="btn btn-primary" id="claimsTableUploadBtn" onclick="uploadClaimsTable()" disabled>📤 claims 테이블에 저장</button>
+      <button class="btn btn-secondary" onclick="resetClaimsTable()">↺ 초기화</button>
+      <span id="claimsTableUploadMsg" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+  </div>
+  <div class="status" id="claimsTableStatus"></div>
+</div>
+
   <!-- ============ 기존 데이터 관리 ============ -->
   <div class="upload-section">
     <h2>기존 데이터 현황 확인</h2>
@@ -251,6 +303,146 @@ let claimRawParsed = [];     // full parsed objects with parse results (for prev
 let salesParsedData = [];
 let costParsedData = [];
 let symptomDict = null;      // cached symptom dictionary from Supabase
+
+// ─── claims 테이블 업로드 (회수일 기준) ───
+let _ctParsedRows = [];
+
+function handleClaimsTableFile(file) {
+  if (!file) return;
+  showStatus('claimsTableStatus', 'loading', '파일 분석 중...');
+  parseExcel(file, (err, rows) => {
+    if (err || !rows.length) { showStatus('claimsTableStatus', 'error', '파일 읽기 실패: ' + (err||'데이터 없음')); return; }
+
+    // 컬럼명 정규화
+    const mapped = rows.map(r => {
+      const o = {};
+      Object.entries(r).forEach(([k, v]) => { o[k.toString().trim()] = v; });
+      return o;
+    });
+
+    // 회수일자 파싱
+    function parseDate(v) {
+      if (!v) return null;
+      if (v instanceof Date) return v.toISOString().slice(0,10);
+      const s = String(v).trim();
+      // Excel serial number
+      if (/^\d{5}$/.test(s)) {
+        const d = new Date(Math.round((Number(s) - 25569) * 86400 * 1000));
+        return d.toISOString().slice(0,10);
+      }
+      const m = s.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+      if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+      return null;
+    }
+
+    // country 판별 (회사 컬럼)
+    function detectCountry(company, brand) {
+      const s = String(company||brand||'').toLowerCase();
+      if (s.includes('베트남') || s.includes('viet') || s.includes('vn')) return '베트남';
+      return '국내';
+    }
+
+    const valid = [];
+    const seen = new Set();
+    let dates = [];
+
+    mapped.forEach(r => {
+      const receiptId = String(r['접수번호']||'').trim();
+      const seqNo = String(r['순번']||'1').trim();
+      if (!receiptId) return;
+
+      const claimDate = parseDate(r['회수일자'] || r['회수일'] || r['최종조치일자']);
+      if (!claimDate) return;
+
+      const claimId = `${receiptId}-${seqNo}`;
+      if (seen.has(claimId)) return;
+      seen.add(claimId);
+      dates.push(claimDate);
+
+      const cost = parseFloat(String(r['금액']||'0').replace(/,/g,'')) || 0;
+
+      valid.push({
+        claim_id: claimId,
+        claim_date: claimDate,
+        category: String(r['판정형태']||'').trim() || null,
+        judgement_type: String(r['판정구분']||'').trim() || null,
+        defect_type: String(r['하자유형']||'').trim() || null,
+        item: String(r['제품구분']||'').trim() || null,
+        model: String(r['제품코드']||'').trim() || null,
+        cost: cost,
+        claim_detail: String(r['요구내역']||'').trim() || null,
+        inspection_result: String(r['판정결과']||'').trim() || null,
+        defective_part: String(r['부품']||'').trim() || null,
+        lot: String(r['LOT']||'').trim() || null,
+        brand: String(r['브랜드']||'시디즈').trim(),
+        country: detectCountry(r['회사'], r['브랜드']),
+      });
+    });
+
+    _ctParsedRows = valid;
+
+    // 배너 업데이트
+    const banner = document.getElementById('claimsTableParseBanner');
+    banner.classList.add('show');
+    document.getElementById('ctStatTotal').textContent = rows.length;
+    document.getElementById('ctStatValid').textContent = valid.length;
+    document.getElementById('ctStatDedup').textContent = `${rows.length - seen.size >= 0 ? rows.length - valid.length : 0}건 제거`;
+    if (dates.length) {
+      dates.sort();
+      document.getElementById('ctStatPeriod').textContent = `${dates[0]} ~ ${dates[dates.length-1]}`;
+    }
+
+    // 미리보기
+    const previewCols = ['claim_id','claim_date','category','item','brand','country','defective_part','cost'];
+    const thead = `<tr>${previewCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+    const tbody = valid.slice(0,50).map(r =>
+      `<tr>${previewCols.map(c=>`<td>${r[c]??''}</td>`).join('')}</tr>`
+    ).join('');
+    const tbl = document.getElementById('claimsTablePreviewTable');
+    tbl.innerHTML = thead + tbody;
+
+    const prev = document.getElementById('claimsTablePreview');
+    prev.classList.add('show');
+    document.getElementById('claimsTablePreviewCount').textContent = `(${valid.length}건 · 처음 50행 표시)`;
+    document.getElementById('claimsTableUploadBtn').disabled = valid.length === 0;
+
+    if (valid.length > 0) showStatus('claimsTableStatus', 'success', `✅ ${valid.length}건 파싱 완료. "claims 테이블에 저장" 버튼을 클릭하세요.`);
+    else showStatus('claimsTableStatus', 'error', '유효한 데이터가 없습니다. 회수일자·접수번호 컬럼을 확인하세요.');
+  });
+}
+
+async function uploadClaimsTable() {
+  if (!_ctParsedRows.length) return;
+  const btn = document.getElementById('claimsTableUploadBtn');
+  btn.disabled = true;
+  showStatus('claimsTableStatus', 'loading', 'Supabase에 저장 중...');
+
+  const CHUNK = 100;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < _ctParsedRows.length; i += CHUNK) {
+    const chunk = _ctParsedRows.slice(i, i + CHUNK);
+    const res = await fetch(`${SUPA_URL}/rest/v1/claims?on_conflict=claim_id`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(chunk)
+    });
+    if (res.ok) ok += chunk.length;
+    else { fail += chunk.length; console.error(await res.text()); }
+  }
+
+  if (fail === 0) showStatus('claimsTableStatus', 'success', `✅ ${ok}건 저장 완료 (중복 건은 덮어쓰기 적용)`);
+  else showStatus('claimsTableStatus', 'error', `⚠️ ${ok}건 성공 / ${fail}건 실패`);
+  btn.disabled = false;
+}
+
+function resetClaimsTable() {
+  _ctParsedRows = [];
+  document.getElementById('claimsTablePreview').classList.remove('show');
+  document.getElementById('claimsTableParseBanner').classList.remove('show');
+  document.getElementById('claimsTableUploadBtn').disabled = true;
+  document.getElementById('claimsTableStatus').classList.remove('show');
+  document.getElementById('claimsTablePreviewTable').innerHTML = '';
+}
 
 // ─── 한글 헤더 → 영문 컬럼 매핑 ───
 const CLAIM_HEADER_MAP = {

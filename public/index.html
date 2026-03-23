@@ -772,34 +772,78 @@ body::before {
       <div style="text-align:center;padding:30px;color:var(--text-muted)">⏳ KPI 데이터 로딩 중...</div>
     </div>
 
-    <!-- ── 월별 종합 분석 카드 ── -->
-    <div style="margin-top:20px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);background:rgba(0,87,184,0.06)">
+    <!-- ── 자동 분석 카드 ── -->
+    <div style="margin-top:20px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;overflow:hidden" id="kpiAutoAnalysisWrap">
+      <!-- 헤더 + 컨트롤 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:rgba(0,87,184,0.06);flex-wrap:wrap;gap:10px">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:16px">📝</span>
-          <span style="font-weight:600;font-size:14px;color:var(--text-primary)">월별 종합 분석</span>
-          <span style="font-size:11px;color:var(--text-muted)">전월 대비 특이사항 · 분석 요약</span>
+          <span style="font-size:16px">📊</span>
+          <span style="font-weight:600;font-size:14px;color:var(--text-primary)">전월 대비 자동 분석</span>
+          <span style="font-size:11px;color:var(--text-muted)">시디즈 · 설계/제조/서비스/사양재검토/고객불만</span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span id="kpiClaimNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
-          <button id="kpiClaimNoteSaveBtn" onclick="saveKpiNoteUI('claim')"
-            style="padding:6px 18px;background:var(--sidiz-blue);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s"
-            onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">💾 저장</button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="font-size:11px;color:var(--text-muted)">전월</label>
+          <select id="analysisPrevMonth" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace"></select>
+          <span style="color:var(--text-muted);font-size:14px">→</span>
+          <label style="font-size:11px;color:var(--text-muted)">당월</label>
+          <select id="analysisCurMonth" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace"></select>
+          <button onclick="runKpiAutoAnalysis()" style="padding:6px 16px;background:var(--sidiz-blue);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔄 분석 생성</button>
         </div>
       </div>
-      <!-- 현재 월 작성 -->
-      <div style="padding:20px 20px 0">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:500">▶ 이번 달 분석 내용</div>
-        <textarea id="kpiClaimNoteArea"
-          placeholder="예시)&#10;• 전월 대비 클레임 건수: +12건 증가 (전월 48건 → 60건)&#10;• 주요 불량유형: 기획 35건(↑), 사상재검토 28건(↓)&#10;• 브랜드별: 시디즈 42건, 퍼시스 18건 — 퍼시스 전월 대비 –5건&#10;• 특이사항: B03 틸트 부품 집중 발생 → 생산팀 공유 완료&#10;• 불량지수: 2.14% (전월 1.98% 대비 +0.16%p)"
-          style="width:100%;min-height:150px;background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:14px;font-size:13px;line-height:1.8;resize:vertical;font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;outline:none;transition:border-color 0.2s"
-          onfocus="this.style.borderColor='var(--sidiz-blue-bright)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+
+      <!-- 초기 안내 -->
+      <div id="kpiAnalysisEmpty" style="padding:28px;text-align:center;color:var(--text-muted);font-size:13px">
+        월을 선택하고 <b>분석 생성</b> 버튼을 클릭하면 자동으로 분석됩니다.
       </div>
-      <!-- 전월 기록 -->
-      <div id="kpiClaimPrevNoteWrap" style="display:none;padding:14px 20px 20px">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:500">◀ <span id="kpiClaimPrevNoteLabel">전월</span> 기록</div>
-        <div id="kpiClaimPrevNote"
-          style="background:rgba(255,255,255,0.025);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;padding:14px;font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;min-height:60px"></div>
+      <!-- 로딩 -->
+      <div id="kpiAnalysisLoading" style="display:none;padding:28px;text-align:center;color:var(--accent-cyan);font-size:13px">⏳ 데이터 불러오는 중...</div>
+
+      <!-- 결과 -->
+      <div id="kpiAnalysisResult" style="display:none;padding:20px">
+
+        <!-- 1. 상단 요약 카드 3개 -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px" id="kpiAnSummaryCards"></div>
+
+        <!-- 2. 판정유형별 변화 -->
+        <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">📋 판정유형별 변화</div>
+          <div id="kpiAnCategoryTable" style="overflow-x:auto"></div>
+        </div>
+
+        <!-- 3. 제품별 + 부품별 나란히 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">🪑 제품별 Top 5 (당월)</div>
+            <div id="kpiAnItemTable"></div>
+          </div>
+          <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">🔩 불량부품 Top 5 (당월)</div>
+            <div id="kpiAnPartTable"></div>
+          </div>
+        </div>
+
+        <!-- 4. 실패비용 요약 -->
+        <div style="background:var(--sidiz-dark2);border:1px solid rgba(231,76,60,0.15);border-radius:10px;padding:16px;margin-bottom:16px" id="kpiAnCostSection"></div>
+
+        <!-- 5. 특이사항 메모 -->
+        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(수동 입력 · 저장됨)</span></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="kpiClaimNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
+              <button onclick="saveKpiNoteUI('claim')" style="padding:5px 14px;background:var(--sidiz-blue);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+            </div>
+          </div>
+          <textarea id="kpiClaimNoteArea"
+            placeholder="• 특이사항 직접 입력 (예: T50 틸트 불량 집중 발생 → 생산팀 공유 완료)"
+            style="width:100%;min-height:100px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:12px;font-size:12px;line-height:1.8;resize:vertical;font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;outline:none"
+            onfocus="this.style.borderColor='var(--sidiz-blue-bright)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+          <!-- 전월 메모 -->
+          <div id="kpiClaimPrevNoteWrap" style="display:none;margin-top:10px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">◀ <span id="kpiClaimPrevNoteLabel">전월</span> 기록</div>
+            <div id="kpiClaimPrevNote" style="background:rgba(255,255,255,0.025);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;padding:12px;font-size:11px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1383,6 +1427,227 @@ async function saveKpiNoteUI(type) {
     btn.disabled = false;
   }
 }
+
+// ── KPI 자동 분석 ──
+(function(){
+  const VALID_CATS = ['설계','제조','서비스','사양재검토','고객불만'];
+  const SUPABASE_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+  const HDR = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+
+  // 월 목록 생성 (2024-01 ~ 현재)
+  function buildMonthOptions() {
+    const sel1 = document.getElementById('analysisPrevMonth');
+    const sel2 = document.getElementById('analysisCurMonth');
+    if (!sel1 || !sel2) return;
+    const now = new Date();
+    const months = [];
+    for (let y = 2024; y <= now.getFullYear(); y++) {
+      const maxM = y === now.getFullYear() ? now.getMonth() + 1 : 12;
+      for (let m = 1; m <= maxM; m++) months.push(`${y}-${String(m).padStart(2,'0')}`);
+    }
+    months.reverse();
+    sel1.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+    sel2.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+    // 기본값: 전월/당월
+    if (months.length >= 2) { sel1.value = months[1]; sel2.value = months[0]; }
+  }
+
+  async function fetchMonthClaims(ym) {
+    const [y, m] = ym.split('-');
+    const from = `${y}-${m}-01`;
+    const lastDay = new Date(+y, +m, 0).getDate();
+    const to = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+    const url = `${SUPABASE_URL}/rest/v1/claims?select=category,item,defective_part,country,cost`
+      + `&claim_date=gte.${from}&claim_date=lte.${to}&brand=eq.시디즈`
+      + `&category=in.(설계,제조,서비스,사양재검토,고객불만)&limit=5000`;
+    const res = await fetch(url, { headers: HDR });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  function countBy(arr, key) {
+    const m = {};
+    arr.forEach(r => { const v = r[key]||'미분류'; m[v] = (m[v]||0) + 1; });
+    return m;
+  }
+
+  function topN(obj, n) {
+    return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
+  }
+
+  function chg(cur, prev) {
+    const diff = cur - prev;
+    const pct = prev > 0 ? ((diff/prev)*100).toFixed(1) : '-';
+    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '━';
+    const color = diff > 0 ? 'var(--accent-rose)' : diff < 0 ? 'var(--accent-emerald)' : 'var(--text-muted)';
+    return `<span style="color:${color};font-weight:600">${arrow}${Math.abs(diff)}건 (${diff>0?'+':''}${pct}%)</span>`;
+  }
+
+  function renderSummaryCards(cur, prev, curYm, prevYm) {
+    const cc = cur.length, pc = prev.length;
+    const ccKr = cur.filter(r=>r.country==='국내').length;
+    const ccVn = cur.filter(r=>r.country==='베트남').length;
+    const pcKr = prev.filter(r=>r.country==='국내').length;
+    const pcVn = prev.filter(r=>r.country==='베트남').length;
+
+    document.getElementById('kpiAnSummaryCards').innerHTML = `
+      <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">📦 클레임 건수</div>
+        <div style="font-size:22px;font-weight:700;color:var(--sidiz-blue-bright);font-family:'JetBrains Mono',monospace">${cc}건</div>
+        <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">전월(${prevYm}) ${pc}건 ${chg(cc,pc)}</div>
+      </div>
+      <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">🇰🇷 국내</div>
+        <div style="font-size:22px;font-weight:700;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace">${ccKr}건</div>
+        <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">전월 ${pcKr}건 ${chg(ccKr,pcKr)}</div>
+      </div>
+      <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">🇻🇳 베트남</div>
+        <div style="font-size:22px;font-weight:700;color:var(--accent-amber);font-family:'JetBrains Mono',monospace">${ccVn}건</div>
+        <div style="font-size:11px;margin-top:4px;color:var(--text-muted)">전월 ${pcVn}건 ${chg(ccVn,pcVn)}</div>
+      </div>`;
+  }
+
+  function renderCategoryTable(cur, prev) {
+    const cc = countBy(cur,'category'), pc = countBy(prev,'category');
+    const cats = ['사양재검토','고객불만','설계','제조','서비스'];
+    const rows = cats.map(cat => {
+      const c = cc[cat]||0, p = pc[cat]||0, d = c - p;
+      const arrow = d > 0 ? `<span style="color:var(--accent-rose)">▲${d}</span>` : d < 0 ? `<span style="color:var(--accent-emerald)">▼${Math.abs(d)}</span>` : `<span style="color:var(--text-muted)">━</span>`;
+      return `<tr>
+        <td style="padding:7px 10px;font-weight:500">${cat}</td>
+        <td style="padding:7px 10px;text-align:right;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${p}건</td>
+        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--text-primary)">${c}건</td>
+        <td style="padding:7px 10px;text-align:right">${arrow}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('kpiAnCategoryTable').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-weight:500">유형</th>
+          <th style="padding:6px 10px;text-align:right;color:var(--text-muted);font-weight:500">전월</th>
+          <th style="padding:6px 10px;text-align:right;color:var(--text-muted);font-weight:500">당월</th>
+          <th style="padding:6px 10px;text-align:right;color:var(--text-muted);font-weight:500">증감</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function renderTopTable(elId, data, key) {
+    const counts = countBy(data, key);
+    const top = topN(counts, 5);
+    const total = data.length || 1;
+    document.getElementById(elId).innerHTML = top.map(([name, cnt]) => {
+      const pct = ((cnt/total)*100).toFixed(1);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+        <span style="color:var(--text-primary)">${name}</span>
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${cnt}건 <span style="color:var(--text-muted);font-size:10px">${pct}%</span></span>
+      </div>`;
+    }).join('') || '<div style="color:var(--text-muted);font-size:12px">데이터 없음</div>';
+  }
+
+  function renderCostSection(curYm, prevYm) {
+    const costData = window.CostModule && window.CostModule.COST_DATA;
+    if (!costData) { document.getElementById('kpiAnCostSection').innerHTML = '<div style="font-size:12px;color:var(--text-muted)">실패비용 데이터를 불러올 수 없습니다.</div>'; return; }
+    const year = curYm.slice(0,4);
+    const cd = costData[year];
+    if (!cd) { document.getElementById('kpiAnCostSection').innerHTML = `<div style="font-size:12px;color:var(--text-muted)">${year}년 실패비용 데이터 없음</div>`; return; }
+    const curM = parseInt(curYm.slice(5)) - 1;
+    const prevM = parseInt(prevYm.slice(5)) - 1;
+    const toW = v => v ? Math.round(v/10000).toLocaleString() : '-';
+
+    const curTotal = ((cd.haza_subtotal||[])[curM]||0) + ((cd.baros_subtotal||[])[curM]||0) + ((cd.je_haza||[])[curM]||0);
+    const prevTotal = ((cd.haza_subtotal||[])[prevM]||0) + ((cd.baros_subtotal||[])[prevM]||0) + ((cd.je_haza||[])[prevM]||0);
+    const curRev = (cd.revenue||[])[curM]||0;
+    const prevRev = (cd.revenue||[])[prevM]||0;
+    const curRatio = curRev > 0 ? ((curTotal/curRev)*100).toFixed(2) : '-';
+    const prevRatio = prevRev > 0 ? ((prevTotal/prevRev)*100).toFixed(2) : '-';
+
+    const items = [
+      ['(판)하자보수비', (cd.haza_subtotal||[])[prevM], (cd.haza_subtotal||[])[curM]],
+      ['ㄴ 제품비', (cd.haza_product||[])[prevM], (cd.haza_product||[])[curM]],
+      ['ㄴ 자재비', (cd.haza_material||[])[prevM], (cd.haza_material||[])[curM]],
+      ['ㄴ 클레임보상', (cd.haza_claim||[])[prevM], (cd.haza_claim||[])[curM]],
+      ['바로스 AS', (cd.baros_subtotal||[])[prevM], (cd.baros_subtotal||[])[curM]],
+      ['ㄴ AS컨택센터', (cd.baros_contact||[])[prevM], (cd.baros_contact||[])[curM]],
+      ['ㄴ AS조치비', (cd.baros_as||[])[prevM], (cd.baros_as||[])[curM]],
+      ['ㄴ 물류비', (cd.baros_logistics||[])[prevM], (cd.baros_logistics||[])[curM]],
+    ];
+
+    const rows = items.map(([label, p, c]) => {
+      const diff = (c||0) - (p||0);
+      const isMain = !label.startsWith('ㄴ');
+      const arrow = diff > 0 ? `<span style="color:var(--accent-rose)">▲${toW(Math.abs(diff))}</span>` : diff < 0 ? `<span style="color:var(--accent-emerald)">▼${toW(Math.abs(diff))}</span>` : '<span style="color:var(--text-muted)">━</span>';
+      return `<tr style="${isMain?'font-weight:600':''}">
+        <td style="padding:5px 8px;font-size:12px;color:${isMain?'var(--text-primary)':'var(--text-secondary)'}">${label}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${toW(p)}만</td>
+        <td style="padding:5px 8px;text-align:right;font-size:12px;font-family:'JetBrains Mono',monospace">${toW(c)}만</td>
+        <td style="padding:5px 8px;text-align:right;font-size:11px">${arrow}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('kpiAnCostSection').innerHTML = `
+      <div style="font-size:12px;font-weight:600;color:var(--accent-rose);margin-bottom:12px">💰 실패비용 비교 (${prevYm} → ${curYm})</div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.15);border-radius:8px;padding:10px 16px;min-width:140px">
+          <div style="font-size:10px;color:var(--text-muted)">당월 합계</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent-rose);font-family:'JetBrains Mono',monospace">${toW(curTotal)}만원</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">매출대비 ${curRatio}%</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px">
+          <div style="font-size:10px;color:var(--text-muted)">전월 합계</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text-secondary);font-family:'JetBrains Mono',monospace">${toW(prevTotal)}만원</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">매출대비 ${prevRatio}%</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:500">항목</th>
+          <th style="padding:5px 8px;text-align:right;font-size:11px;color:var(--text-muted);font-weight:500">전월</th>
+          <th style="padding:5px 8px;text-align:right;font-size:11px;color:var(--text-muted);font-weight:500">당월</th>
+          <th style="padding:5px 8px;text-align:right;font-size:11px;color:var(--text-muted);font-weight:500">증감</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  window.runKpiAutoAnalysis = async function() {
+    const curYm = document.getElementById('analysisCurMonth').value;
+    const prevYm = document.getElementById('analysisPrevMonth').value;
+    if (!curYm || !prevYm) return;
+
+    document.getElementById('kpiAnalysisEmpty').style.display = 'none';
+    document.getElementById('kpiAnalysisResult').style.display = 'none';
+    document.getElementById('kpiAnalysisLoading').style.display = 'block';
+
+    const [curData, prevData] = await Promise.all([fetchMonthClaims(curYm), fetchMonthClaims(prevYm)]);
+
+    document.getElementById('kpiAnalysisLoading').style.display = 'none';
+    document.getElementById('kpiAnalysisResult').style.display = 'block';
+
+    renderSummaryCards(curData, prevData, curYm, prevYm);
+    renderCategoryTable(curData, prevData);
+    renderTopTable('kpiAnItemTable', curData, 'item');
+    renderTopTable('kpiAnPartTable', curData, 'defective_part');
+    renderCostSection(curYm, prevYm);
+
+    // 메모 로드
+    if (window._kpiNoteCurrentYm !== curYm) {
+      window._kpiNoteCurrentYm = curYm;
+      if (window.loadKpiNote) window.loadKpiNote('claim', curYm);
+    }
+  };
+
+  // DOM 준비 후 월 옵션 초기화
+  document.addEventListener('DOMContentLoaded', buildMonthOptions);
+  // KPI 탭 열릴 때도 초기화 (혹시 DOM이 늦게 생성되는 경우)
+  const origShowKpiTab = window.showKpiTab;
+  window.showKpiTab = function(id, el) {
+    if (origShowKpiTab) origShowKpiTab(id, el);
+    if (id === 'claim-kpi') buildMonthOptions();
+  };
+})();
 
 // ========== 접수일 기준 클레임 대시보드 ==========
 let _rctAllData = [];           // 전체 데이터 캐시
