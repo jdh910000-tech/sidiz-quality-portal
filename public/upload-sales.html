@@ -412,7 +412,8 @@ async function uploadToSupabase() {
         sales_count: Math.round(r.sales_count),
         updated_at: new Date().toISOString()
       }));
-      const res = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly`, {
+      // on_conflict 파라미터 필수: UNIQUE(item, year_month, country) 기준 upsert
+      const res = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly?on_conflict=item,year_month,country`, {
         method: 'POST',
         headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify(chunk)
