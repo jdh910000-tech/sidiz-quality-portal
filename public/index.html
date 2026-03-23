@@ -496,7 +496,7 @@ body::before {
       <div class="rct-card" style="border-top-color:var(--accent-amber);padding:16px">
         <div class="rct-card-label">불량지수</div>
         <div class="rct-card-value" id="prodCardDefect" style="color:var(--accent-amber)">-</div>
-        <div class="rct-card-sub">클레임/매출 × 1000</div>
+        <div class="rct-card-sub">클레임/매출 × 100</div>
       </div>
     </div>
 
@@ -2225,7 +2225,7 @@ function renderProdMonthlyTable(claims) {
     <td style="text-align:center;font-size:11px;color:var(--text-muted)">준비 중</td>
   </tr>`;
   const defectRow = `<tr style="background:rgba(255,179,71,0.05)">
-    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×1000)</td>
+    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×100)</td>
     ${allMonths.map(()=>`<td style="text-align:center;font-size:11px;color:var(--text-muted)">-</td>`).join('')}
     <td style="text-align:center;font-size:11px;color:var(--text-muted)">준비 중</td>
   </tr>`;
