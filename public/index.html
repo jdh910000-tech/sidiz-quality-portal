@@ -3047,8 +3047,6 @@ document.addEventListener('click', function(e) {
     pop.style.display = 'none';
   }
 });
-</script>
-
 // ─── Confluence 연동 함수들 ──────────────────────────────────────────────────
 
 async function confluenceUpload() {
@@ -3177,6 +3175,8 @@ function showConfluenceToast(type, msg) {
   el.style.color = '#fff';
   if (type !== 'loading') setTimeout(() => { el.style.display = 'none'; }, 7000);
 }
+</script>
+
 
 <!-- 요구내역 팝오버 카드 -->
 <div id="detailPopover" style="display:none;position:fixed;z-index:9999;width:340px;max-width:90vw;background:#1a2744;border:1px solid rgba(74,158,255,0.35);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,0.55);padding:16px 18px;transition:opacity 0.15s">
@@ -3185,9 +3185,7 @@ function showConfluenceToast(type, msg) {
     <button onclick="closeDetailPopover()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px" title="닫기">✕</button>
   </div>
   <div id="detailPopoverText" style="font-size:12px;color:var(--text-primary);line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow-y:auto"></div>
-</div>
 
-</body>
 
 <!-- ─── Confluence 토스트 & 모달 ─── -->
 <div id="confluenceToast" style="display:none;position:fixed;bottom:28px;right:28px;z-index:9999;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:380px;line-height:1.6"></div>
@@ -3210,4 +3208,5 @@ function showConfluenceToast(type, msg) {
     <button onclick="navigator.clipboard.writeText('https://sidiz-quality-portal.vercel.app/index.html').then(()=>{this.textContent='✅ 복사됐어요!';setTimeout(()=>this.textContent='📋 URL 복사',2000)})" style="width:100%;padding:11px;background:#0057b8;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 URL 복사</button>
   </div>
 </div>
+</body>
 </html>
