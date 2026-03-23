@@ -1954,20 +1954,22 @@ async function loadProdDashboard() {
   if (el('prodCardSalesSub')) el('prodCardSalesSub').textContent = '제품별 매출량 데이터 준비 중';
   if (el('prodEmptyState')) el('prodEmptyState').style.display = filtered.length === 0 ? 'block' : 'none';
 
-  // 월별 막대차트용: 기간 필터 무관, 제품/브랜드/국가만 적용
+  // 기간 필터 무관 — 제품/브랜드/국가/판정유형만 적용 (막대차트·상세테이블 공용)
   const country = document.getElementById('prodCountrySel')?.value || 'all';
-  const allItemFiltered = _prodAllData.filter(r => {
+  const cats    = _getProdSelectedCats();
+  const noDateFiltered = _prodAllData.filter(r => {
     if (item !== 'all' && r.item !== item) return false;
     if (brand !== 'all' && r.brand !== brand) return false;
     if (country !== 'all' && r.country !== country) return false;
+    if (cats.length > 0 && !cats.includes(r.category)) return false;
     return true;
   });
 
   renderProdBarChart(filtered);
   renderProdPieChart(filtered);
   renderProdTrendChart(filtered, from, to);
-  renderProdMonthlyBarChart(allItemFiltered, item);
-  renderProdMonthlyTable(filtered);
+  renderProdMonthlyBarChart(noDateFiltered, item);
+  renderProdMonthlyTable(noDateFiltered);
 
   if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
 }
@@ -2135,8 +2137,8 @@ function renderProdMonthlyBarChart(allData, item) {
     type: 'bar',
     data: { labels: monthLabels,
       datasets: [{ label:'클레임 건수', data: monthCounts,
-        backgroundColor: monthCounts.map(v => v > 0 ? 'rgba(0,196,140,0.7)' : 'rgba(36,59,90,0.3)'),
-        borderColor: 'rgba(0,196,140,1)', borderWidth:1, borderRadius:4
+        backgroundColor: monthCounts.map(v => v > 0 ? 'rgba(255,140,0,0.75)' : 'rgba(36,59,90,0.3)'),
+        borderColor: 'rgba(255,140,0,1)', borderWidth:1, borderRadius:4
       }]
     },
     options: { responsive:true, maintainAspectRatio:false,
@@ -2156,8 +2158,9 @@ function renderProdMonthlyTable(claims) {
   const wrap = document.getElementById('prodMonthlyTableWrap'); if (!wrap) return;
   if (claims.length === 0) { wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">조회된 데이터가 없습니다.</div>'; return; }
 
-  // claim_date 기준 월 목록
-  const allMonths = [...new Set(claims.map(c => c.claim_date?.slice(0,7)).filter(Boolean))].sort();
+  // 1~12월 고정 (현재 연도 기준, 기간 필터 무관)
+  const year = new Date().getFullYear();
+  const allMonths = Array.from({length:12}, (_,i) => `${year}-${String(i+1).padStart(2,'0')}`);
 
   // 그룹핑: defect_type(하자유형) + category(판정유형) + 정규화된 inspection_result
   const groupMap = {};
