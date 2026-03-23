@@ -1816,6 +1816,7 @@ function _updateReceiptUI() {}
 
 // ─── 제품별 클레임 탭 — claims 테이블 기반 (claim_date 기준) ───
 let _prodAllData = [];
+let _prodSalesData = [];  // product_sales_monthly
 let _prodBarChart = null;
 let _prodPieChart = null;
 let _prodTrendChart = null;
@@ -1868,9 +1869,13 @@ function _getProdSelectedCats() {
 
 async function loadProdTab() {
   try {
-    // claims 테이블 전체 로드 (페이지네이션으로 Supabase max_rows 제한 우회)
-    const rows = await SupabaseClient.fetchAllClaims();
+    // claims + product_sales_monthly 병렬 로드
+    const [rows, salesRows] = await Promise.all([
+      SupabaseClient.fetchAllClaims(),
+      SupabaseClient.fetchProductSalesMonthly()
+    ]);
     _prodAllData = rows || [];
+    _prodSalesData = salesRows || [];
 
     // 제품 드롭다운 (item 기준)
     const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))].sort();
@@ -1946,16 +1951,28 @@ async function loadProdDashboard() {
   const to = document.getElementById('prodDateTo')?.value || '';
   const el = id => document.getElementById(id);
 
+  // 매출량 계산: product_sales_monthly 에서 item + country + 기간 필터
+  const country = document.getElementById('prodCountrySel')?.value || 'all';
+  const salesFiltered = _prodSalesData.filter(s => {
+    if (item !== 'all' && s.item !== item) return false;
+    if (country !== 'all' && s.country !== country) return false;
+    if (from && s.year_month < from.slice(0,7)) return false;
+    if (to   && s.year_month > to.slice(0,7))   return false;
+    return true;
+  });
+  const totalSales = salesFiltered.reduce((acc, s) => acc + (s.sales_count || 0), 0);
+  const claimsCount = filtered.length;
+  const defectIdx = (totalSales > 0) ? ((claimsCount / totalSales) * 100).toFixed(2) : null;
+
   // 카드 업데이트
-  if (el('prodCardClaims')) el('prodCardClaims').textContent = filtered.length.toLocaleString() + '건';
-  if (el('prodCardSales')) el('prodCardSales').textContent = '-';
-  if (el('prodCardDefect')) el('prodCardDefect').textContent = '-';
+  if (el('prodCardClaims')) el('prodCardClaims').textContent = claimsCount.toLocaleString() + '건';
+  if (el('prodCardSales')) el('prodCardSales').textContent = totalSales > 0 ? totalSales.toLocaleString() + '대' : '-';
+  if (el('prodCardDefect')) el('prodCardDefect').textContent = defectIdx !== null ? defectIdx + '%' : '-';
   if (el('prodCardClaimsSub')) el('prodCardClaimsSub').textContent = (item !== 'all' ? item : '전체 제품') + (from ? ` · ${from.slice(0,7)}~` : '');
-  if (el('prodCardSalesSub')) el('prodCardSalesSub').textContent = '제품별 매출량 데이터 준비 중';
+  if (el('prodCardSalesSub')) el('prodCardSalesSub').textContent = totalSales > 0 ? (item !== 'all' ? item : '전체 제품') + (from ? ` · ${from.slice(0,7)}~` : '') : '매출량 데이터 없음';
   if (el('prodEmptyState')) el('prodEmptyState').style.display = filtered.length === 0 ? 'block' : 'none';
 
   // 기간 필터 무관 — 제품/브랜드/국가/판정유형만 적용 (막대차트·상세테이블 공용)
-  const country = document.getElementById('prodCountrySel')?.value || 'all';
   const cats    = _getProdSelectedCats();
   const noDateFiltered = _prodAllData.filter(r => {
     if (item !== 'all' && r.item !== item) return false;
@@ -1969,7 +1986,7 @@ async function loadProdDashboard() {
   renderProdPieChart(filtered);
   renderProdTrendChart(filtered, from, to);
   renderProdMonthlyBarChart(noDateFiltered, item);
-  renderProdMonthlyTable(noDateFiltered);
+  renderProdMonthlyTable(noDateFiltered, item, country);
 
   if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
 }
@@ -2154,7 +2171,7 @@ function renderProdMonthlyBarChart(allData, item) {
   });
 }
 
-function renderProdMonthlyTable(claims) {
+function renderProdMonthlyTable(claims, selItem, selCountry) {
   const wrap = document.getElementById('prodMonthlyTableWrap'); if (!wrap) return;
   if (claims.length === 0) { wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">조회된 데이터가 없습니다.</div>'; return; }
 
@@ -2218,16 +2235,44 @@ function renderProdMonthlyTable(claims) {
     });
   });
 
-  // 매출량/불량지수 행 (데이터 준비 중)
+  // 매출량/불량지수 행 — product_sales_monthly 기준
+  const item    = selItem    || 'all';
+  const country = selCountry || 'all';
+  // 월별 클레임 건수 (allMonths 기준)
+  const claimsByMonth = {};
+  allMonths.forEach(m => { claimsByMonth[m] = 0; });
+  claims.forEach(c => {
+    const m = (c.claim_date || '').slice(0, 7);
+    if (claimsByMonth[m] !== undefined) claimsByMonth[m]++;
+  });
+  // 월별 매출량 (product_sales_monthly)
+  const salesByMonth = {};
+  allMonths.forEach(m => { salesByMonth[m] = 0; });
+  _prodSalesData.forEach(s => {
+    if (item !== 'all' && s.item !== item) return;
+    if (country !== 'all' && s.country !== country) return;
+    if (salesByMonth[s.year_month] !== undefined) salesByMonth[s.year_month] += (s.sales_count || 0);
+  });
+  const totalSalesAll = allMonths.reduce((a, m) => a + salesByMonth[m], 0);
+  const totalClaimsAll = allMonths.reduce((a, m) => a + claimsByMonth[m], 0);
+  const totalDefect = totalSalesAll > 0 ? ((totalClaimsAll / totalSalesAll) * 100).toFixed(2) + '%' : '-';
+
   const salesRow = `<tr style="background:rgba(0,196,140,0.05)">
     <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
-    ${allMonths.map(()=>`<td style="text-align:center;font-size:11px;color:var(--text-muted)">-</td>`).join('')}
-    <td style="text-align:center;font-size:11px;color:var(--text-muted)">준비 중</td>
+    ${allMonths.map(m => {
+      const v = salesByMonth[m];
+      return `<td style="text-align:center;font-size:11px;color:${v>0?'var(--accent-emerald)':'var(--text-muted)'}">${v>0?v.toLocaleString():'-'}</td>`;
+    }).join('')}
+    <td style="font-weight:700;color:var(--accent-emerald);text-align:center">${totalSalesAll>0?totalSalesAll.toLocaleString()+' 대':'-'}</td>
   </tr>`;
   const defectRow = `<tr style="background:rgba(255,179,71,0.05)">
     <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×100)</td>
-    ${allMonths.map(()=>`<td style="text-align:center;font-size:11px;color:var(--text-muted)">-</td>`).join('')}
-    <td style="text-align:center;font-size:11px;color:var(--text-muted)">준비 중</td>
+    ${allMonths.map(m => {
+      const s = salesByMonth[m]; const c2 = claimsByMonth[m];
+      const idx = s > 0 ? ((c2 / s) * 100).toFixed(2) : null;
+      return `<td style="text-align:center;font-size:11px;color:${idx!==null?'var(--accent-amber)':'var(--text-muted)'}">${idx!==null?idx+'%':'-'}</td>`;
+    }).join('')}
+    <td style="font-weight:700;color:var(--accent-amber);text-align:center">${totalDefect}</td>
   </tr>`;
 
   wrap.innerHTML = `

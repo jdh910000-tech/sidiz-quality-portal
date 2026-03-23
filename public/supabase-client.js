@@ -113,6 +113,9 @@ async function fetchReceiptByDefect(item, defectType) {
 // ─── sales_monthly (매출량) ───
 async function fetchSalesMonthly() { return supabaseFetch('sales_monthly', 'select=*&order=year_month.desc'); }
 
+// ─── product_sales_monthly (제품별 매출량) ───
+async function fetchProductSalesMonthly() { return supabaseFetch('product_sales_monthly', 'select=*&order=year_month.asc'); }
+
 // ─── failure_costs (실패비용) ───
 async function fetchFailureCosts(year) {
   return supabaseFetch('failure_costs', `select=*&year_month=gte.${year}-01&year_month=lte.${year}-12&order=year_month`);
@@ -238,7 +241,7 @@ window.SupabaseClient = {
   fetchReceiptClaims, fetchAllReceiptClaims, fetchReceiptByDateRange, fetchReceiptByUploadedDate, fetchReceiptByDefect,
   fetchReceiptByCategory, fetchReceiptByNormalized,
   // 매출량
-  fetchSalesMonthly,
+  fetchSalesMonthly, fetchProductSalesMonthly,
   // 실패비용
   fetchFailureCosts,
   // KPI 뷰
