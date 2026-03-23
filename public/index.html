@@ -776,6 +776,38 @@ body::before {
     <div class="section-title" style="margin-top:24px">판정유형별 클레임 현황 (월별)</div>
     <div class="data-table-wrapper" id="kpiJudgementKr" style="margin-bottom:18px"></div>
     <div class="data-table-wrapper" id="kpiJudgementVn"></div>
+
+    <!-- ── 월별 종합 분석 카드 ── -->
+    <div style="margin-top:28px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);background:rgba(0,87,184,0.06)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:16px">📝</span>
+          <span style="font-weight:600;font-size:14px;color:var(--text-primary)">월별 종합 분석</span>
+          <span id="kpiClaimNoteMonth" style="background:rgba(0,87,184,0.18);color:var(--sidiz-blue-bright);padding:3px 12px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600">-</span>
+          <span style="font-size:11px;color:var(--text-muted)">전월 대비 특이사항 · 분석 요약</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="kpiClaimNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
+          <button id="kpiClaimNoteSaveBtn" onclick="saveKpiNoteUI('claim')"
+            style="padding:6px 18px;background:var(--sidiz-blue);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s"
+            onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">💾 저장</button>
+        </div>
+      </div>
+      <!-- 현재 월 작성 -->
+      <div style="padding:20px 20px 0">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:500">▶ 이번 달 분석 내용</div>
+        <textarea id="kpiClaimNoteArea"
+          placeholder="예시)&#10;• 전월 대비 클레임 건수: +12건 증가 (전월 48건 → 60건)&#10;• 주요 불량유형: 기획 35건(↑), 사상재검토 28건(↓)&#10;• 브랜드별: 시디즈 42건, 퍼시스 18건 — 퍼시스 전월 대비 –5건&#10;• 특이사항: B03 틸트 부품 집중 발생 → 생산팀 공유 완료&#10;• 불량지수: 2.14% (전월 1.98% 대비 +0.16%p)"
+          style="width:100%;min-height:150px;background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:14px;font-size:13px;line-height:1.8;resize:vertical;font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;outline:none;transition:border-color 0.2s"
+          onfocus="this.style.borderColor='var(--sidiz-blue-bright)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+      <!-- 전월 기록 -->
+      <div id="kpiClaimPrevNoteWrap" style="display:none;padding:14px 20px 20px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:500">◀ <span id="kpiClaimPrevNoteLabel">전월</span> 기록</div>
+        <div id="kpiClaimPrevNote"
+          style="background:rgba(255,255,255,0.025);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;padding:14px;font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;min-height:60px"></div>
+      </div>
+    </div>
   </div>
 
 
@@ -805,6 +837,36 @@ body::before {
       <canvas id="costComboChart" height="110"></canvas>
     </div>
     <div id="costDetailTable" class="data-table-wrapper"></div>
+
+    <!-- ── 실패비용 월별 종합 분석 카드 ── -->
+    <div style="margin-top:28px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);background:rgba(231,76,60,0.05)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:16px">📝</span>
+          <span style="font-weight:600;font-size:14px;color:var(--text-primary)">월별 종합 분석</span>
+          <span id="kpiCostNoteMonth" style="background:rgba(231,76,60,0.18);color:#e74c3c;padding:3px 12px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600">-</span>
+          <span style="font-size:11px;color:var(--text-muted)">전월 대비 특이사항 · 실패비용 분석</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="kpiCostNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
+          <button id="kpiCostNoteSaveBtn" onclick="saveKpiNoteUI('cost')"
+            style="padding:6px 18px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s"
+            onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">💾 저장</button>
+        </div>
+      </div>
+      <div style="padding:20px 20px 0">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:500">▶ 이번 달 분석 내용</div>
+        <textarea id="kpiCostNoteArea"
+          placeholder="예시)&#10;• 하자보수비: 2,450만원 (전월 2,100만원 대비 +350만원)&#10;• 바로스AS: 380만원 (전월 대비 –40만원)&#10;• 특이사항: T50 초기불량 수리비 집중 (약 420만원)&#10;• 매출액 대비 실패비용 비율: 0.82% (목표 1.0% 이하 유지)"
+          style="width:100%;min-height:150px;background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:14px;font-size:13px;line-height:1.8;resize:vertical;font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;outline:none;transition:border-color 0.2s"
+          onfocus="this.style.borderColor='#e74c3c'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+      <div id="kpiCostPrevNoteWrap" style="display:none;padding:14px 20px 20px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:500">◀ <span id="kpiCostPrevNoteLabel">전월</span> 기록</div>
+        <div id="kpiCostPrevNote"
+          style="background:rgba(255,255,255,0.025);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;padding:14px;font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;min-height:60px"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1236,6 +1298,91 @@ function showKpiTab(tab,btn) {
   document.getElementById('kpi-'+tab).style.display='block';
   document.querySelectorAll('#section-kpi .sub-tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
+  // 탭 전환 시 분석 메모 로드
+  if (tab === 'claim-kpi') loadKpiNote('claim');
+  if (tab === 'cost-kpi')  loadKpiNote('cost');
+}
+
+// ─────────────────────────────────────────────────────────────
+// KPI 월별 종합 분석 메모
+// ─────────────────────────────────────────────────────────────
+function _kpiNoteYearMonth(type) {
+  // KPI 연도 selector + 현재 월 조합
+  const yearEl = type === 'cost'
+    ? document.getElementById('costYearSelect')
+    : document.getElementById('kpiYearSelect');
+  const year = yearEl?.value || new Date().getFullYear();
+  const month = String(new Date().getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+function _prevYearMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+}
+
+async function loadKpiNote(type) {
+  const ym   = _kpiNoteYearMonth(type);
+  const prev = _prevYearMonth(ym);
+  const pfx  = type === 'claim' ? 'Claim' : 'Cost';
+
+  const monthBadge = document.getElementById(`kpi${pfx}NoteMonth`);
+  const textarea   = document.getElementById(`kpi${pfx}NoteArea`);
+  const prevWrap   = document.getElementById(`kpi${pfx}PrevNoteWrap`);
+  const prevEl     = document.getElementById(`kpi${pfx}PrevNote`);
+  const prevLabel  = document.getElementById(`kpi${pfx}PrevNoteLabel`);
+
+  if (monthBadge) monthBadge.textContent = ym;
+
+  try {
+    const rows = await SupabaseClient.fetchKpiNotes(type, ym);
+    const cur  = rows.find(r => r.year_month === ym);
+    const prevRow = rows.find(r => r.year_month === prev);
+
+    if (textarea) textarea.value = cur?.content || '';
+    if (prevRow && prevEl && prevWrap) {
+      if (prevLabel) prevLabel.textContent = `${prev} 기록`;
+      prevEl.textContent = prevRow.content || '(기록 없음)';
+      prevWrap.style.display = 'block';
+    } else if (prevWrap) {
+      prevWrap.style.display = 'none';
+    }
+  } catch(e) {
+    console.warn('loadKpiNote error', e);
+  }
+}
+
+async function saveKpiNoteUI(type) {
+  const ym   = _kpiNoteYearMonth(type);
+  const pfx  = type === 'claim' ? 'Claim' : 'Cost';
+  const textarea = document.getElementById(`kpi${pfx}NoteArea`);
+  const statusEl = document.getElementById(`kpi${pfx}NoteSaveStatus`);
+  const btn      = document.getElementById(`kpi${pfx}NoteSaveBtn`);
+
+  if (!textarea) return;
+  const content = textarea.value.trim();
+  if (!content) {
+    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '⚠ 내용을 입력해주세요.'; }
+    return;
+  }
+
+  btn.disabled = true;
+  if (statusEl) { statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = '저장 중...'; }
+
+  try {
+    await SupabaseClient.saveKpiNote(type, ym, content);
+    if (statusEl) {
+      statusEl.style.color = 'var(--accent-emerald)';
+      statusEl.textContent = `✅ ${ym} 저장 완료`;
+      setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    }
+    // 저장 후 전월 기록 갱신
+    await loadKpiNote(type);
+  } catch(e) {
+    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '❌ 저장 실패'; }
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ========== 접수일 기준 클레임 대시보드 ==========

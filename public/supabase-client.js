@@ -231,6 +231,33 @@ async function fetchReceiptByNormalized(normalized, from, to) {
   return supabaseFetch('claims_receipt', params);
 }
 
+// ─── KPI 월별 종합 분석 메모 ───
+async function fetchKpiNotes(noteType, yearMonth) {
+  // 현재 월 + 전월 노트 함께 로드
+  const [y, m] = yearMonth.split('-').map(Number);
+  const prev = m === 1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,'0')}`;
+  return supabaseFetch(
+    'kpi_analysis_notes',
+    `select=*&note_type=eq.${noteType}&year_month=in.(${yearMonth},${prev})&order=year_month.desc`
+  );
+}
+
+async function saveKpiNote(noteType, yearMonth, content, author = 'admin') {
+  const url = `${SUPABASE_URL}/rest/v1/kpi_analysis_notes?on_conflict=year_month,note_type`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      year_month: yearMonth,
+      note_type: noteType,
+      content,
+      author,
+      updated_at: new Date().toISOString()
+    })
+  });
+  if (!res.ok) throw new Error(`saveKpiNote ${res.status}: ${await res.text()}`);
+}
+
 // Export
 window.SupabaseClient = {
   SUPABASE_URL, SUPABASE_ANON_KEY,
@@ -253,4 +280,6 @@ window.SupabaseClient = {
   // 미분류 대기
   fetchPendingSymptoms, insertPendingSymptoms, approvePendingSymptom, rejectPendingSymptom,
   updateClaimsNormalized, countPending,
+  // KPI 분석 메모
+  fetchKpiNotes, saveKpiNote,
 };
