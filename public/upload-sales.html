@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIDIZ 제품별 매출량 업로드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy:#1a2744; --blue:#0057b8; --dark:#0d1b2a; --card:#17293f;
+  --border:#243b5a; --text:#f0f4f8; --muted:#6b83a0; --secondary:#a0b4cb;
+  --emerald:#00c48c; --rose:#ff6b7a; --amber:#ffb347; --cyan:#00c6d7; --violet:#a78bfa;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;padding:32px;}
+.container{max-width:1000px;margin:0 auto;}
+h1{font-size:24px;margin-bottom:4px;}
+h1 span{background:linear-gradient(135deg,#0057b8,#00c6d7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.subtitle{color:var(--muted);font-size:13px;margin-bottom:32px;}
+.back-link{color:var(--muted);font-size:12px;text-decoration:none;display:inline-block;margin-bottom:16px;}
+.back-link:hover{color:var(--text);}
+
+.section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:24px;}
+.section h2{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section h2::before{content:'';width:3px;height:18px;background:linear-gradient(135deg,#0057b8,#00c6d7);border-radius:2px;}
+.desc{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.8;}
+
+/* 필터 규칙 박스 */
+.filter-rules{background:rgba(0,0,0,0.2);border-radius:10px;padding:16px 18px;margin-bottom:18px;font-size:12px;}
+.filter-rules strong{color:var(--cyan);display:block;margin-bottom:8px;}
+.filter-rule{display:flex;align-items:flex-start;gap:8px;padding:4px 0;color:var(--secondary);}
+.filter-rule::before{content:'✕';color:var(--rose);font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+
+/* 드롭존 */
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:48px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--blue);background:rgba(0,87,184,0.05);}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.drop-zone .icon{font-size:40px;margin-bottom:10px;}
+.drop-zone p{font-size:13px;color:var(--secondary);}
+.drop-zone .hint{font-size:11px;color:var(--muted);margin-top:6px;}
+
+/* 상태 메시지 */
+.status{padding:12px 16px;border-radius:8px;font-size:13px;margin-top:14px;display:none;}
+.status.info{background:rgba(0,87,184,0.15);border:1px solid rgba(0,87,184,0.3);color:#7eb8f7;}
+.status.success{background:rgba(0,196,140,0.12);border:1px solid rgba(0,196,140,0.3);color:var(--emerald);}
+.status.error{background:rgba(255,107,122,0.12);border:1px solid rgba(255,107,122,0.3);color:var(--rose);}
+.status.loading::before{content:'⏳ ';}
+
+/* 요약 카드 */
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px;display:none;}
+.sum-card{background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;}
+.sum-card .val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:4px;}
+.sum-card .lbl{font-size:11px;color:var(--muted);}
+
+/* 테이블 */
+.table-wrap{overflow-x:auto;max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:16px;display:none;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+th{padding:8px 12px;text-align:left;font-weight:600;color:var(--muted);background:rgba(0,0,0,0.35);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1;white-space:nowrap;}
+td{padding:7px 12px;border-bottom:1px solid rgba(36,59,90,0.3);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+tr:hover td{background:rgba(74,158,255,0.04);}
+.badge{display:inline-block;padding:1px 8px;border-radius:4px;font-size:10px;font-weight:600;}
+.badge-dom{background:rgba(74,158,255,0.15);color:#7eb8f7;border:1px solid rgba(74,158,255,0.3);}
+.badge-vn{background:rgba(255,179,71,0.15);color:var(--amber);border:1px solid rgba(255,179,71,0.3);}
+
+/* 버튼 */
+.actions{display:flex;gap:12px;margin-top:16px;align-items:center;flex-wrap:wrap;}
+.btn{padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s;}
+.btn-primary{background:var(--blue);color:white;}
+.btn-primary:hover:not(:disabled){background:#2d7dd2;}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-secondary:hover{color:var(--text);border-color:var(--secondary);}
+
+/* 히스토리 */
+.history-item{background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;}
+.history-item .date{color:var(--muted);}
+.history-item .info{color:var(--secondary);}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="back-link">← 메인으로</a>
+  <h1>제품별 매출량 <span>업로드</span></h1>
+  <p class="subtitle">ERP 거래명세서 파일을 업로드하면 자동으로 필터링 후 제품별 매출량이 저장됩니다.</p>
+
+  <!-- 필터 규칙 안내 -->
+  <div class="section">
+    <h2>자동 적용 필터 규칙</h2>
+    <div class="filter-rules">
+      <strong>아래 데이터는 자동으로 제외됩니다</strong>
+      <div class="filter-rule">일반사업소 = '하자조치내수'</div>
+      <div class="filter-rule">브랜드구분 = '알로소'</div>
+      <div class="filter-rule">제품구분에 '소파', '철재', '철제' 포함 또는 '외주상품'</div>
+      <div class="filter-rule">매출수량이 0 이하 (마이너스)</div>
+      <div class="filter-rule">단품코드가 제품구분 맵에 없는 코드 (악세서리·부품류)</div>
+    </div>
+    <div class="desc">
+      ✅ <strong>국가 구분</strong>: 제품구분 컬럼의 '베트남상품' → 베트남 / 그 외 → 국내<br>
+      ✅ <strong>기간 구분</strong>: 매출일자에서 년-월(YYYY-MM) 자동 추출<br>
+      ✅ <strong>제품 매핑</strong>: 단품코드 → 제품구분(item) 자동 변환 (동일한 item은 합산)<br>
+      ✅ <strong>중복 처리</strong>: 동일 제품+년월+국가가 이미 있으면 매출수량을 <strong>덮어씁니다</strong> (재업로드 가능)
+    </div>
+  </div>
+
+  <!-- 업로드 섹션 -->
+  <div class="section">
+    <h2>ERP 파일 업로드</h2>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".xls,.xlsx" onchange="handleFile(this.files[0])">
+      <div class="icon">📊</div>
+      <p>ERP 거래명세서 파일을 드래그하거나 클릭하여 업로드</p>
+      <p class="hint">.xls / .xlsx 형식 지원</p>
+    </div>
+
+    <div class="status" id="statusMsg"></div>
+
+    <!-- 요약 카드 -->
+    <div class="summary-cards" id="summaryCards">
+      <div class="sum-card">
+        <div class="val" id="sumTotal" style="color:var(--cyan)">-</div>
+        <div class="lbl">원본 행수</div>
+      </div>
+      <div class="sum-card">
+        <div class="val" id="sumFiltered" style="color:var(--emerald)">-</div>
+        <div class="lbl">필터 후 행수</div>
+      </div>
+      <div class="sum-card">
+        <div class="val" id="sumSales" style="color:var(--amber)">-</div>
+        <div class="lbl">총 매출수량</div>
+      </div>
+      <div class="sum-card">
+        <div class="val" id="sumItems" style="color:var(--violet)">-</div>
+        <div class="lbl">제품 종류</div>
+      </div>
+    </div>
+
+    <!-- 미리보기 테이블 -->
+    <div class="table-wrap" id="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>제품구분(item)</th>
+            <th>년월</th>
+            <th>국가</th>
+            <th>매출수량</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions" id="actionBtns" style="display:none">
+      <button class="btn btn-primary" id="uploadBtn" onclick="uploadToSupabase()">📤 Supabase에 저장</button>
+      <button class="btn btn-secondary" onclick="resetPage()">↺ 초기화</button>
+      <span style="font-size:12px;color:var(--muted)" id="actionHint"></span>
+    </div>
+  </div>
+
+  <!-- 업로드 이력 -->
+  <div class="section">
+    <h2>최근 업로드 이력</h2>
+    <div id="historyList"><div style="color:var(--muted);font-size:12px;padding:8px 0">불러오는 중...</div></div>
+  </div>
+</div>
+
+<script>
+// ─── Supabase 설정 ───
+const SUPA_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
+const SUPA_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' };
+
+// ─── 단품코드 → item 매핑 (PRODUCT_CODE_MAP 전체) ───
+const PRODUCT_CODE_MAP = {
+  "ASN509ACVU":"링고","AT800HLDACC1":"T80","ATN800HLDACC":"T80","ATNB500DAU":"T50","ATNB500HLDAU":"T50",
+  "BT500HLDAGBC":"T50","BT500HXDAGBC":"T50","BT500XXDAGBC":"T50",
+  "CH0007AFZ":"CH0007","CH0007Z":"CH0007","CH0008":"CH0008","CH0008AF":"CH0008","CH0008AFS":"CH0008","CH0008AFSZ":"CH0008","CH0008AFZ":"CH0008","CH0008T":"필경대","CH0008TF":"CH0008","CH0008TFZ":"CH0008","CH0008TSZ":"CH0008","CH0008Z":"CH0008",
+  "CH0009AF":"CH0009","CH0012":"CH0012","CH0012AF":"CH0012","CH0012W":"CH0012","CH0012WAF":"CH0012","CH0012WAFZ":"CH0012","CH0013MF":"CH0013","CH0014":"CH0014","CH0015":"CH0015","CH0015AF":"CH0015","CH0015AFCZ":"CH0015","CH0015AFK":"CH0015","CH0015AFZ":"CH0015","CH0015K":"CH0015","CH0015SAF":"CH0015","CH0015W":"CH0015","CH0015WAF":"CH0015","CH0015WAFK":"CH0015","CH0015WAFZ":"CH0015","CH0015WK":"CH0015","CH0015WZ":"CH0015","CH0015Z":"CH0015",
+  "CH0016":"CH0016","CH0017":"CH0017","CH0017BK":"CH0017","CH0017Z":"CH0017","CH0019":"CH0019","CH0019A":"CH0019","CH0019B":"CH0019",
+  "CH0020BK":"M801","CH0020BKC":"M801","CH0020BKCU":"M801","CH0020BKCZ":"M801","CH0020BKD":"M801","CH0020BKDU":"M801","CH0020BKDZ":"M801","CH0020BKL":"M801(LUX)","CH0020BKLC":"M801(LUX)","CH0020BKLCZ":"M801(LUX)","CH0020BKLD":"M801(LUX)","CH0020BKLDZ":"M801(LUX)","CH0020BKLZ":"M801(LUX)","CH0020BKM":"M801","CH0020BKMC":"M801","CH0020BKMCU":"M801","CH0020BKMD":"M801","CH0020BKMDU":"M801","CH0020BKMU":"M801","CH0020BKMZ":"M801","CH0020BKU":"M801","CH0020BKZ":"M801","CH0020MC":"M801","CH0020MDU":"M801",
+  "CH0021":"M08","CH0021Z":"M08","CH0022":"펑거스","CH0022M":"펑거스","CH0022MZ":"펑거스","CH0022W":"펑거스","CH0022WM":"펑거스","CH0022WMZ":"펑거스","CH0022WZ":"펑거스","CH0022Z":"펑거스",
+  "CH0023":"M17","CH0023C":"M17","CH0023CZ":"M17","CH0023D":"M17","CH0023DZ":"M17","CH0023S":"M17","CH0023SC":"M17","CH0023SCZ":"M17","CH0023SD":"M17","CH0023SDZ":"M17","CH0023SZ":"M17","CH0023Z":"M17",
+  "CH0024":"M701","CH0024AF":"M701","CH0024B":"M701","CH0024BAF":"M701","CH0024BC":"M701","CH0024BCAF":"M701","CH0024C":"M701","CH0024CAF":"M701","CH0025":"M631","CH0026":"M40(CH0026)","CH0026C":"M40(CH0026)","CH0026M":"M40(CH0026)","CH0026MC":"M40(CH0026)","CH0026W":"M40(CH0026)","CH0026WC":"M40(CH0026)","CH0026WM":"M40(CH0026)","CH0026WMC":"M40(CH0026)","CH0026Z":"M40(CH0026)","CH0027":"M30(CH0027)","CH0027MAF":"M30(CH0027)",
+  "CH0100":"CH0100","CH0101":"CH0101","CH0500":"CH05XX","CH0501":"CH05XX","CH0501Z":"CH05XX","CH0511":"CH05XX","CH0511Z":"CH05XX","CH0601":"CH06XX","CH0801":"CHN08XX","CH0802":"CHN08XX","CH1000":"CHN10XX","CH1001":"CHN10XX",
+  "CH4300":"T50","CH4300A":"T50","CH4300AH":"T50","CH4300AHU":"T50","CH4300AZ":"T50","CH4300H":"T50","CH4300HE":"T50","CH4300RA":"T50","CH4300RAH":"T50","CH4300RAU":"T50","CH4300WA":"T50","CH4300WAH":"T50","CH4300WRA":"T50","CH4300WRAH":"T50","CH4301":"T503","CH4301C":"T502","CH4301W":"T503","CH4301WC":"T502","CH4311":"T501F","CH4311A":"T501FE","CH4321":"T503",
+  "CH4400AZ":"T60","CH4400HE":"T60","CH4401":"T60","CH4402":"T60","CH4411":"T60","CH4411F":"T60","CH4411FU":"T60","CH4411FZ":"T60","CH4411M":"T60","CH4411MU":"T60","CH4411MZ":"T60","CH4412":"T60","CH4412F":"T60","CH4412FU":"T60","CH4412FZ":"T60","CH4412M":"T60","CH4412MU":"T60","CH4412MZ":"T60",
+  "CH4700A":"T80","CH4700AH":"T80","CH4700AHZ":"T80","CH4700HE":"T80","CH4700HEZ":"T80","CH4700WAH":"T80",
+  "CH4800":"T25","CH4800U":"T25","CH4800W":"T25","CH4800WX":"T25","CH4800WXZ":"T25","CH4800WZ":"T25","CH4800X":"T25","CH4800XU":"T25","CH4800XZ":"T25","CH4800Z":"T25",
+  "CH4900A":"T300","CH4900AH":"T300","CH4900AHU":"T300","CH4900C":"T302","CH4900CA":"T302","CH4900CAH":"T302","CH4900CAHU":"T302","CH4900CAU":"T302","CH4900CH":"T302","CH4900CHU":"T302","CH4900CR":"T302","CH4900CRH":"T302","CH4900CRHU":"T302","CH4900CRU":"T302","CH4900CU":"T302","CH4901":"T301","CH4901Z":"T301",
+  "CH5200":"E50","CH5200Z":"E50","CH5201":"E50","CH5201Z":"E50","CH5301":"E20","CH5321":"E20","CH5400":"E40","CH5400Z":"E40","CH5401":"E40","CH5401Z":"E40","CH5501":"CH55XX","CH5511":"CH55XX",
+  "CH6100A":"T52","CH6100AH":"T52","CH6100AHPZ":"T52","CH6100AHZ":"T52","CH6100AZ":"T52","CH6100RA":"T52","CH6100RAZ":"T52","CH6100WA":"T52","CH6100WAH":"T52","CH6100WAHZ":"T52","CH6100WAZ":"T52","CH6100WRAH":"T52",
+  "CH6200":"T40","CH6200A":"T40","CH6200AH":"T40","CH6200AHU":"T40","CH6200AHZ":"T40","CH6200AU":"T40","CH6200AZ":"T40","CH6200C":"T402","CH6200CA":"T402","CH6200CAH":"T402","CH6200CAHU":"T402","CH6200CAHZ":"T402","CH6200CAU":"T402","CH6200CAZ":"T402","CH6200CH":"T402","CH6200CHU":"T402","CH6200CHZ":"T402","CH6200CU":"T402","CH6200CW":"T402","CH6200CWAH":"T402","CH6200CWAHU":"T402","CH6200CWAHZ":"T402","CH6200CWAU":"T402","CH6200CWAZ":"T402","CH6200CWHZ":"T402","CH6200CWZ":"T402","CH6200CZ":"T402","CH6200WA":"T40","CH6200WAH":"T40","CH6200WAHZ":"T40","CH6200WAZ":"T40","CH6201":"T403","CH6201U":"T403","CH6201W":"T403","CH6201WZ":"T403","CH6201Z":"T403","CH6211":"T401","CH6211W":"T401","CH6211WZ":"T401","CH6211Z":"T401","CH6300AH":"T420","CH6300C":"T422","CH6300CAH":"T422","CH6300CH":"T422",
+  "CH8000":"E30","CH8001":"E30","CH8021":"CH80XX","CH9900":"운반구","CH9900Z":"운반구","CH9913":"운반구",
+  "CHA4300AH":"T50","CHA4300AHU":"T50","CHA4300HE":"T50","CHA4300RH":"T50","CHA4300WAH":"T50","CHA4300WRAHZ":"T50","CHA6100AHP":"T52","CHA6100WAH":"T52",
+  "CHB4200AH":"아이티스","CHN0002":"CHN0002",
+  "CHN4300":"T50","CHN4300A":"T50","CHN4300AH":"T50","CHN4300AHP":"T50","CHN4300AHPZ":"T50","CHN4300AHU":"T50","CHN4300AHZ":"T50","CHN4300AU":"T50","CHN4300AZ":"T50","CHN4300H":"T50","CHN4300HE":"T50","CHN4300HEZ":"T50","CHN4300HU":"T50","CHN4300RA":"T50","CHN4300RAH":"T50","CHN4300RAHU":"T50","CHN4300RAHZ":"T50","CHN4300RAU":"T50","CHN4300RAZ":"T50","CHN4300U":"T50","CHN4300WA":"T50","CHN4300WAH":"T50","CHN4300WAHZ":"T50","CHN4300WAZ":"T50","CHN4300WRAH":"T50","CHN4300Z":"T50",
+  "CHN4301":"T503","CHN4301C":"T502","CHN4301CU":"T502","CHN4301CZ":"T502","CHN4301U":"T503","CHN4301W":"T503","CHN4301WC":"T502","CHN4301WCZ":"T502","CHN4301WZ":"T503","CHN4301Z":"T503","CHN4311":"T501F","CHN4311A":"T501FE","CHN4311AZ":"T501FE","CHN4311Z":"T501F",
+  "CHN6100AH":"T52","CHN6100AHP":"T52","CHN6100WA":"T52","CHN6100WAH":"T52","CHN6100WRA":"T52","CHN6100WRAH":"T52",
+  "CHN6200CW":"T402","CHN6200CWA":"T402","CHN6200CWAH":"T402","CHN6200CWAHU":"T402","CHN6200CWAU":"T402","CHN6200CWH":"T402","CHN6200CWHU":"T402","CHN6200CH":"T402","CHN6200CAH":"T402",
+  "DHM1101EY1":"M40","DHT1009ACF":"링고","DHT1200HF":"올라운드","DHT1300HLDA":"T50","DHT1360HLDA":"T50",
+  "E500FP":"E50","E600FP":"E60",
+  "G100HDA":"GC1","G100HDAW":"GC1","G100HDAWJ":"GC1","G10HDA1KK":"GC1","G10HDAW1KK":"GC1","G10HDAW2KK":"GC1","G10HDAWJ1KK":"GC1","G10HDAWJ2KK":"GC PRO_쿨링시트_LED",
+  "G20HDA0CC1":"GX","G20HDA0KK":"GX","G20HDA0WK":"GX","G20HDA1KK":"GX","G20HDA1WK":"GX",
+  "HCH0009":"HCH0009","HCH2200A":"HCH2200","HCH2900WRA":"T25","HCH3501HLN":"T50",
+  "HVCH0018A":"HCH0018","HVCH2810FC":"링고아이","HVCH2810FSC":"링고아이","HVCH3510HLN":"T52","HVCH3501HLN":"T50",
+  "ITY00BT00A":"T40",
+  "K30F1KG":"아띠 의자","K30X1KG":"아띠 책상","K500ND":"몰티","K50HB0KG":"몰티",
+  "L10SG0KK":"뮤브","L10SU0KK":"뮤브",
+  "M071":"M071","M071E":"M071","M081E":"M08","M130Y":"펑거스","M174E":"M17","M803Y":"M803",
+  "MN021E":"M02","MN801E":"M801","MN801EY":"M801","MN130Y":"펑거스",
+  "OALTNF500A1":"T50","OALTXB529A1":"T50","OCPTNB200A1":"T20","OCPTXN529A2":"T52",
+  "PACPCHACC5":"T61","PCOTNB50LA1":"T50LIGHT","PCOTNB50LA2":"T50LIGHT","PCOTX520O2":"T52","PEMTNA200A1":"T20",
+  "S40D0KK":"트레보","S40DNE0KK":"S40","S40DNE0WK":"S40","S40DNE1KK":"S40",
+  "S51ACF0VG":"링고2","S51ACF1VG":"링고2","S51ACF1WG":"링고2",
+  "S60FEGU0KK":"T501FE","S60SFU0KK":"T503",
+  "T200F":"T20","T200HF":"T20","T20FL0VG":"T20 팔걸이",
+  "T21D1VG":"T21","T21H0VG":"T20 2세대 헤드레스트","T21HF0VG":"T21","T21HF0VT":"T21","T21HF1VG":"T21","T21HF2VG":"T21","T21HF3VG":"T21",
+  "T250NF":"T25","T400HLDAQ":"T40","T400HLDF":"T40",
+  "T402HF":"T402","T402HLDA":"T402","T500HLDA":"T50","T500HLDAS":"T50","T501FE":"T501FE",
+  "T550HDA":"T55","T550HLDA":"T55","T61X0KK":"T61",
+  "T61HLDAM0KK":"T61","T61HLDAM1KK":"T61","T61HLDAW0KK":"T61",
+  "T800HLDA":"T80","T800HLDAS":"T80","T80HLDA1KK":"T80","T80HLDAT1KK":"T80","T900HLDA":"T90",
+  "T90HLDA1KK":"T90","T90HLDA2KK":"T90","T90HLDA3KK":"T90",
+  "TN200HF":"T20","TN250NF":"T25","TN400HLDA":"T40","TN402HLA":"T402","TN402HF":"T402","TNA402HF":"T402","TNA501FE":"T501FE",
+  "TN500HLDAP":"T50","TN550HLDA":"T55","TN800HLDA":"T80","TN800HLDACC1":"T80","TN800HLDAS":"T80",
+  "TNA200HF":"T20","TNA500HA":"T50","TNA500HDA":"T50","TNA500HF":"T50","TNA500HLDA":"T50","TNA501F":"T501F","TNA502F":"T502",
+  "TNB200HF":"T20","TNB402HF":"T402","TNB500HDA":"T50","TNB500HLDA":"T50","TNB501FE":"T501FE","TNB503F":"T503",
+  "TNE500DA":"T50","TNE500HLDA":"T50","TNE509H":"T50헤드","TNF500HDA":"T50","TNF500HLDA":"T50",
+  "TX200HA":"T20","TX200HF":"T20","TX500HF":"T50","TX501FE":"T501FE","TX520HLDA":"T52",
+  "TXA520HLDA":"T52","TXB520HLDA":"T52","TXN200F":"T20","TXN200HF":"T20","TXN300HLDA":"T300","TXN500HLDA":"T50","TXN520HLDA":"T52",
+  "TXNA250F":"T25","TXNA250NF":"T25","TXNA250NFCF":"T25","TXNA259NF":"T25","TXNA500HF":"T50","TXNB500HLDA":"T50",
+  "VOALTNF500A1":"T50","VPCOTNB50LA2":"T50LIGHT","VPCOTNB50LO2":"T50LIGHT",
+  "VTNA200HF":"T20","VTNA500HDA":"T50","VTNA500HF":"T50","VTNA500HLDA":"T50",
+  "VTNB200HF":"T20","VTNB500HDA":"T50","VTNB500HLDA":"T50","VTNB501FE":"T501FE",
+  "VTNE500DA":"T50","VTNE500HDA":"T50","VTNE500HF":"T50","VTNE500HLDA":"T50","VTNE509H":"T50헤드","VTNF500HDA":"T50","VTNF500HLDA":"T50",
+  "VTXA520HLDA":"T52","VTXB520HLDA":"T52","VTXNA520HLDA":"T52",
+  "OALTXB529A1":"T50","OCPTXN529A2":"T52",
+  "DHT9FEGU":"T501FE",
+  "S51D0VG":"링고51 좌판","S51K1VG":"링고 발받침 이지리페어","S51N0VG":"링고 2세대 등판 이지리페어","S51ND2KG":"링고2 등판+좌판커버",
+  "VSNB509ACF":"링고","VS509D":"링고 등,좌판",
+  "VTNE500HLDA":"T50","VTNF500HDA":"T50","VTXB520HLDA":"T52","VTXA520HLDA":"T52",
+  "M20SFU0KK":"T503","T55AP0KG":"T55",
+  "CHXX2511050":"CH251X","UCHNA0007E":"사무의자",
+  "HVCH3900H":"CHN39XX","HVCH3901":"CHN39XX",
+};
+
+// ─── 상태 표시 ───
+function showStatus(type, msg) {
+  const el = document.getElementById('statusMsg');
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideStatus() { document.getElementById('statusMsg').style.display = 'none'; }
+
+// ─── 드래그 앤 드롭 ───
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+let _parsedRows = [];
+
+// ─── 파일 처리 메인 ───
+async function handleFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.(xls|xlsx)$/i)) { showStatus('error', '.xls 또는 .xlsx 파일만 업로드 가능합니다.'); return; }
+
+  showStatus('loading', `"${file.name}" 분석 중...`);
+  document.getElementById('summaryCards').style.display = 'none';
+  document.getElementById('tableWrap').style.display = 'none';
+  document.getElementById('actionBtns').style.display = 'none';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', codepage: 949 });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    const totalRows = raw.length;
+    showStatus('loading', `총 ${totalRows.toLocaleString()}행 파싱 완료. 필터링 중...`);
+
+    // ─── 필터 적용 ───
+    let rows = raw.filter(r => {
+      const biz   = String(r['일반사업소'] || '').trim();
+      const brand = String(r['브랜드구분'] || '').trim();
+      const prod  = String(r['제품구분']  || '').trim();
+      const qty   = parseFloat(r['매출수량']) || 0;
+      if (biz === '하자조치내수') return false;
+      if (brand === '알로소') return false;
+      if (/소파|철재|철제/.test(prod) || prod === '외주상품') return false;
+      if (qty <= 0) return false;
+      return true;
+    });
+
+    // ─── 단품코드 → item 매핑 ───
+    let mappedCount = 0;
+    rows = rows.map(r => {
+      const code  = String(r['단품코드'] || '').trim().toUpperCase();
+      const item  = PRODUCT_CODE_MAP[code] || null;
+      const prod  = String(r['제품구분'] || '').trim();
+      const country = prod === '베트남상품' ? '베트남' : '국내';
+      const dateRaw = String(r['매출일자'] || '').trim();
+      const yearMonth = dateRaw.slice(0, 7).replace('/', '-');  // YYYY-MM
+      const qty = parseFloat(r['매출수량']) || 0;
+      if (item) mappedCount++;
+      return { code, item, country, yearMonth, qty };
+    }).filter(r => r.item && r.yearMonth.match(/^\d{4}-\d{2}$/));
+
+    // ─── item + yearMonth + country 그룹핑 ───
+    const groupMap = {};
+    rows.forEach(r => {
+      const key = `${r.item}||${r.yearMonth}||${r.country}`;
+      if (!groupMap[key]) groupMap[key] = { item: r.item, year_month: r.yearMonth, country: r.country, sales_count: 0 };
+      groupMap[key].sales_count += r.qty;
+    });
+    _parsedRows = Object.values(groupMap).sort((a,b) => {
+      if (a.item < b.item) return -1;
+      if (a.item > b.item) return 1;
+      return a.year_month < b.year_month ? -1 : 1;
+    });
+
+    // ─── 요약 카드 ───
+    const totalSales = _parsedRows.reduce((s,r) => s + r.sales_count, 0);
+    const uniqueItems = new Set(_parsedRows.map(r => r.item)).size;
+    document.getElementById('sumTotal').textContent = totalRows.toLocaleString();
+    document.getElementById('sumFiltered').textContent = rows.length.toLocaleString();
+    document.getElementById('sumSales').textContent = totalSales.toLocaleString();
+    document.getElementById('sumItems').textContent = uniqueItems;
+    document.getElementById('summaryCards').style.display = 'grid';
+
+    // ─── 미리보기 테이블 ───
+    const tbody = document.getElementById('previewBody');
+    tbody.innerHTML = _parsedRows.map(r => `
+      <tr>
+        <td style="font-weight:600;color:var(--cyan)">${r.item}</td>
+        <td>${r.year_month}</td>
+        <td><span class="badge ${r.country==='베트남'?'badge-vn':'badge-dom'}">${r.country}</span></td>
+        <td style="text-align:right;color:var(--amber);font-weight:600">${Math.round(r.sales_count).toLocaleString()}</td>
+      </tr>`).join('');
+    document.getElementById('tableWrap').style.display = 'block';
+    document.getElementById('actionBtns').style.display = 'flex';
+    document.getElementById('actionHint').textContent = `${_parsedRows.length}개 항목을 Supabase에 저장할 준비가 완료됐습니다.`;
+
+    showStatus('success', `✅ 분석 완료 — ${_parsedRows.length}개 항목 (총 매출수량 ${totalSales.toLocaleString()}개)`);
+  } catch(e) {
+    showStatus('error', '파일 분석 오류: ' + e.message);
+  }
+}
+
+// ─── Supabase 저장 ───
+async function uploadToSupabase() {
+  if (_parsedRows.length === 0) { showStatus('error', '업로드할 데이터가 없습니다.'); return; }
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true; btn.textContent = '저장 중...';
+  showStatus('loading', 'Supabase에 저장 중...');
+
+  try {
+    // 100건씩 나눠서 upsert
+    const CHUNK = 100;
+    let ok = 0, fail = 0;
+    for (let i = 0; i < _parsedRows.length; i += CHUNK) {
+      const chunk = _parsedRows.slice(i, i + CHUNK).map(r => ({
+        item: r.item,
+        year_month: r.year_month,
+        country: r.country,
+        sales_count: Math.round(r.sales_count),
+        updated_at: new Date().toISOString()
+      }));
+      const res = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly`, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(chunk)
+      });
+      if (res.ok) ok += chunk.length;
+      else { fail += chunk.length; console.error(await res.text()); }
+    }
+
+    if (fail === 0) {
+      showStatus('success', `✅ 저장 완료! ${ok}개 항목이 Supabase에 저장됐습니다. (중복 시 덮어쓰기 적용)`);
+      _parsedRows = [];
+      document.getElementById('actionBtns').style.display = 'none';
+      loadHistory();
+    } else {
+      showStatus('error', `⚠️ 부분 오류: ${ok}건 성공 / ${fail}건 실패`);
+    }
+  } catch(e) {
+    showStatus('error', '저장 오류: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Supabase에 저장';
+  }
+}
+
+// ─── 초기화 ───
+function resetPage() {
+  _parsedRows = [];
+  document.getElementById('fileInput').value = '';
+  document.getElementById('summaryCards').style.display = 'none';
+  document.getElementById('tableWrap').style.display = 'none';
+  document.getElementById('actionBtns').style.display = 'none';
+  hideStatus();
+}
+
+// ─── 업로드 이력 로드 ───
+async function loadHistory() {
+  const wrap = document.getElementById('historyList');
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly?select=year_month,country,sum:sales_count.sum()&order=year_month.desc`, { headers: HEADERS });
+    // 간단하게 distinct year_month + count 조회
+    const res2 = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly?select=year_month,country,item,sales_count&order=year_month.desc,item.asc`, { headers: HEADERS });
+    if (!res2.ok) throw new Error('조회 실패');
+    const data = await res2.json();
+    if (!data || data.length === 0) { wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">저장된 데이터가 없습니다.</div>'; return; }
+
+    // 년월별 그룹핑
+    const ymMap = {};
+    data.forEach(r => {
+      if (!ymMap[r.year_month]) ymMap[r.year_month] = { items: new Set(), total: 0 };
+      ymMap[r.year_month].items.add(r.item);
+      ymMap[r.year_month].total += r.sales_count;
+    });
+    wrap.innerHTML = Object.entries(ymMap).sort((a,b)=>b[0]<a[0]?-1:1).map(([ym, d]) => `
+      <div class="history-item">
+        <span style="font-weight:600;color:var(--cyan)">${ym}</span>
+        <span class="info">제품 ${d.items.size}종 · 매출수량 ${d.total.toLocaleString()}개</span>
+        <span class="date">저장됨</span>
+      </div>`).join('');
+  } catch(e) {
+    wrap.innerHTML = '<div style="color:var(--rose);font-size:12px;padding:8px 0">이력 로드 실패: ' + e.message + '</div>';
+  }
+}
+
+loadHistory();
+</script>
+</body>
+</html>
