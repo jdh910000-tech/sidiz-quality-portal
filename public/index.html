@@ -181,6 +181,14 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 .data-table td { padding: 9px 14px; text-align: center; border-bottom: 1px solid rgba(36,59,90,0.4); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 .data-table td.row-header { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
 .data-table tr:hover td { background: rgba(0,87,184,0.04); }
+
+/* 고객클레임 종합 현황 + 하자보수비 상세 표 — 폰트 확대 */
+#kpiMainTable .data-table th,
+#costDetailTable .data-table th { font-size: 13px; padding: 11px 14px; }
+#kpiMainTable .data-table td,
+#costDetailTable .data-table td { font-size: 13px; padding: 10px 14px; }
+#kpiMainTable .data-table-header h3,
+#costDetailTable .data-table-header h3 { font-size: 15px; }
 .row-header { color: var(--text-secondary); font-weight: 600 !important; }
 .highlight { color: var(--sidiz-blue-bright); font-weight: 600; }
 .danger { color: var(--accent-rose); font-weight: 600; }
