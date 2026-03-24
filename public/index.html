@@ -758,32 +758,6 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 
   <!-- KPI Claim -->
   <div id="kpi-claim-kpi" class="kpi-content">
-    <!-- ── 전월 대비 자동 분석 카드 ── -->
-    <div id="kpiClaimAutoCard" style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:15px">📊</span>
-          <span style="font-weight:600;font-size:14px;color:var(--text-primary)">전월 대비 자동 분석</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <select id="claimPrevMonth" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:11px;font-family:'JetBrains Mono',monospace">
-            <option value="0">1월</option><option value="1">2월</option><option value="2">3월</option>
-            <option value="3">4월</option><option value="4">5월</option><option value="5">6월</option>
-            <option value="6">7월</option><option value="7">8월</option><option value="8">9월</option>
-            <option value="9">10월</option><option value="10">11월</option><option value="11">12월</option>
-          </select>
-          <span style="color:var(--text-muted);font-size:11px">→</span>
-          <select id="claimCurMonth" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:11px;font-family:'JetBrains Mono',monospace">
-            <option value="0">1월</option><option value="1" selected>2월</option><option value="2">3월</option>
-            <option value="3">4월</option><option value="4">5월</option><option value="5">6월</option>
-            <option value="6">7월</option><option value="7">8월</option><option value="8">9월</option>
-            <option value="9">10월</option><option value="10">11월</option><option value="11">12월</option>
-          </select>
-          <button onclick="renderClaimAutoAnalysis()" style="padding:5px 12px;background:var(--sidiz-blue);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🔄 생성</button>
-        </div>
-      </div>
-      <div id="claimAutoAnalysisResult" style="font-size:12px;color:var(--text-muted)">위 버튼을 눌러 분석을 생성하세요.</div>
-    </div>
     <div class="section-title">고객클레임 현황 (품질경영위원회)</div>
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">로딩 중...</div><div class="kpi-value">-</div></div>
@@ -901,32 +875,6 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 
   <!-- KPI Cost — 동적 렌더링 -->
   <div id="kpi-cost-kpi" class="kpi-content" style="display:none">
-    <!-- ── 전월 대비 자동 분석 카드 ── -->
-    <div id="kpiCostAutoCard" style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:15px">💰</span>
-          <span style="font-weight:600;font-size:14px;color:var(--text-primary)">전월 대비 자동 분석</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <select id="costPrevMonth" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:11px;font-family:'JetBrains Mono',monospace">
-            <option value="0">1월</option><option value="1">2월</option><option value="2">3월</option>
-            <option value="3">4월</option><option value="4">5월</option><option value="5">6월</option>
-            <option value="6">7월</option><option value="7">8월</option><option value="8">9월</option>
-            <option value="9">10월</option><option value="10">11월</option><option value="11">12월</option>
-          </select>
-          <span style="color:var(--text-muted);font-size:11px">→</span>
-          <select id="costCurMonth" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:11px;font-family:'JetBrains Mono',monospace">
-            <option value="0">1월</option><option value="1" selected>2월</option><option value="2">3월</option>
-            <option value="3">4월</option><option value="4">5월</option><option value="5">6월</option>
-            <option value="6">7월</option><option value="7">8월</option><option value="8">9월</option>
-            <option value="9">10월</option><option value="10">11월</option><option value="11">12월</option>
-          </select>
-          <button onclick="renderCostAutoAnalysis()" style="padding:5px 12px;background:#c0392b;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🔄 생성</button>
-        </div>
-      </div>
-      <div id="costAutoAnalysisResult" style="font-size:12px;color:var(--text-muted)">위 버튼을 눌러 분석을 생성하세요.</div>
-    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div class="section-title" style="margin-bottom:0">실패비용 현황</div>
       <div style="display:flex;gap:10px;align-items:center">
@@ -1548,8 +1496,9 @@ async function saveKpiNoteUI(type) {
     months.reverse();
     sel1.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
     sel2.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
-    // 기본값: 전월/당월
-    if (months.length >= 2) { sel1.value = months[1]; sel2.value = months[0]; }
+    // 기본값: 2026-01(전월) / 2026-02(당월)
+    sel1.value = '2026-01';
+    sel2.value = '2026-02';
   }
 
   async function fetchMonthClaims(ym) {
@@ -1660,7 +1609,9 @@ async function saveKpiNoteUI(type) {
     months.reverse();
     sel1.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
     sel2.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
-    if (months.length >= 2) { sel1.value = months[1]; sel2.value = months[0]; }
+    // 기본값: 2026-01(전월) / 2026-02(당월)
+    sel1.value = '2026-01';
+    sel2.value = '2026-02';
   }
 
   window.runCostAutoAnalysis = function() {
@@ -3033,167 +2984,6 @@ async function initSupabase() {
 }
 document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300));
 
-// ─── 고객클레임 전월 대비 자동 분석 ────────────────────────────────────────
-function renderClaimAutoAnalysis() {
-  const year = document.getElementById('kpiYearSelect')?.value || '2026';
-  const kd   = (typeof KPI_DATA !== 'undefined' ? KPI_DATA : {})[year];
-  if (!kd) return;
-  const prevM = parseInt(document.getElementById('claimPrevMonth')?.value ?? 0);
-  const curM  = parseInt(document.getElementById('claimCurMonth')?.value ?? 1);
-  const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  const cats = ['제조','설계','서비스','고객불만','사양재검토'];
-
-  const fmtDiff = (d) => d === 0 ? '<span style="color:var(--text-muted)">±0</span>'
-    : d > 0 ? `<span style="color:var(--accent-rose)">▲${d}</span>`
-    : `<span style="color:var(--accent-emerald)">▼${Math.abs(d)}</span>`;
-
-  let prevTotal = 0, curTotal = 0;
-  const rows = cats.map(cat => {
-    const p = (kd.detail_kr[cat]?.[prevM]||0) + (kd.detail_vn[cat]?.[prevM]||0);
-    const c = (kd.detail_kr[cat]?.[curM]||0)  + (kd.detail_vn[cat]?.[curM]||0);
-    prevTotal += p; curTotal += c;
-    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-      <td style="padding:7px 10px;font-weight:500">${cat}</td>
-      <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace">${p||'-'}</td>
-      <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace">${c||'-'}</td>
-      <td style="padding:7px 10px;text-align:center">${fmtDiff(c-p)}</td></tr>`;
-  }).join('');
-
-  const totalDiff = curTotal - prevTotal;
-  const prevIdxRaw = (kd.sales?.kr?.[prevM]||0)+(kd.sales?.vn?.[prevM]||0);
-  const curIdxRaw  = (kd.sales?.kr?.[curM]||0) +(kd.sales?.vn?.[curM]||0);
-  const prevIdx = prevIdxRaw > 0 ? ((prevTotal/prevIdxRaw)*100).toFixed(2) : '-';
-  const curIdx  = curIdxRaw  > 0 ? ((curTotal/curIdxRaw)*100).toFixed(2)  : '-';
-  const idxDiff = (prevIdx !== '-' && curIdx !== '-') ? (parseFloat(curIdx)-parseFloat(prevIdx)).toFixed(2) : '-';
-
-  document.getElementById('claimAutoAnalysisResult').innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      <div style="background:var(--sidiz-dark2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">클레임 건수</div>
-        <div style="font-size:13px;font-weight:700;color:var(--sidiz-blue-bright)">${prevTotal}건 → ${curTotal}건</div>
-        <div style="font-size:11px;margin-top:2px">${fmtDiff(totalDiff)}</div>
-      </div>
-      <div style="background:var(--sidiz-dark2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">불량지수</div>
-        <div style="font-size:13px;font-weight:700;color:var(--accent-amber)">${prevIdx}% → ${curIdx}%</div>
-        <div style="font-size:11px;margin-top:2px">${idxDiff !== '-' ? fmtDiff(parseFloat(idxDiff)) : '-'}%p</div>
-      </div>
-      <div style="background:var(--sidiz-dark2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">기준</div>
-        <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">${MONTHS[prevM]} → ${MONTHS[curM]}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">시디즈 브랜드 · 국내+베트남</div>
-      </div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr style="background:rgba(0,87,184,0.12)">
-        <th style="padding:7px 10px;text-align:left;color:var(--text-muted);font-weight:500">판정유형</th>
-        <th style="padding:7px 10px;text-align:center;color:var(--text-muted);font-weight:500">${MONTHS[prevM]}(전월)</th>
-        <th style="padding:7px 10px;text-align:center;color:var(--text-muted);font-weight:500">${MONTHS[curM]}(당월)</th>
-        <th style="padding:7px 10px;text-align:center;color:var(--text-muted);font-weight:500">증감</th>
-      </tr></thead>
-      <tbody>${rows}
-        <tr style="background:rgba(0,87,184,0.08);font-weight:700">
-          <td style="padding:7px 10px">합계</td>
-          <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace">${prevTotal}</td>
-          <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace">${curTotal}</td>
-          <td style="padding:7px 10px;text-align:center">${fmtDiff(totalDiff)}</td>
-        </tr>
-      </tbody>
-    </table>`;
-}
-
-// ─── 실패비용 전월 대비 자동 분석 ───────────────────────────────────────────
-function renderCostAutoAnalysis() {
-  const year = document.getElementById('costYearSelect')?.value || '2026';
-  const cd   = (typeof COST_DATA !== 'undefined' ? COST_DATA : window.CostModule?.COST_DATA)?.[year];
-  if (!cd) return;
-  const prevM = parseInt(document.getElementById('costPrevMonth')?.value ?? 0);
-  const curM  = parseInt(document.getElementById('costCurMonth')?.value ?? 1);
-  const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-
-  const wan = v => v ? Math.round(v/10000).toLocaleString()+'만원' : '-';
-  const fmtDiff = (p,c) => {
-    if (!p||!c) return '<span style="color:var(--text-muted)">-</span>';
-    const d = Math.round((c-p)/10000);
-    return d === 0 ? '<span style="color:var(--text-muted)">±0</span>'
-      : d > 0 ? `<span style="color:var(--accent-rose)">▲${Math.abs(d).toLocaleString()}만원</span>`
-      : `<span style="color:var(--accent-emerald)">▼${Math.abs(d).toLocaleString()}만원</span>`;
-  };
-
-  const items = [
-    { label:'매출액', key:'revenue', fmt: v => v ? (v/100000000).toFixed(1)+'억' : '-', isRevenue:true },
-    { label:'제품 (하자보수비)', key:'haza_product' },
-    { label:'자재 (하자보수비)', key:'haza_material' },
-    { label:'클레임 보상', key:'haza_claim' },
-    { label:'하자보수비 합계', key:'haza_subtotal', bold:true },
-    { label:'AS 컨택센터', key:'baros_contact' },
-    { label:'AS조치비(무상)', key:'baros_as' },
-    { label:'AS물류비', key:'baros_logistics' },
-    { label:'바로스 AS 합계', key:'baros_subtotal', bold:true },
-  ];
-
-  const rows = items.map(it => {
-    const p = cd[it.key]?.[prevM] || 0;
-    const c = cd[it.key]?.[curM]  || 0;
-    const pFmt = it.fmt ? it.fmt(p) : wan(p);
-    const cFmt = it.fmt ? it.fmt(c) : wan(c);
-    const diff = it.isRevenue ? '' : fmtDiff(p,c);
-    const bg = it.bold ? 'background:rgba(0,87,184,0.08);font-weight:700' : '';
-    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);${bg}">
-      <td style="padding:7px 10px">${it.label}</td>
-      <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${pFmt}</td>
-      <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${cFmt}</td>
-      <td style="padding:7px 10px;text-align:center">${diff}</td></tr>`;
-  }).join('');
-
-  const pRev = cd.revenue?.[prevM]||0, cRev = cd.revenue?.[curM]||0;
-  const pSub = (cd.haza_subtotal?.[prevM]||0)+(cd.baros_subtotal?.[prevM]||0);
-  const cSub = (cd.haza_subtotal?.[curM]||0) +(cd.baros_subtotal?.[curM]||0);
-  const pRatio = pRev>0 ? ((pSub/pRev)*100).toFixed(2)+'%' : '-';
-  const cRatio = cRev>0 ? ((cSub/cRev)*100).toFixed(2)+'%' : '-';
-
-  document.getElementById('costAutoAnalysisResult').innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      <div style="background:var(--sidiz-dark2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">하자보수비 합계</div>
-        <div style="font-size:12px;font-weight:700;color:var(--accent-rose)">${wan(cd.haza_subtotal?.[prevM])} → ${wan(cd.haza_subtotal?.[curM])}</div>
-        <div style="font-size:11px;margin-top:2px">${fmtDiff(cd.haza_subtotal?.[prevM],cd.haza_subtotal?.[curM])}</div>
-      </div>
-      <div style="background:var(--sidiz-dark2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">바로스 AS 합계</div>
-        <div style="font-size:12px;font-weight:700;color:var(--accent-amber)">${wan(cd.baros_subtotal?.[prevM])} → ${wan(cd.baros_subtotal?.[curM])}</div>
-        <div style="font-size:11px;margin-top:2px">${fmtDiff(cd.baros_subtotal?.[prevM],cd.baros_subtotal?.[curM])}</div>
-      </div>
-      <div style="background:var(--sidiz-dark2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">매출 대비 비율</div>
-        <div style="font-size:13px;font-weight:700;color:var(--sidiz-blue-bright)">${pRatio} → ${cRatio}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">목표 1.09%</div>
-      </div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr style="background:rgba(231,76,60,0.08)">
-        <th style="padding:7px 10px;text-align:left;color:var(--text-muted);font-weight:500">항목</th>
-        <th style="padding:7px 10px;text-align:right;color:var(--text-muted);font-weight:500">${MONTHS[prevM]}(전월)</th>
-        <th style="padding:7px 10px;text-align:right;color:var(--text-muted);font-weight:500">${MONTHS[curM]}(당월)</th>
-        <th style="padding:7px 10px;text-align:center;color:var(--text-muted);font-weight:500">증감</th>
-      </tr></thead>
-      <tbody>${rows}
-        <tr style="background:rgba(231,76,60,0.08);font-weight:700">
-          <td style="padding:7px 10px">소계</td>
-          <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${wan(pSub)}</td>
-          <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${wan(cSub)}</td>
-          <td style="padding:7px 10px;text-align:center">${fmtDiff(pSub,cSub)}</td>
-        </tr>
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-          <td style="padding:7px 10px;color:var(--text-muted)">매출 대비 비율</td>
-          <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${pRatio}</td>
-          <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${cRatio}</td>
-          <td style="padding:7px 10px;text-align:center">-</td>
-        </tr>
-      </tbody>
-    </table>`;
-}
-
 // ─── iframe 감지 → embed-mode 적용 ─────────────────────────────────────────
 (function detectEmbed() {
   try {
@@ -3249,19 +3039,19 @@ function renderCostAutoAnalysis() {
             if (opt) { brandSel.value = opt.value; if (window.KpiModule) window.KpiModule.onKpiBrandChange(opt.value); }
           }
         }
-        // 전월/당월 기본값: 1월 → 2월
-        const claimPrev = document.getElementById('claimPrevMonth');
-        const claimCur  = document.getElementById('claimCurMonth');
-        const costPrev  = document.getElementById('costPrevMonth');
-        const costCur   = document.getElementById('costCurMonth');
-        if (claimPrev) claimPrev.value = '0';
-        if (claimCur)  claimCur.value  = '1';
-        if (costPrev)  costPrev.value  = '0';
-        if (costCur)   costCur.value   = '1';
+        // 전월/당월 기본값: 2026-01(전월) → 2026-02(당월)
+        const analysisPrev     = document.getElementById('analysisPrevMonth');
+        const analysisCur      = document.getElementById('analysisCurMonth');
+        const costAnalysisPrev = document.getElementById('costAnalysisPrevMonth');
+        const costAnalysisCur  = document.getElementById('costAnalysisCurMonth');
+        if (analysisPrev)     analysisPrev.value     = '2026-01';
+        if (analysisCur)      analysisCur.value      = '2026-02';
+        if (costAnalysisPrev) costAnalysisPrev.value = '2026-01';
+        if (costAnalysisCur)  costAnalysisCur.value  = '2026-02';
         // 자동 분석 생성
         setTimeout(() => {
-          renderClaimAutoAnalysis();
-          renderCostAutoAnalysis();
+          if (typeof runKpiAutoAnalysis === 'function') runKpiAutoAnalysis();
+          if (typeof runCostAutoAnalysis === 'function') runCostAutoAnalysis();
         }, 400);
       };
       let tries = 0;
