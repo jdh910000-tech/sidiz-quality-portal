@@ -102,17 +102,20 @@ async function updateKpiFromSupabase(year) {
   // 항상 원본 정적 데이터로 복원 후 Supabase 값 병합
   _restoreKpiData(year);
   try {
-    // 브랜드 필터를 URL 레벨에서 적용 (JS 후처리 제거 → 데이터 누락 방지)
-    const validCatList = VALID_KPI_CATS.join(',');
-    let query = `select=claim_date,country,category`
+    // ▶ Range 헤더 페이지네이션으로 max_rows(1000) 제한 우회
+    // ▶ 브랜드 필터는 JS 클라이언트 사이드에서 처리 (한글 URL 인코딩 문제 방지)
+    const query = `select=claim_date,country,category,brand`
       + `&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31`
-      + `&category=in.(${validCatList})`;
-    if (_kpiBrandFilter && _kpiBrandFilter !== 'all') {
-      query += `&brand=eq.${_kpiBrandFilter}`; // raw 한글 사용 (PostgREST UTF-8 직접 처리)
-    }
-    query += `&limit=20000`; // 연간 전체도 안전하게 커버
-    const validClaims = await SupabaseClient.supabaseFetch('claims', query);
-    if (!validClaims || validClaims.length === 0) return;
+      + `&category=in.(제조,설계,서비스,고객불만,사양재검토)`
+      + `&order=claim_date.asc`;
+    const allClaims = await SupabaseClient.fetchAllClaimsFiltered(query);
+    if (!allClaims || allClaims.length === 0) return;
+
+    // 브랜드 필터 (클라이언트 사이드)
+    const validClaims = (_kpiBrandFilter && _kpiBrandFilter !== 'all')
+      ? allClaims.filter(c => c.brand === _kpiBrandFilter)
+      : allClaims;
+    if (validClaims.length === 0) return;
 
     const data = KPI_DATA[year]; if (!data) return;
     const types = ['제조','설계','서비스','고객불만','사양재검토'];
