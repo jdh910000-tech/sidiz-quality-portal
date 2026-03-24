@@ -291,7 +291,7 @@ function renderKpiMainTable(data, year, range) {
     const s = sArr[i]||0;
     const val = (c&&s>0) ? ((c/s)*100).toFixed(2)+'%' : '-';
     const dim = i >= range ? ' style="opacity:0.25"' : '';
-    const cls = (c&&s>0&&(c/s)>0.02&&i<range) ? ' class="danger"' : '';
+    const cls = (c&&s>0&&(c/s)>0.015&&i<range) ? ' class="danger"' : '';
     return `<td${cls}${dim}>${val}</td>`;
   }).join(''); }
 
