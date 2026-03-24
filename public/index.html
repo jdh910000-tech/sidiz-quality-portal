@@ -1592,6 +1592,7 @@ async function saveKpiNoteUI(type) {
     const CATS = ['제조','설계','서비스','사양재검토','고객불만'];
     const curCounts  = countBy(curData,  'item');
     const prevCounts = countBy(prevData, 'item');
+    delete curCounts['미분류'];   // 미분류 제외
     const top5 = topN(curCounts, 5);
 
     document.getElementById(elId).innerHTML = top5.map(([name, cnt], idx) => {
@@ -1624,6 +1625,7 @@ async function saveKpiNoteUI(type) {
   function renderItemDiffTop5(elId, curData, prevData) {
     const curCounts  = countBy(curData,  'item');
     const prevCounts = countBy(prevData, 'item');
+    delete curCounts['미분류']; delete prevCounts['미분류'];  // 미분류 제외
 
     const allItems = new Set([...Object.keys(curCounts), ...Object.keys(prevCounts)]);
     const ranked = Array.from(allItems)
