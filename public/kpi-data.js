@@ -219,7 +219,7 @@ function updateKpiComboChart(data, year, range) {
       const { ctx: c, data: d, scales: { x, y } } = chart;
       const kr = d.datasets[0].data, vn = d.datasets[1].data;
       c.save();
-      c.font = 'bold 11px JetBrains Mono, monospace';
+      c.font = 'bold 13px JetBrains Mono, monospace';
       c.textAlign = 'center';
       for (let i = 0; i < kr.length; i++) {
         const total = kr[i] + vn[i];
@@ -263,14 +263,14 @@ function updateKpiComboChart(data, year, range) {
       responsive: true, maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 11, family: "'Noto Sans KR'" }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
+        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 13, family: "'Noto Sans KR'" }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
         tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
           callbacks: { label: c => c.dataset.yAxisID==='y1' ? c.dataset.label+': '+c.parsed.y+'%' : c.dataset.label+': '+(c.parsed.y||0).toLocaleString()+'건' } }
       },
       scales: {
-        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 11 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 11 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 1000 },
-        y1: { position: 'right', title: { display: true, text: '불량지수(%)', color: '#6b83a0', font: { size: 11 } }, grid: { drawOnChartArea: false }, ticks: { color: '#ffb347', font: { size: 10, family: "'JetBrains Mono'" }, callback: v=>v+'%' }, min: 0, max: 3.5 }
+        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 13 } } },
+        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 13 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 12, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 1000 },
+        y1: { position: 'right', title: { display: true, text: '불량지수(%)', color: '#6b83a0', font: { size: 13 } }, grid: { drawOnChartArea: false }, ticks: { color: '#ffb347', font: { size: 12, family: "'JetBrains Mono'" }, callback: v=>v+'%' }, min: 0, max: 3.5 }
       }
     }
   });

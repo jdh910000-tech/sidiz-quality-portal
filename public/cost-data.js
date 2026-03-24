@@ -274,7 +274,7 @@ function renderCostComboChart(data, year, range) {
     afterDatasetsDraw(chart) {
       const { ctx: c, data: d, scales: { x, y } } = chart;
       const haza = d.datasets[0].data, jeH = d.datasets[1].data, baros = d.datasets[2].data;
-      c.save(); c.font = 'bold 10px JetBrains Mono, monospace'; c.textAlign = 'center';
+      c.save(); c.font = 'bold 12px JetBrains Mono, monospace'; c.textAlign = 'center';
       for (let i = 0; i < haza.length; i++) {
         const total = haza[i] + jeH[i] + baros[i];
         if (total === 0) continue;
@@ -302,15 +302,15 @@ function renderCostComboChart(data, year, range) {
       responsive: true, maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 11 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
+        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 13 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
         tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
           callbacks: { label: c => c.dataset.yAxisID === 'y1' ? c.dataset.label + ': ' + c.parsed.y + '%' : c.dataset.label + ': ' + (c.parsed.y || 0).toLocaleString() + '만원' }
         }
       },
       scales: {
-        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 11 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '비용 (만원)', color: '#6b83a0', font: { size: 11 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 25000 },
-        y1: { position: 'right', title: { display: true, text: '매출 대비 비율 (%)', color: '#6b83a0', font: { size: 11 } }, grid: { drawOnChartArea: false }, ticks: { color: '#a78bfa', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => v + '%' }, min: 0, max: 3.0 }
+        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 13 } } },
+        y: { stacked: true, position: 'left', title: { display: true, text: '비용 (만원)', color: '#6b83a0', font: { size: 13 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 12, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 25000 },
+        y1: { position: 'right', title: { display: true, text: '매출 대비 비율 (%)', color: '#6b83a0', font: { size: 13 } }, grid: { drawOnChartArea: false }, ticks: { color: '#a78bfa', font: { size: 12, family: "'JetBrains Mono'" }, callback: v => v + '%' }, min: 0, max: 3.0 }
       }
     }
   });

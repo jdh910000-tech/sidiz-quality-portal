@@ -164,9 +164,9 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 /* ===== KPI CARDS ===== */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
 .kpi-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; }
-.kpi-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.3px; }
-.kpi-value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
-.kpi-change { font-size: 11px; display: flex; align-items: center; gap: 3px; }
+.kpi-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+.kpi-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+.kpi-change { font-size: 13px; display: flex; align-items: center; gap: 3px; }
 .kpi-change.up { color: var(--accent-rose); }
 .kpi-change.down { color: var(--accent-emerald); }
 
@@ -182,13 +182,10 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 .data-table td.row-header { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
 .data-table tr:hover td { background: rgba(0,87,184,0.04); }
 
-/* 고객클레임 종합 현황 + 하자보수비 상세 표 — 폰트 확대 */
-#kpiMainTable .data-table th,
-#costDetailTable .data-table th { font-size: 13px; padding: 11px 14px; }
-#kpiMainTable .data-table td,
-#costDetailTable .data-table td { font-size: 13px; padding: 10px 14px; }
-#kpiMainTable .data-table-header h3,
-#costDetailTable .data-table-header h3 { font-size: 15px; }
+/* KPI 현황 섹션 전체 표 폰트 확대 */
+#section-kpi .data-table-header h3 { font-size: 16px; }
+#section-kpi .data-table th { font-size: 13px; padding: 11px 14px; }
+#section-kpi .data-table td { font-size: 13px; padding: 10px 14px; }
 .row-header { color: var(--text-secondary); font-weight: 600 !important; }
 .highlight { color: var(--sidiz-blue-bright); font-weight: 600; }
 .danger { color: var(--accent-rose); font-weight: 600; }
@@ -296,9 +293,9 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 /* Cost cards */
 .cost-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
 .cost-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; text-align: center; }
-.cost-label { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
-.cost-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-.cost-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+.cost-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.cost-value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.cost-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
