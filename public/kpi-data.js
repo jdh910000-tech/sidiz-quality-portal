@@ -131,13 +131,12 @@ async function updateKpiFromSupabase(year) {
       if (jt) { if (isVn) dVn[jt][mi]++; else dKr[jt][mi]++; }
     });
     for (let i = 0; i < 12; i++) {
-      // 정적 데이터가 있는 월(>0)은 항상 유지, 0인 월만 Supabase 값 적용
-      // 브랜드 필터 시에도 동일 (정적 데이터는 이미 시디즈 기준)
-      if (jKr[i] > 0 && data.judgement.kr[i] === 0) data.judgement.kr[i] = jKr[i];
-      if (jVn[i] > 0 && data.judgement.vn[i] === 0) data.judgement.vn[i] = jVn[i];
+      // Supabase 값이 있는 월은 항상 Supabase 우선 (정적 데이터 덮어씀)
+      if (jKr[i] > 0) data.judgement.kr[i] = jKr[i];
+      if (jVn[i] > 0) data.judgement.vn[i] = jVn[i];
       types.forEach(t => {
-        if (dKr[t][i] > 0 && data.detail_kr[t][i] === 0) data.detail_kr[t][i] = dKr[t][i];
-        if (dVn[t][i] > 0 && data.detail_vn[t][i] === 0) data.detail_vn[t][i] = dVn[t][i];
+        if (dKr[t][i] > 0) data.detail_kr[t][i] = dKr[t][i];
+        if (dVn[t][i] > 0) data.detail_vn[t][i] = dVn[t][i];
       });
     }
     try {

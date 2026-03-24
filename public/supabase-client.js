@@ -25,6 +25,14 @@ async function supabaseCount(table) {
   return parseInt(res.headers.get('content-range')?.split('/')[1] || '0');
 }
 
+// 필터 조건 포함 정확한 카운트 (데이터 fetch 없이 헤더에서 총 건수 반환)
+async function supabaseCountFiltered(table, params = '') {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?select=count${params ? '&' + params : ''}`;
+  const res = await fetch(url, { headers: { ...supabaseHeaders, 'Prefer': 'count=exact' } });
+  if (!res.ok) return 0;
+  return parseInt(res.headers.get('content-range')?.split('/')[1] || '0');
+}
+
 // ─── claims (회수일 기준, 기존) ───
 async function fetchClaims(params) { return supabaseFetch('claims', params || 'select=*&order=claim_date.desc&limit=5000'); }
 
@@ -261,7 +269,7 @@ async function saveKpiNote(noteType, yearMonth, content, author = 'admin') {
 // Export
 window.SupabaseClient = {
   SUPABASE_URL, SUPABASE_ANON_KEY,
-  supabaseFetch, supabaseCount,
+  supabaseFetch, supabaseCount, supabaseCountFiltered,
   // 회수일
   fetchClaims, fetchAllClaims,
   // 접수일

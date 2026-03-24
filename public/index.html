@@ -2991,60 +2991,75 @@ async function initSupabase() {
     if(badge) { const parts=[]; if(cnt>0) parts.push('회수'+cnt); if(rcnt>0) parts.push('접수'+rcnt);
       badge.innerHTML = '● LIVE ('+(parts.length>0?parts.join('·'):cnt+'건')+')';
       badge.style.background='rgba(0,196,140,0.1)'; badge.style.borderColor='rgba(0,196,140,0.2)'; badge.style.color='var(--accent-emerald)'; }
-    // 홈 KPI 카드 업데이트 — 제조/설계/서비스/사양재검토/고객불만만 집계
+    // 홈 KPI 카드 ① 총 클레임 건수 — 2026년 · 시디즈 · 유효카테고리 정확한 건수
     const VALID_CATS = ['제조','설계','서비스','사양재검토','고객불만'];
+    const curYear = new Date().getFullYear();
     try {
-      const allClaims = await SupabaseClient.fetchClaims('select=category,claim_date,country,brand&limit=10000');
-      if (allClaims && allClaims.length > 0) {
-        const validClaims = allClaims.filter(c => VALID_CATS.includes(c.category));
-        const el = id => document.getElementById(id);
-        el('homeClaimCount').textContent = validClaims.length.toLocaleString();
-        el('homeClaimSub').textContent = '제조/설계/서비스/사양재검토/고객불만';
-        // 브랜드 드롭다운 채우기 (KPI용) — 기본값: 시디즈
-        const brands = [...new Set(allClaims.map(c=>c.brand).filter(Boolean))].sort();
-        const kbs = document.getElementById('kpiBrandSelect');
-        if(kbs) {
-          kbs.innerHTML = '<option value="all">전체</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
-          // 시디즈 자동 선택
-          const sidizOpt = Array.from(kbs.options).find(o => o.text === '시디즈');
-          if (sidizOpt) {
-            kbs.value = sidizOpt.value;
-            // KpiModule의 내부 필터 변수도 동기화
-            if (window.KpiModule) window.KpiModule.onKpiBrandChange(sidizOpt.value);
-          }
+      // ① 브랜드 드롭다운 채우기 — 전체 브랜드 목록은 별도 쿼리로
+      const brandList = await SupabaseClient.fetchClaims(
+        `select=brand&claim_date=gte.${curYear}-01-01&claim_date=lte.${curYear}-12-31&limit=5000`
+      );
+      const brands = [...new Set((brandList||[]).map(c=>c.brand).filter(Boolean))].sort();
+      const kbs = document.getElementById('kpiBrandSelect');
+      if (kbs) {
+        kbs.innerHTML = '<option value="all">전체</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
+        const sidizOpt = Array.from(kbs.options).find(o => o.text === '시디즈');
+        if (sidizOpt) {
+          kbs.value = sidizOpt.value;
+          if (window.KpiModule) window.KpiModule.onKpiBrandChange(sidizOpt.value);
         }
       }
-    } catch(e) { console.warn('홈 KPI 업데이트 실패:', e); }
+      // ② 시디즈 2026년 유효카테고리 정확한 건수 (헤더 카운트, 데이터 fetch 없음)
+      const el = id => document.getElementById(id);
+      const catFilter = VALID_CATS.map(c=>`category=eq.${encodeURIComponent(c)}`).join('&');
+      const claimCount = await SupabaseClient.supabaseCountFiltered(
+        'claims',
+        `brand=eq.시디즈&claim_date=gte.${curYear}-01-01&claim_date=lte.${curYear}-12-31&category=in.(${VALID_CATS.join(',')})`
+      );
+      el('homeClaimCount').textContent = claimCount.toLocaleString();
+      el('homeClaimSub').textContent = `${curYear}년 YTD · 시디즈 · 판정기준`;
+    } catch(e) { console.warn('홈 클레임 카운트 실패:', e); }
+
     // 제품별 클레임 탭은 탭 클릭 시 lazy 로드 (_prodLoaded 플래그로 제어)
-    // KPI 고객클레임 현황 초기화
+    // KPI 고객클레임 현황 초기화 (Supabase 데이터로 업데이트)
     if (window.KpiModule) await window.KpiModule.initKpiSection();
     if (window.CostModule) await window.CostModule.renderCostSection('2026');
-    // 홈 KPI 나머지 카드 채우기
+
+    // 홈 KPI 나머지 카드 채우기 (KPI/Cost 모듈이 Supabase로 업데이트된 후)
     try {
       const el = id => document.getElementById(id);
+      // 불량지수: KPI_DATA 2026 (Supabase 반영 후)
       if (window.KpiModule && window.KpiModule.KPI_DATA) {
-        const kd = window.KpiModule.KPI_DATA['2026'];
+        const kd = window.KpiModule.KPI_DATA[String(curYear)];
         if (kd) {
           const tJ = kd.judgement.kr.map((v,i)=>(v||0)+(kd.judgement.vn[i]||0));
           const tS = kd.sales.kr.map((v,i)=>(v||0)+(kd.sales.vn[i]||0));
           const totalJ = tJ.reduce((s,v)=>s+v,0), totalS = tS.reduce((s,v)=>s+v,0);
-          if (totalS > 0) { el('homeDefectIdx').textContent = ((totalJ/totalS)*100).toFixed(2)+'%'; el('homeDefectSub').textContent = '목표 1.50% 대비'; }
-          else { el('homeDefectIdx').textContent = '-'; el('homeDefectSub').textContent = '매출 데이터 필요'; }
+          const nonZeroM = tJ.filter(v=>v>0).length || 1;
+          if (totalS > 0) {
+            el('homeDefectIdx').textContent = ((totalJ/totalS)*100).toFixed(2)+'%';
+            el('homeDefectSub').textContent = `${curYear}년 YTD · 목표 1.50%`;
+          } else {
+            el('homeDefectIdx').textContent = totalJ > 0 ? totalJ+'건' : '-';
+            el('homeDefectSub').textContent = '매출 데이터 필요';
+          }
         }
       }
+      // 하자보수비·실패비용: CostModule (Supabase 반영 후)
       if (window.CostModule && window.CostModule.COST_DATA) {
-        const cd = window.CostModule.COST_DATA['2026'];
+        const cd = window.CostModule.COST_DATA[String(curYear)];
         if (cd) {
-          const mc = cd.haza_subtotal.filter(v=>v>0).length || 1;
-          const hazaT = cd.haza_subtotal.reduce((s,v)=>s+(v||0),0);
-          const barosT = cd.baros_subtotal.reduce((s,v)=>s+(v||0),0);
+          const mc = (cd.haza_subtotal||[]).filter(v=>v>0).length || 1;
+          const hazaT = (cd.haza_subtotal||[]).reduce((s,v)=>s+(v||0),0);
+          const barosT = (cd.baros_subtotal||[]).reduce((s,v)=>s+(v||0),0);
+          const jeT   = (cd.je_haza||[]).reduce((s,v)=>s+(v||0),0);
           el('homeCostAvg').textContent = hazaT > 0 ? Math.round(hazaT/mc/10000).toLocaleString()+'만' : '-';
-          el('homeCostSub').textContent = cd.target?.haza_subtotal ? '목표: '+Math.round(cd.target.haza_subtotal/10000).toLocaleString()+'만' : '-';
-          el('homeSalesCount').textContent = (hazaT+barosT) > 0 ? ((hazaT+barosT)/100000000).toFixed(2)+'억' : '-';
-          el('homeSalesSub').textContent = '하자보수비 + 바로스 누적';
+          el('homeCostSub').textContent = `${curYear}년 월평균 · 목표: ${cd.target?.haza_subtotal ? Math.round(cd.target.haza_subtotal/10000).toLocaleString()+'만' : '-'}`;
+          el('homeSalesCount').textContent = (hazaT+barosT+jeT) > 0 ? ((hazaT+barosT+jeT)/100000000).toFixed(2)+'억' : '-';
+          el('homeSalesSub').textContent = `${curYear}년 누적 · 하자+바로스`;
         }
       }
-    } catch(e) {}
+    } catch(e) { console.warn('홈 KPI 나머지 카드 실패:', e); }
   } catch(e) { console.error('Supabase 연결 실패:', e);
     if(badge) { badge.innerHTML='⚠ 오프라인'; badge.style.background='rgba(255,179,71,0.1)'; badge.style.borderColor='rgba(255,179,71,0.2)'; badge.style.color='var(--accent-amber)'; } }
 }
