@@ -855,7 +855,7 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
             <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(수동 입력 · 저장됨)</span></div>
             <div style="display:flex;align-items:center;gap:8px">
               <span id="kpiClaimNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
-              <button onclick="saveKpiNoteUI('claim')" style="padding:5px 14px;background:var(--sidiz-blue);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+              <button id="kpiClaimNoteSaveBtn" onclick="saveKpiNoteUI('claim')" style="padding:5px 14px;background:var(--sidiz-blue);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
             </div>
           </div>
           <textarea id="kpiClaimNoteArea"
@@ -948,7 +948,7 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
             <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(수동 입력 · 저장됨)</span></div>
             <div style="display:flex;align-items:center;gap:8px">
               <span id="kpiCostNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
-              <button onclick="saveKpiNoteUI('cost')" style="padding:5px 14px;background:#c0392b;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+              <button id="kpiCostNoteSaveBtn" onclick="saveKpiNoteUI('cost')" style="padding:5px 14px;background:#c0392b;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
             </div>
           </div>
           <textarea id="kpiCostNoteArea"
@@ -1461,7 +1461,7 @@ async function saveKpiNoteUI(type) {
     return;
   }
 
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
   if (statusEl) { statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = '저장 중...'; }
 
   try {
@@ -1474,9 +1474,10 @@ async function saveKpiNoteUI(type) {
     // 저장 후 전월 기록 갱신
     await loadKpiNote(type);
   } catch(e) {
-    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '❌ 저장 실패'; }
+    console.error('saveKpiNoteUI 오류:', e);
+    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '❌ 저장 실패: ' + (e.message||''); }
   } finally {
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1590,9 +1591,12 @@ async function saveKpiNoteUI(type) {
   // ── 제품별 Top 5 (당월 건수 + 하자유형 세부 포함) ──
   function renderItemTop5WithCategory(elId, curData, prevData) {
     const CATS = ['제조','설계','서비스','사양재검토','고객불만'];
-    const curCounts  = countBy(curData,  'item');
-    const prevCounts = countBy(prevData, 'item');
-    delete curCounts['미분류'];   // 미분류 제외
+    // item이 null/빈값/'미분류'/'null'인 레코드 사전 제거
+    const validItem = r => r.item && r.item.trim() && r.item !== '미분류' && r.item !== 'null';
+    const curFiltered  = curData.filter(validItem);
+    const prevFiltered = prevData.filter(validItem);
+    const curCounts  = countBy(curFiltered,  'item');
+    const prevCounts = countBy(prevFiltered, 'item');
     const top5 = topN(curCounts, 5);
 
     document.getElementById(elId).innerHTML = top5.map(([name, cnt], idx) => {
@@ -1623,9 +1627,10 @@ async function saveKpiNoteUI(type) {
 
   // ── 전월대비 증감이 큰 제품 Top 5 (+ 주요 하자유형) ──
   function renderItemDiffTop5(elId, curData, prevData) {
-    const curCounts  = countBy(curData,  'item');
-    const prevCounts = countBy(prevData, 'item');
-    delete curCounts['미분류']; delete prevCounts['미분류'];  // 미분류 제외
+    // item이 null/빈값/'미분류'/'null'인 레코드 사전 제거
+    const validItem = r => r.item && r.item.trim() && r.item !== '미분류' && r.item !== 'null';
+    const curCounts  = countBy(curData.filter(validItem),  'item');
+    const prevCounts = countBy(prevData.filter(validItem), 'item');
 
     const allItems = new Set([...Object.keys(curCounts), ...Object.keys(prevCounts)]);
     const ranked = Array.from(allItems)
