@@ -3056,8 +3056,8 @@ async function confluenceUpload() {
   const curM  = monthRange - 1; // 0-based
   const prevM = curM - 1;
 
-  const kd = window.KPI_DATA?.[year];
-  if (!kd) { showConfluenceToast('error', 'KPI 데이터를 찾을 수 없습니다.'); return; }
+  const kd = (typeof KPI_DATA !== 'undefined' ? KPI_DATA : window.KpiModule?.KPI_DATA)?.[year];
+  if (!kd) { showConfluenceToast('error', 'KPI 데이터를 찾을 수 없습니다. KPI 현황 탭을 먼저 열어주세요.'); return; }
 
   // ── 판정유형별 클레임 행 구성 ──
   const cats = ['제조','설계','서비스','고객불만','사양재검토'];
