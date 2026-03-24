@@ -2943,10 +2943,19 @@ async function initSupabase() {
         const el = id => document.getElementById(id);
         el('homeClaimCount').textContent = validClaims.length.toLocaleString();
         el('homeClaimSub').textContent = '제조/설계/서비스/사양재검토/고객불만';
-        // 브랜드 드롭다운 채우기 (KPI용)
+        // 브랜드 드롭다운 채우기 (KPI용) — 기본값: 시디즈
         const brands = [...new Set(allClaims.map(c=>c.brand).filter(Boolean))].sort();
         const kbs = document.getElementById('kpiBrandSelect');
-        if(kbs) kbs.innerHTML = '<option value="all">전체</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
+        if(kbs) {
+          kbs.innerHTML = '<option value="all">전체</option>' + brands.map(b=>`<option value="${b}">${b}</option>`).join('');
+          // 시디즈 자동 선택
+          const sidizOpt = Array.from(kbs.options).find(o => o.text === '시디즈');
+          if (sidizOpt) {
+            kbs.value = sidizOpt.value;
+            // KpiModule의 내부 필터 변수도 동기화
+            if (window.KpiModule) window.KpiModule.onKpiBrandChange(sidizOpt.value);
+          }
+        }
       }
     } catch(e) { console.warn('홈 KPI 업데이트 실패:', e); }
     // 제품별 클레임 탭은 탭 클릭 시 lazy 로드 (_prodLoaded 플래그로 제어)

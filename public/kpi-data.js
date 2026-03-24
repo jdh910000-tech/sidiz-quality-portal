@@ -369,6 +369,11 @@ function onMonthRangeChange(val) {
 }
 async function initKpiSection() {
   const year = document.getElementById('kpiYearSelect')?.value || '2026';
+  // 브랜드 셀렉터 값 반영 (기본값: 시디즈)
+  const brandSel = document.getElementById('kpiBrandSelect');
+  if (brandSel && brandSel.value && brandSel.value !== 'all') {
+    _kpiBrandFilter = brandSel.value;
+  }
   await updateKpiFromSupabase(year);
   renderKpiClaimSection(year);
 }
