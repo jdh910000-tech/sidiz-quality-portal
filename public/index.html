@@ -2972,6 +2972,57 @@ async function initSupabase() {
 }
 document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300));
 
+// ─── URL 파라미터로 섹션/브랜드 자동 이동 ───────────────────────────────────
+(function applyUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const section = params.get('section');
+  const brand   = params.get('brand');
+
+  if (section) {
+    // KPI 모듈 로딩 후 이동 (약간 지연)
+    setTimeout(() => {
+      showSection(section);
+
+      // brand 파라미터 처리
+      const brandSel = document.getElementById('kpiBrandSelect');
+      if (brandSel && brand) {
+        // 옵션이 동적으로 생성되므로 KpiModule 로딩 후 적용
+        const applyBrand = () => {
+          const opt = Array.from(brandSel.options).find(o => o.value === brand || o.text === brand);
+          if (opt) {
+            brandSel.value = opt.value;
+            if (window.KpiModule) window.KpiModule.onKpiBrandChange(opt.value);
+          }
+        };
+        // KpiModule이 준비될 때까지 재시도
+        let tries = 0;
+        const tryApply = setInterval(() => {
+          if (window.KpiModule || tries++ > 20) { clearInterval(tryApply); applyBrand(); }
+        }, 200);
+      }
+    }, 600);
+  }
+
+  // ?section=kpi 일 때 브랜드 기본값: 시디즈 (brand 파라미터 없어도 적용)
+  if (section === 'kpi' && !brand) {
+    setTimeout(() => {
+      const applyDefault = () => {
+        const brandSel = document.getElementById('kpiBrandSelect');
+        if (!brandSel) return;
+        const opt = Array.from(brandSel.options).find(o => o.text === '시디즈');
+        if (opt) {
+          brandSel.value = opt.value;
+          if (window.KpiModule) window.KpiModule.onKpiBrandChange(opt.value);
+        }
+      };
+      let tries = 0;
+      const tryDefault = setInterval(() => {
+        if (window.KpiModule || tries++ > 20) { clearInterval(tryDefault); applyDefault(); }
+      }, 200);
+    }, 800);
+  }
+})();
+
 // OKR Year tabs
 function showOkrYear(year, btn) {
   document.querySelectorAll('.okr-year-content').forEach(c => c.classList.remove('active'));
