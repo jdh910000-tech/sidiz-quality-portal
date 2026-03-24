@@ -101,35 +101,40 @@ async function updateKpiFromSupabase(year) {
   // 항상 원본 정적 데이터로 복원 후 Supabase 값 병합
   _restoreKpiData(year);
   try {
-    let query = `select=claim_date,country,category,brand&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31&limit=10000`;
-    const allClaims = await SupabaseClient.supabaseFetch('claims', query);
-    if (!allClaims || allClaims.length === 0) return;
-    // 브랜드 필터 적용
-    let claims = allClaims;
+    // 브랜드 필터를 URL 레벨에서 적용 (JS 후처리 제거 → 데이터 누락 방지)
+    const validCatList = VALID_KPI_CATS.join(',');
+    let query = `select=claim_date,country,category`
+      + `&claim_date=gte.${year}-01-01&claim_date=lte.${year}-12-31`
+      + `&category=in.(${validCatList})`;
     if (_kpiBrandFilter && _kpiBrandFilter !== 'all') {
-      claims = allClaims.filter(c => c.brand === _kpiBrandFilter);
+      query += `&brand=eq.${encodeURIComponent(_kpiBrandFilter)}`;
     }
-    // 유효 카테고리만 집계
-    const validClaims = claims.filter(c => VALID_KPI_CATS.includes(c.category));
+    query += `&limit=20000`; // 연간 전체도 안전하게 커버
+    const validClaims = await SupabaseClient.supabaseFetch('claims', query);
+    if (!validClaims || validClaims.length === 0) return;
+
     const data = KPI_DATA[year]; if (!data) return;
     const types = ['제조','설계','서비스','고객불만','사양재검토'];
     const jKr = Array(12).fill(0), jVn = Array(12).fill(0);
     const dKr = {}, dVn = {};
     types.forEach(t => { dKr[t] = Array(12).fill(0); dVn[t] = Array(12).fill(0); });
+
     validClaims.forEach(c => {
       const mi = parseInt(c.claim_date.slice(5,7)) - 1;
       if (mi < 0 || mi > 11) return;
       const isVn = c.country === '베트남';
       if (isVn) jVn[mi]++; else jKr[mi]++;
-      const cat = c.category || '';
+      // 카테고리 직접 매핑 (Supabase 값을 그대로 사용)
+      const cat = (c.category || '').trim();
       let jt = null;
       if (cat === '제조') jt = '제조';
       else if (cat === '설계') jt = '설계';
       else if (cat === '서비스') jt = '서비스';
-      else if (cat.includes('고객')) jt = '고객불만';
-      else if (cat.includes('사양')) jt = '사양재검토';
+      else if (cat === '고객불만' || cat.includes('고객')) jt = '고객불만';
+      else if (cat === '사양재검토' || cat.includes('사양')) jt = '사양재검토';
       if (jt) { if (isVn) dVn[jt][mi]++; else dKr[jt][mi]++; }
     });
+
     for (let i = 0; i < 12; i++) {
       // Supabase 값이 있는 월은 항상 Supabase 우선 (정적 데이터 덮어씀)
       if (jKr[i] > 0) data.judgement.kr[i] = jKr[i];
@@ -139,6 +144,7 @@ async function updateKpiFromSupabase(year) {
         if (dVn[t][i] > 0) data.detail_vn[t][i] = dVn[t][i];
       });
     }
+    // 매출량 업데이트 (국내/베트남 별도)
     try {
       const sales = await SupabaseClient.supabaseFetch('sales_monthly',
         `select=*&year_month=gte.${year}-01&year_month=lte.${year}-12`);
@@ -149,7 +155,7 @@ async function updateKpiFromSupabase(year) {
         else if (s.sales_count > 0) data.sales.kr[mi] = s.sales_count;
       });
     } catch(e) {}
-  } catch(e) {}
+  } catch(e) { console.error('[KPI] updateKpiFromSupabase 오류:', e); }
 }
 
 // ─── 렌더링 ───
