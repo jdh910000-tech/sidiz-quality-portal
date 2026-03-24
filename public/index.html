@@ -840,11 +840,11 @@ body.embed-mode #confluenceUploadBtn + button { display: none !important; }
         <!-- 3. 제품별 + 부품별 나란히 -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">🪑 제품별 Top 5 (당월)</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">🪑 제품별 Top 5 <span style="font-weight:400;color:var(--text-muted)">(당월 · 하자유형 포함)</span></div>
             <div id="kpiAnItemTable"></div>
           </div>
           <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:16px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">🔩 불량부품 Top 5 (당월)</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">📈 전월대비 증감 TOP 5 <span style="font-weight:400;color:var(--text-muted)">(제품)</span></div>
             <div id="kpiAnPartTable"></div>
           </div>
         </div>
@@ -1564,7 +1564,7 @@ async function saveKpiNoteUI(type) {
 
   function renderCategoryTable(cur, prev) {
     const cc = countBy(cur,'category'), pc = countBy(prev,'category');
-    const cats = ['사양재검토','고객불만','설계','제조','서비스'];
+    const cats = ['제조','설계','서비스','사양재검토','고객불만'];
     const rows = cats.map(cat => {
       const c = cc[cat]||0, p = pc[cat]||0, d = c - p;
       const arrow = d > 0 ? `<span style="color:var(--accent-rose)">▲${d}</span>` : d < 0 ? `<span style="color:var(--accent-emerald)">▼${Math.abs(d)}</span>` : `<span style="color:var(--text-muted)">━</span>`;
@@ -1587,17 +1587,69 @@ async function saveKpiNoteUI(type) {
       </table>`;
   }
 
-  function renderTopTable(elId, data, key) {
-    const counts = countBy(data, key);
-    const top = topN(counts, 5);
-    const total = data.length || 1;
-    document.getElementById(elId).innerHTML = top.map(([name, cnt]) => {
-      const pct = ((cnt/total)*100).toFixed(1);
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
-        <span style="color:var(--text-primary)">${name}</span>
-        <span style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${cnt}건 <span style="color:var(--text-muted);font-size:10px">${pct}%</span></span>
+  // ── 제품별 Top 5 (당월 건수 + 하자유형 세부 포함) ──
+  function renderItemTop5WithCategory(elId, curData, prevData) {
+    const CATS = ['제조','설계','서비스','사양재검토','고객불만'];
+    const curCounts  = countBy(curData,  'item');
+    const prevCounts = countBy(prevData, 'item');
+    const top5 = topN(curCounts, 5);
+
+    document.getElementById(elId).innerHTML = top5.map(([name, cnt], idx) => {
+      const pc   = prevCounts[name] || 0;
+      const diff = cnt - pc;
+      const diffStr = diff > 0
+        ? `<span style="color:var(--accent-rose);font-size:11px">▲${diff}</span>`
+        : diff < 0
+        ? `<span style="color:var(--accent-emerald);font-size:11px">▼${Math.abs(diff)}</span>`
+        : `<span style="color:var(--text-muted);font-size:11px">━</span>`;
+
+      // 이 제품의 카테고리별 분포
+      const itemRows = curData.filter(r => r.item === name);
+      const catMap   = countBy(itemRows, 'category');
+      const catBars  = CATS
+        .map(cat => catMap[cat] ? `<span>${cat} <b style="color:var(--text-primary)">${catMap[cat]}</b></span>` : '')
+        .filter(Boolean).join('<span style="color:var(--border);margin:0 3px">|</span>');
+
+      return `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+          <span style="color:var(--text-primary);font-weight:600">${idx+1}. ${name}</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${cnt}건 ${diffStr}</span>
+        </div>
+        ${catBars ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${catBars}</div>` : ''}
       </div>`;
     }).join('') || '<div style="color:var(--text-muted);font-size:12px">데이터 없음</div>';
+  }
+
+  // ── 전월대비 증감이 큰 제품 Top 5 (+ 주요 하자유형) ──
+  function renderItemDiffTop5(elId, curData, prevData) {
+    const curCounts  = countBy(curData,  'item');
+    const prevCounts = countBy(prevData, 'item');
+
+    const allItems = new Set([...Object.keys(curCounts), ...Object.keys(prevCounts)]);
+    const ranked = Array.from(allItems)
+      .map(item => ({ item, cur: curCounts[item]||0, prev: prevCounts[item]||0, diff: (curCounts[item]||0)-(prevCounts[item]||0) }))
+      .filter(d => d.diff > 0)
+      .sort((a, b) => b.diff - a.diff)
+      .slice(0, 5);
+
+    document.getElementById(elId).innerHTML = ranked.map(({item, cur, prev, diff}, idx) => {
+      // 당월 이 제품에서 가장 많은 하자유형 2개
+      const itemRows = curData.filter(r => r.item === item);
+      const topCats  = topN(countBy(itemRows, 'category'), 2)
+        .map(([cat, c]) => `<span>${cat} <b style="color:var(--text-primary)">${c}</b></span>`)
+        .join('<span style="color:var(--border);margin:0 3px">|</span>');
+
+      return `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+          <span style="color:var(--text-primary);font-weight:600">${idx+1}. ${item}</span>
+          <span style="color:var(--accent-rose);font-family:'JetBrains Mono',monospace;font-weight:700">▲${diff}건</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">
+          전월 ${prev}건 → 당월 ${cur}건
+          ${topCats ? `<span style="margin-left:6px">${topCats}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('') || '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">전월 대비 증가 제품 없음</div>';
   }
 
   // ── 실패비용 탭 자동 분석 ──
@@ -1740,8 +1792,8 @@ async function saveKpiNoteUI(type) {
 
     renderSummaryCards(curData, prevData, curYm, prevYm);
     renderCategoryTable(curData, prevData);
-    renderTopTable('kpiAnItemTable', curData, 'item');
-    renderTopTable('kpiAnPartTable', curData, 'defective_part');
+    renderItemTop5WithCategory('kpiAnItemTable', curData, prevData);
+    renderItemDiffTop5('kpiAnPartTable', curData, prevData);
 
     // 메모 로드
     if (window._kpiNoteCurrentYm !== curYm) {
