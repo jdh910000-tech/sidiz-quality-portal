@@ -96,6 +96,15 @@ body::before {
 /* ===== MAIN ===== */
 .main { margin-left: 68px; padding: 28px 36px; position: relative; z-index: 1; min-height: 100vh; }
 
+/* ===== EMBED MODE (iframe 삽입 시) ===== */
+body.embed-mode .sidebar { display: none !important; }
+body.embed-mode .main { margin-left: 0 !important; padding: 16px 20px !important; }
+body.embed-mode .back-btn { display: none !important; }
+body.embed-mode #section-kpi > .header { margin-bottom: 16px !important; }
+body.embed-mode #section-kpi > .header .header-left p { display: none; }
+body.embed-mode #confluenceUploadBtn,
+body.embed-mode #confluenceUploadBtn + button { display: none !important; }
+
 .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
 
 .header-left h1 { font-family: 'Outfit', 'Noto Sans KR', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
@@ -2971,6 +2980,18 @@ async function initSupabase() {
     if(badge) { badge.innerHTML='⚠ 오프라인'; badge.style.background='rgba(255,179,71,0.1)'; badge.style.borderColor='rgba(255,179,71,0.2)'; badge.style.color='var(--accent-amber)'; } }
 }
 document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300));
+
+// ─── iframe 감지 → embed-mode 적용 ─────────────────────────────────────────
+(function detectEmbed() {
+  try {
+    if (window.self !== window.top) {
+      document.body.classList.add('embed-mode');
+    }
+  } catch(e) {
+    // cross-origin iframe에서 window.top 접근 시 오류 → iframe 안에 있는 것
+    document.body.classList.add('embed-mode');
+  }
+})();
 
 // ─── URL 파라미터로 섹션/브랜드 자동 이동 ───────────────────────────────────
 (function applyUrlParams() {
