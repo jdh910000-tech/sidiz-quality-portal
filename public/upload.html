@@ -869,21 +869,30 @@ async function uploadClaims() {
       showStatus('claimStatus', 'loading', `claims_receipt: ${uploaded} / ${finalData.length}건 완료...`);
     }
 
-    // Upload symptom_pending (insert only if not already pending)
+    // Upload symptom_pending — (receipt_id, seq_no) 중복 시 무시(검토 중인 항목 보존)
     let pendingUploaded = 0;
     if (claimPendingData.length > 0) {
       showStatus('claimStatus', 'loading', `symptom_pending ${claimPendingData.length}건 저장 중...`);
       for (let i = 0; i < claimPendingData.length; i += batchSize) {
         const batch = claimPendingData.slice(i, i + batchSize);
-        // Use ignore on conflict so we don't overwrite rows already under review
-        const res = await fetch(`${SUPA_URL}/rest/v1/symptom_pending`, {
+        const res = await fetch(`${SUPA_URL}/rest/v1/symptom_pending?on_conflict=receipt_id,seq_no`, {
           method: 'POST',
-          headers: { ...headers, 'Prefer': 'return=minimal' },
+          headers: { ...headers, 'Prefer': 'return=minimal,resolution=ignore-duplicates' },
           body: JSON.stringify(batch)
         });
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(`symptom_pending 저장 실패 ${res.status}: ${errText}`);
+          // on_conflict 키 미설정 시 graceful fallback: conflict 없이 재시도
+          if (res.status === 400 || res.status === 409) {
+            const fallback = await fetch(`${SUPA_URL}/rest/v1/symptom_pending`, {
+              method: 'POST',
+              headers: { ...headers, 'Prefer': 'return=minimal' },
+              body: JSON.stringify(batch)
+            });
+            if (!fallback.ok) throw new Error(`symptom_pending 저장 실패 ${fallback.status}: ${await fallback.text()}`);
+          } else {
+            throw new Error(`symptom_pending 저장 실패 ${res.status}: ${errText}`);
+          }
         }
         pendingUploaded += batch.length;
       }

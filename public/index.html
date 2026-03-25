@@ -1925,9 +1925,18 @@ async function loadReceiptDashboard() {
 }
 
 function _applyRctFilter() {
-  _rctFilteredData = _rctSelectedProduct === 'all'
+  // 1단계: 제품 필터 (요약 카드용 — 미분류 포함 전체)
+  const productFiltered = _rctSelectedProduct === 'all'
     ? _rctAllData
     : _rctAllData.filter(d => d.item === _rctSelectedProduct);
+
+  // 2단계: 미분류 제외 (차트·테이블용)
+  _rctFilteredData = productFiltered.filter(d =>
+    d.defect_normalized &&
+    d.defect_normalized.trim() !== '' &&
+    d.defect_normalized !== '미분류' &&
+    d.defect_normalized !== '(미분류)'
+  );
 
   const empty = document.getElementById('rctEmptyState');
   const cards = document.getElementById('rctSummaryCards');
@@ -1939,7 +1948,7 @@ function _applyRctFilter() {
   if (empty) empty.style.display = 'none';
   if (cards) cards.style.display = 'flex';
 
-  _renderRctSummary();
+  _renderRctSummary(productFiltered);  // 요약 카드는 미분류 포함 전체
   _renderRctTrend();
   _renderRctCategory();
   _renderRctProductChart();
@@ -1947,8 +1956,9 @@ function _applyRctFilter() {
   closeDefectDetail();
 }
 
-function _renderRctSummary() {
-  const data = _rctFilteredData;
+function _renderRctSummary(allProductData) {
+  // 요약 카드는 미분류 포함 전체 기준, 차트/테이블은 _rctFilteredData(미분류 제외) 기준
+  const data = allProductData || _rctFilteredData;
   const total = data.length;
   const today = new Date();
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;

@@ -313,6 +313,10 @@ input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-colo
         <button class="btn btn-secondary btn-sm" id="btn-select-all">전체 선택</button>
         <button class="btn btn-emerald btn-sm" id="btn-bulk-approve" disabled>선택 항목 일괄 승인</button>
         <button class="btn btn-rose btn-sm" id="btn-bulk-reject" disabled>선택 항목 일괄 거절</button>
+        <button class="btn btn-sm" id="btn-delete-all-pending"
+          style="background:rgba(255,107,122,0.18);color:#ff4d5e;border:1px solid rgba(255,107,122,0.35);font-weight:700">
+          🗑 미분류 전체 삭제
+        </button>
       </div>
     </div>
     <div class="table-wrap">
@@ -822,6 +826,34 @@ function updateSelectedCount() {
   document.getElementById('btn-bulk-reject').disabled = count === 0;
 }
 
+// ─── 미분류 전체 삭제 ───────────────────────────────────────────────────────
+async function deleteAllPending() {
+  // 실제 건수는 stat-pending(통계 카드)에서 읽어옴 (reviewData는 500건 limit)
+  const statEl = document.getElementById('stat-pending');
+  const totalCount = parseInt(statEl?.textContent) || reviewData.length;
+  if (totalCount === 0) { toast('삭제할 미분류 항목이 없습니다', 'warning'); return; }
+  if (!confirm(`미분류 검토 항목 전체 ${totalCount}건을 삭제하시겠습니까?\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) return;
+
+  const btn = document.getElementById('btn-delete-all-pending');
+  btn.disabled = true;
+  btn.textContent = '삭제 중...';
+
+  try {
+    // Supabase REST: status=pending인 전체 레코드 DELETE (limit 없음)
+    await sbFetch(`/rest/v1/symptom_pending?status=eq.pending`, { method: 'DELETE' });
+
+    reviewData = [];
+    renderReviewTable();
+    loadStats();
+    toast(`🗑 미분류 전체 삭제 완료 — ${totalCount}건 삭제됨`);
+  } catch (e) {
+    toast(`❌ 삭제 실패: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🗑 미분류 전체 삭제';
+  }
+}
+
 // ═══════════════════════════════════════════
 // TAB 2: DICTIONARY
 // ═══════════════════════════════════════════
@@ -1058,6 +1090,7 @@ document.getElementById('btn-select-all').addEventListener('click', () => {
 
 document.getElementById('btn-bulk-approve').addEventListener('click', bulkApprove);
 document.getElementById('btn-bulk-reject').addEventListener('click', bulkReject);
+document.getElementById('btn-delete-all-pending').addEventListener('click', deleteAllPending);
 
 // Dictionary events
 document.getElementById('dict-tbody').addEventListener('click', e => {
