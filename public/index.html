@@ -105,6 +105,13 @@ body.embed-mode #section-kpi > .header .header-left p { display: none; }
 body.embed-mode #confluenceUploadBtn,
 body.embed-mode #confluenceUploadBtn + button { display: none !important; }
 
+/* ===== SHARE MODE (공유 링크 접근 시) ===== */
+body.share-mode .sidebar { display: none !important; }
+body.share-mode .main { margin-left: 0 !important; padding: 20px 28px !important; }
+body.share-mode .back-btn { display: none !important; }
+body.share-mode .sub-tabs { display: none !important; }
+body.share-mode .section > .header .header-left p { display: none; }
+
 .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
 
 .header-left h1 { font-family: 'Outfit', 'Noto Sans KR', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
@@ -3089,6 +3096,20 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300
   const params = new URLSearchParams(window.location.search);
   const section = params.get('section');
   const brand   = params.get('brand');
+  const share   = params.get('share');
+
+  // ?share=receipt → 클레임 현황(접수일) 전용 공유 모드
+  if (share === 'receipt') {
+    document.body.classList.add('share-mode');
+    setTimeout(() => {
+      showSection('claim');
+      setTimeout(() => {
+        const receiptBtn = document.querySelector('#section-claim .sub-tab[onclick*="receipt"]');
+        if (receiptBtn) showClaimTab('receipt', receiptBtn);
+      }, 300);
+    }, 600);
+    return;
+  }
 
   if (section) {
     // KPI 모듈 로딩 후 이동 (약간 지연)
