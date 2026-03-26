@@ -2606,16 +2606,26 @@ async function loadProdTab() {
     const catItems = document.getElementById('prodCatItems');
     if (catItems) {
       const CAT_COLORS = ['#4a9eff','#00c48c','#ffb347','#ff6b7a','#a78bfa','#00c6d7','#f59e0b','#6366f1','#10b981','#ef4444'];
+      const DEFAULT_JUDGE = ['제조','설계','서비스','사양재검토','고객불만'];
       catItems.innerHTML = cats.map((c, i) => `
         <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--text-primary);border-radius:4px" onmouseover="this.style.background='rgba(74,158,255,0.08)'" onmouseout="this.style.background=''">
-          <input type="checkbox" class="prod-cat-cb" value="${c}" onchange="prodCatCbChanged()" checked style="accent-color:${CAT_COLORS[i%CAT_COLORS.length]}">
+          <input type="checkbox" class="prod-cat-cb" value="${c}" onchange="prodCatCbChanged()" ${DEFAULT_JUDGE.includes(c)?'checked':''} style="accent-color:${CAT_COLORS[i%CAT_COLORS.length]}">
           <span style="width:8px;height:8px;border-radius:50%;background:${CAT_COLORS[i%CAT_COLORS.length]};display:inline-block;flex-shrink:0"></span>
           ${c}
         </label>`).join('');
+      // 전체 체크박스 & 레이블 초기 상태 갱신
+      const allCbEl = document.getElementById('prodCatAll');
+      if (allCbEl) allCbEl.checked = [...document.querySelectorAll('.prod-cat-cb')].every(c => c.checked);
+      _updateProdCatLabel();
     }
 
-    // 기본 기간: 전체
-    setProdQuick('all');
+    // 기본 기간: 2020-01-01 ~ 이번 달 1일
+    const _today = new Date();
+    const _monthFirst = new Date(_today.getFullYear(), _today.getMonth(), 1).toISOString().split('T')[0];
+    const _df = document.getElementById('prodDateFrom'); if (_df) _df.value = '2020-01-01';
+    const _dt = document.getElementById('prodDateTo');   if (_dt) _dt.value = _monthFirst;
+    document.querySelectorAll('.prod-quick-btn').forEach(b => { b.style.background='var(--sidiz-dark2)'; b.style.color='var(--text-muted)'; });
+    loadProdDashboard();
   } catch(e) {
     console.error('loadProdTab error:', e);
   }
