@@ -2619,11 +2619,12 @@ async function loadProdTab() {
       _updateProdCatLabel();
     }
 
-    // 기본 기간: 2020-01-01 ~ 이번 달 1일
+    // 기본 기간: 이번 달 1일 ~ 오늘
     const _today = new Date();
     const _monthFirst = new Date(_today.getFullYear(), _today.getMonth(), 1).toISOString().split('T')[0];
-    const _df = document.getElementById('prodDateFrom'); if (_df) _df.value = '2020-01-01';
-    const _dt = document.getElementById('prodDateTo');   if (_dt) _dt.value = _monthFirst;
+    const _todayStr = _today.toISOString().split('T')[0];
+    const _df = document.getElementById('prodDateFrom'); if (_df) _df.value = _monthFirst;
+    const _dt = document.getElementById('prodDateTo');   if (_dt) _dt.value = _todayStr;
     document.querySelectorAll('.prod-quick-btn').forEach(b => { b.style.background='var(--sidiz-dark2)'; b.style.color='var(--text-muted)'; });
     loadProdDashboard();
   } catch(e) {
