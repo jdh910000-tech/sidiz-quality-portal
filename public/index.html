@@ -2197,10 +2197,13 @@ let _rctSelectedDefect = null;
 let _rctDefectTrendChart = null;
 
 function _renderRctDefectChips() {
-  const data = _rctFilteredData;
-  // defect_normalized 기준 집계
+  // 카테고리 그룹 필터가 활성화된 경우 → 해당 카테고리의 증상만 집계
+  const chipData = _rctSelectedCatGroup
+    ? _rctFilteredData.filter(d => getCatGroup(d.defect_category) === _rctSelectedCatGroup)
+    : _rctFilteredData;
+
   const byDefect = {};
-  data.forEach(d => {
+  chipData.forEach(d => {
     const key = d.defect_normalized || '(미분류)';
     if (!byDefect[key]) byDefect[key] = 0;
     byDefect[key]++;
@@ -2209,9 +2212,15 @@ function _renderRctDefectChips() {
   const chips = document.getElementById('rctDefectChips');
   const total = document.getElementById('rctDefectChipTotal');
   if (!chips) return;
-  if (total) total.textContent = `총 ${sorted.length}가지 증상`;
 
-  const totalCount = data.length;
+  // 타이틀: 카테고리 필터 중이면 "[파손] 증상 N가지", 아니면 "총 N가지 증상"
+  if (total) {
+    total.textContent = _rctSelectedCatGroup
+      ? `[${_rctSelectedCatGroup}] 증상 ${sorted.length}가지`
+      : `총 ${sorted.length}가지 증상`;
+  }
+
+  const totalCount = chipData.length;
   const hasFilter = !!(_rctSelectedDefect || _rctSelectedCatGroup);
   // 필터 활성 시 '전체' 칩은 초기화 버튼 역할
   const allChip = `<div class="rct-product-chip ${hasFilter ? '' : 'active'}"
