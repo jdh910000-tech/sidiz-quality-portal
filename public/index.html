@@ -2186,21 +2186,48 @@ function _renderRctProductChart() {
       cutout: '55%',
       plugins: {
         legend: { position: 'right', labels: { padding: 12, usePointStyle: true, font: { size: 13 }, boxWidth: 13, color: '#a0b4cb' } },
-        tooltip: { backgroundColor: '#1a2234', callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}건` } }
+        tooltip: {
+          backgroundColor: '#1a2234',
+          callbacks: {
+            label: ctx => `${ctx.label}: ${ctx.parsed}건`,
+            footer: () => '클릭하면 증상·상세 조회'
+          }
+        }
       },
-      animation: { animateRotate: true, duration: 1200, easing: 'easeOutQuart' }
+      animation: { animateRotate: true, duration: 1200, easing: 'easeOutQuart' },
+      onClick(e, elements) {
+        if (!elements.length) return;
+        const productName = labels[elements[0].index];
+        // 같은 제품 재클릭 → 필터 해제
+        if (_rctChartProductFilter === productName) {
+          closeDefectDetail();
+          return;
+        }
+        _rctChartProductFilter = productName;
+        _rctSelectedCatGroup   = null;
+        _rctSelectedDefect     = null;
+        _renderRctDefectChips();
+        _showDefectDetail(null, null);  // 제품 필터만으로 전체 표시
+      }
     }
   });
+  if (ctx.canvas) ctx.canvas.style.cursor = 'pointer';
 }
 
 let _rctSelectedDefect = null;
+let _rctChartProductFilter = null;   // 도넛 차트 제품 클릭 필터
 let _rctDefectTrendChart = null;
 
 function _renderRctDefectChips() {
-  // 카테고리 그룹 필터가 활성화된 경우 → 해당 카테고리의 증상만 집계
-  const chipData = _rctSelectedCatGroup
-    ? _rctFilteredData.filter(d => getCatGroup(d.defect_category) === _rctSelectedCatGroup)
+  // 1단계: 제품 필터 (도넛 차트 클릭)
+  const productData = _rctChartProductFilter
+    ? _rctFilteredData.filter(d => d.item === _rctChartProductFilter)
     : _rctFilteredData;
+
+  // 2단계: 카테고리 필터 (카테고리 바 클릭)
+  const chipData = _rctSelectedCatGroup
+    ? productData.filter(d => getCatGroup(d.defect_category) === _rctSelectedCatGroup)
+    : productData;
 
   const byDefect = {};
   chipData.forEach(d => {
@@ -2213,15 +2240,18 @@ function _renderRctDefectChips() {
   const total = document.getElementById('rctDefectChipTotal');
   if (!chips) return;
 
-  // 타이틀: 카테고리 필터 중이면 "[파손] 증상 N가지", 아니면 "총 N가지 증상"
+  // 타이틀: 활성 필터 표시
   if (total) {
-    total.textContent = _rctSelectedCatGroup
-      ? `[${_rctSelectedCatGroup}] 증상 ${sorted.length}가지`
+    const parts = [];
+    if (_rctChartProductFilter) parts.push(_rctChartProductFilter);
+    if (_rctSelectedCatGroup)   parts.push(_rctSelectedCatGroup);
+    total.textContent = parts.length
+      ? `[${parts.join(' · ')}] 증상 ${sorted.length}가지`
       : `총 ${sorted.length}가지 증상`;
   }
 
   const totalCount = chipData.length;
-  const hasFilter = !!(_rctSelectedDefect || _rctSelectedCatGroup);
+  const hasFilter = !!(_rctSelectedDefect || _rctSelectedCatGroup || _rctChartProductFilter);
   // 필터 활성 시 '전체' 칩은 초기화 버튼 역할
   const allChip = `<div class="rct-product-chip ${hasFilter ? '' : 'active'}"
     onclick="closeDefectDetail()"
@@ -2256,8 +2286,9 @@ function selectDefectChip(defectName) {
 }
 
 function closeDefectDetail() {
-  _rctSelectedDefect = null;
-  _rctSelectedCatGroup = null;
+  _rctSelectedDefect      = null;
+  _rctSelectedCatGroup    = null;
+  _rctChartProductFilter  = null;
   _renderRctDefectChips();
   _renderRctCategory();
   const panel = document.getElementById('rctDefectDetail');
@@ -2271,19 +2302,26 @@ function _showDefectDetail(defectName, catGroup) {
   panel.style.display = '';
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // 카테고리 그룹 필터 우선, 없으면 증상명 필터
+  // 기본 데이터: 제품 필터(도넛 클릭) 우선 적용
+  const baseData = _rctChartProductFilter
+    ? _rctFilteredData.filter(d => d.item === _rctChartProductFilter)
+    : _rctFilteredData;
+
+  const prodPrefix = _rctChartProductFilter ? `[${_rctChartProductFilter}] ` : '';
+
   let matched;
   let titleText;
   if (catGroup) {
     matched = catGroup === '__ALL__'
-      ? [..._rctFilteredData]
-      : _rctFilteredData.filter(d => getCatGroup(d.defect_category) === catGroup);
-    titleText = catGroup === '__ALL__' ? `📌 전체 클레임 — 상세 내역` : `📌 [${catGroup}] 카테고리 — 상세 내역`;
+      ? [...baseData]
+      : baseData.filter(d => getCatGroup(d.defect_category) === catGroup);
+    titleText = `📌 ${prodPrefix}${catGroup === '__ALL__' ? '전체 클레임' : '['+catGroup+'] 카테고리'} — 상세 내역`;
+  } else if (!defectName || defectName === '__ALL__') {
+    matched = [...baseData];
+    titleText = `📌 ${prodPrefix}전체 클레임 — 상세 내역`;
   } else {
-    matched = defectName === '__ALL__'
-      ? [..._rctFilteredData]
-      : _rctFilteredData.filter(d => (d.defect_normalized || '(미분류)') === defectName);
-    titleText = defectName === '__ALL__' ? `📌 전체 클레임 — 상세 내역` : `📌 ${defectName} — 상세 내역`;
+    matched = baseData.filter(d => (d.defect_normalized || '(미분류)') === defectName);
+    titleText = `📌 ${prodPrefix}${defectName} — 상세 내역`;
   }
 
   // 타이틀 + 건수
