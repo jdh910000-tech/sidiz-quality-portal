@@ -437,12 +437,29 @@ const HEADERS = {
   'Prefer': 'return=representation'
 };
 
-const CATEGORIES = ['작동성','유격','체결','수평','소음','파손','외관','기타'];
-const CAT_COLORS = {
-  '작동성': '#0057b8', '유격': '#00c6d7', '체결': '#00c48c',
-  '수평': '#a78bfa', '소음': '#ffb347', '파손': '#ff6b7a',
-  '외관': '#f97316', '기타': '#6b83a0'
+// 기본 카테고리 색상 (고정 목록 제거 — 새 카테고리 자동 지원)
+const CAT_BASE_COLORS = {
+  '작동성':'#4a9eff','소음':'#ffb347','파손':'#ff6b7a',
+  '유격':'#a78bfa','수평':'#00c6d7','체결':'#00c48c','외관':'#f59e0b'
 };
+const _adminDynColors = {};
+const _adminDynPalette = ['#84cc16','#22d3ee','#f43f5e','#818cf8','#34d399','#fb923c','#a3e635','#38bdf8','#e879f9','#fb7185'];
+let _adminDynIdx = 0;
+
+function getCatGroup(cat) {
+  if (!cat) return null;
+  const idx = cat.indexOf('(');
+  return idx > 0 ? cat.substring(0, idx).trim() : cat;
+}
+function getCatColorHex(cat) {
+  const group = getCatGroup(cat) || cat || '';
+  if (CAT_BASE_COLORS[group]) return CAT_BASE_COLORS[group];
+  if (!_adminDynColors[group]) {
+    _adminDynColors[group] = _adminDynPalette[_adminDynIdx % _adminDynPalette.length];
+    _adminDynIdx++;
+  }
+  return _adminDynColors[group];
+}
 
 // ─── HELPERS ───
 async function sbFetch(path, opts = {}) {
@@ -470,12 +487,8 @@ function toast(msg, type = 'success') {
 
 function catBadge(cat) {
   if (!cat) return '<span class="badge badge-muted">미분류</span>';
-  const map = {
-    '작동성':'badge-blue','유격':'badge-cyan','체결':'badge-emerald',
-    '수평':'badge-blue','소음':'badge-amber','파손':'badge-rose',
-    '외관':'badge-amber','기타':'badge-muted'
-  };
-  return `<span class="badge ${map[cat]||'badge-muted'}">${cat}</span>`;
+  const col = getCatColorHex(cat);
+  return `<span class="badge" style="color:${col};background:${col}1a;border:1px solid ${col}44">${cat}</span>`;
 }
 
 function stripDirectional(text) {
@@ -1138,13 +1151,20 @@ function getUniqueItems() {
   return [...new Set(reviewData.map(r => r.item).filter(Boolean))].sort();
 }
 
-// ─── 표준증상명 자동완성 (datalist) ───
+// ─── 표준증상명 + 카테고리 자동완성 (datalist) ───
 async function loadNormTerms() {
   try {
-    const data = await sbFetch('/rest/v1/symptom_dictionary?select=normalized&order=usage_count.desc&limit=300');
+    const data = await sbFetch('/rest/v1/symptom_dictionary?select=normalized,category&order=usage_count.desc&limit=500');
+    // 표준증상명 datalist
     const terms = [...new Set((data || []).map(r => r.normalized).filter(Boolean))];
-    const dl = document.getElementById('norm-datalist');
-    if (dl) dl.innerHTML = terms.map(t => `<option value="${escHtml(t)}">`).join('');
+    const dlNorm = document.getElementById('norm-datalist');
+    if (dlNorm) dlNorm.innerHTML = terms.map(t => `<option value="${escHtml(t)}">`).join('');
+    // 카테고리 datalist — 사전에 등록된 모든 고유 카테고리 + 기본값
+    const baseCats = ['작동성','유격','체결','수평','소음','파손','외관'];
+    const dictCats = [...new Set((data || []).map(r => r.category).filter(Boolean))];
+    const allCats = [...new Set([...baseCats, ...dictCats])].sort();
+    const dlCat = document.getElementById('cat-datalist');
+    if (dlCat) dlCat.innerHTML = allCats.map(c => `<option value="${escHtml(c)}">`).join('');
   } catch(e) { console.warn('loadNormTerms failed', e); }
 }
 
@@ -1205,14 +1225,9 @@ async function bulkDeleteDict() {
 <datalist id="norm-datalist"></datalist>
 <datalist id="item-datalist"></datalist>
 <datalist id="cat-datalist">
-  <option value="작동성">
-  <option value="소음">
-  <option value="파손">
-  <option value="유격">
-  <option value="수평">
-  <option value="체결">
-  <option value="외관">
-  <option value="기타">
+  <!-- 동적으로 채워짐 (loadNormTerms) — 증상 사전에 등록된 카테고리 + 기본값 -->
+  <option value="작동성"><option value="소음"><option value="파손">
+  <option value="유격"><option value="수평"><option value="체결"><option value="외관">
 </datalist>
 
 <!-- 요구내역 전체보기 팝업 -->
