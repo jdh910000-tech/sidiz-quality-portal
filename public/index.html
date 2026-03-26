@@ -990,142 +990,42 @@ body.share-mode .section > .header .header-left p { display: none; }
 <!-- ===== TEAM ===== -->
 <div id="section-team" class="section">
   <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
-  <div class="header"><div class="header-left"><h1>인원현황 <span>조직도</span></h1><p>품질관리팀 구성원 및 담당 역할</p></div></div>
-
-  <style>
-    .org-chart { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; }
-    .org-leader { 
-      background: linear-gradient(135deg, #0057b8, #2d7dd2); 
-      border-radius: 14px; padding: 20px 36px; text-align: center; position: relative;
-      box-shadow: 0 8px 24px rgba(0,87,184,0.3); border: 1px solid rgba(74,158,255,0.3);
-    }
-    .org-leader .org-name { font-size: 18px; font-weight: 700; color: white; }
-    .org-leader .org-role { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
-    .org-leader .org-title { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 4px; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
-    
-    .org-connector { width: 2px; height: 32px; background: var(--border-light); }
-    .org-hline { height: 2px; background: var(--border-light); align-self: stretch; margin: 0 80px; }
-    
-    .org-groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; margin-top: 0; }
-    .org-group { display: flex; flex-direction: column; align-items: center; gap: 0; }
-    .org-group-connector { width: 2px; height: 20px; background: var(--border-light); }
-    
-    .org-group-header {
-      background: var(--sidiz-card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 12px 20px; text-align: center; width: 100%;
-      border-top: 3px solid var(--sidiz-blue);
-    }
-    .org-group-header.inspection { border-top-color: var(--accent-emerald); }
-    .org-group-header.as { border-top-color: var(--accent-rose); }
-    .org-group-header.lab { border-top-color: var(--accent-violet); }
-    .org-group-header.office { border-top-color: var(--accent-amber); }
-    
-    .org-group-name { font-size: 14px; font-weight: 700; }
-    .org-group-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-    
-    .org-members { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 8px; }
-    .org-member {
-      background: var(--sidiz-card); border: 1px solid var(--border); border-radius: 8px;
-      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
-      transition: all 0.2s; cursor: default;
-    }
-    .org-member:hover { border-color: var(--border-light); background: var(--sidiz-card-hover); }
-    
-    .org-avatar { 
-      width: 32px; height: 32px; border-radius: 8px; 
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; flex-shrink: 0;
-    }
-    .org-avatar.inspection { background: rgba(0,196,140,0.12); }
-    .org-avatar.as { background: rgba(255,107,122,0.12); }
-    .org-avatar.lab { background: rgba(167,139,250,0.12); }
-    .org-avatar.office { background: rgba(255,179,71,0.12); }
-    
-    .org-member-info { flex: 1; }
-    .org-member-name { font-size: 12px; font-weight: 600; }
-    .org-member-duty { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
-    .org-member-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
-    
-    .org-edit-notice {
-      margin-top: 24px; padding: 14px 20px; background: rgba(0,87,184,0.05);
-      border: 1px dashed rgba(0,87,184,0.2); border-radius: 10px;
-      font-size: 11px; color: var(--text-muted); text-align: center;
-    }
-
-    @media (max-width: 1100px) { .org-groups { grid-template-columns: repeat(2, 1fr); } }
-  </style>
-
-  <div class="org-chart">
-    <!-- 팀장 -->
-    <div class="org-leader">
-      <div class="org-title">TEAM LEADER</div>
-      <div class="org-name">이명호 총괄팀장</div>
-      <div class="org-role">품질관리팀 총괄</div>
+  <div class="header" style="margin-bottom:24px">
+    <div class="header-left">
+      <h1>인원현황 <span>조직도</span></h1>
+      <p id="orgMemberCount">품질관리팀 구성원 및 담당 역할</p>
     </div>
-    <div class="org-connector"></div>
-    <div class="org-hline"></div>
-  </div>
-
-  <!-- 4개 파트 -->
-  <div class="org-groups">
-    <!-- 인수검사 -->
-    <div class="org-group">
-      <div class="org-group-connector"></div>
-      <div class="org-group-header inspection">
-        <div class="org-group-name">인수검사</div>
-        <div class="org-group-desc">입고 자재 · 제품 품질 검증</div>
-      </div>
-      <div class="org-members">
-        <div class="org-member"><div class="org-avatar inspection">👤</div><div class="org-member-info"><div class="org-member-name">김기태 <span class="org-member-badge" style="background:rgba(0,196,140,0.12);color:var(--accent-emerald)">반장</span></div><div class="org-member-duty">제품/자재 인수검사</div></div></div>
-        <div class="org-member"><div class="org-avatar inspection">👤</div><div class="org-member-info"><div class="org-member-name">김민수</div><div class="org-member-duty">제품/자재 인수검사</div></div></div>
-      </div>
-    </div>
-
-    <!-- AS판정 -->
-    <div class="org-group">
-      <div class="org-group-connector"></div>
-      <div class="org-group-header as">
-        <div class="org-group-name">AS판정</div>
-        <div class="org-group-desc">클레임 판정 · 원인 분석</div>
-      </div>
-      <div class="org-members">
-        <div class="org-member"><div class="org-avatar as">👤</div><div class="org-member-info"><div class="org-member-name">신희창</div><div class="org-member-duty">클레임 판정</div></div></div>
-        <div class="org-member"><div class="org-avatar as">👤</div><div class="org-member-info"><div class="org-member-name">김철우</div><div class="org-member-duty">클레임 판정</div></div></div>
-      </div>
-    </div>
-
-    <!-- 시험실 -->
-    <div class="org-group">
-      <div class="org-group-connector"></div>
-      <div class="org-group-header lab">
-        <div class="org-group-name">시험실</div>
-        <div class="org-group-desc">제품 시험 · 인증 관리</div>
-      </div>
-      <div class="org-members">
-        <div class="org-member"><div class="org-avatar lab">👤</div><div class="org-member-info"><div class="org-member-name">이창규 <span class="org-member-badge" style="background:rgba(167,139,250,0.12);color:var(--accent-violet)">반장</span></div><div class="org-member-duty">시험 운영</div></div></div>
-        <div class="org-member"><div class="org-avatar lab">👤</div><div class="org-member-info"><div class="org-member-name">원동민</div><div class="org-member-duty">시험 실무</div></div></div>
-      </div>
-    </div>
-
-    <!-- 사무실 -->
-    <div class="org-group">
-      <div class="org-group-connector"></div>
-      <div class="org-group-header office">
-        <div class="org-group-name">사무실</div>
-        <div class="org-group-desc">클레임 관리 · KPI · 기획</div>
-      </div>
-      <div class="org-members">
-        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">백광열 <span class="org-member-badge" style="background:rgba(255,179,71,0.12);color:var(--accent-amber)">직장</span></div><div class="org-member-duty">사외 협력사 관리</div></div></div>
-        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">김대승</div><div class="org-member-duty">공정관리 · 사내 협력사 관리</div></div></div>
-        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">김종운</div><div class="org-member-duty">사외 클레임 관리</div></div></div>
-        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">황인우</div><div class="org-member-duty">KPI · 품질기획 · 데이터 분석</div></div></div>
-        <div class="org-member"><div class="org-avatar office">👤</div><div class="org-member-info"><div class="org-member-name">진대현</div><div class="org-member-duty">KPI · 품질기획 · 데이터 분석</div></div></div>
-      </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+      <span id="orgEditBadge" style="display:none;font-size:11px;padding:4px 10px;background:rgba(255,179,71,0.15);color:var(--accent-amber);border-radius:6px;border:1px solid rgba(255,179,71,0.3)">✏️ 편집 모드</span>
+      <button id="orgEditBtn" onclick="_orgToggleEdit()" style="background:var(--sidiz-card);color:var(--text-secondary);border:1px solid var(--border);padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">✏️ 편집</button>
+      <button id="orgCancelBtn" onclick="_orgCancelEdit()" style="display:none;background:var(--sidiz-card);color:var(--text-muted);border:1px solid var(--border);padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer">취소</button>
     </div>
   </div>
 
-  <div class="org-edit-notice">
-    📋 품질관리팀 총 12명 (총괄팀장 1 · 인수검사 2 · AS판정 2 · 시험실 2 · 사무실 5)
+  <div id="orgChartContainer" style="min-height:300px"></div>
+
+  <!-- 팝업 오버레이 -->
+  <div id="orgPopupOverlay" onclick="_orgClosePopup()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:2000;backdrop-filter:blur(4px)"></div>
+  <!-- 팝업 본체 -->
+  <div id="orgPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--sidiz-card);border:1px solid var(--border);border-radius:16px;padding:28px 28px 24px;z-index:2001;width:440px;max-width:92vw;box-shadow:0 24px 60px rgba(0,0,0,0.55)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="popupAvatar" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"></div>
+          <div>
+            <div id="popupName" style="font-size:19px;font-weight:700;color:var(--text-primary)"></div>
+            <div id="popupMeta" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+          </div>
+        </div>
+      </div>
+      <button onclick="_orgClosePopup()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;padding:0;margin-top:-4px">×</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:0.6px">담당 업무</div>
+    <textarea id="popupJobDesc" rows="7" style="width:100%;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;line-height:1.7;box-sizing:border-box;font-family:inherit;outline:none" placeholder="담당 업무를 입력하세요...&#10;여러 줄로 작성할 수 있습니다."></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button onclick="_orgClosePopup()" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:8px 18px;border-radius:8px;font-size:12px;cursor:pointer">닫기</button>
+      <button onclick="_orgSaveJobDesc()" style="background:var(--sidiz-blue);color:white;border:none;padding:8px 22px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">💾 저장</button>
+    </div>
   </div>
 </div>
 
@@ -1384,6 +1284,7 @@ function showSection(id) {
   const map={home:0,claim:1,kpi:2,closing:3,lab:4,as:5,inspect:6,cert:7,team:8,okr:9};
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   window.scrollTo(0,0);
+  if (id === 'team' && !_orgLoaded) { loadOrgChart(); _orgLoaded = true; }
 }
 
 function showClaimTab(tab,btn) {
@@ -1393,6 +1294,7 @@ function showClaimTab(tab,btn) {
   btn.classList.add('active');
   if (tab === 'receipt') initReceiptDateDefaults();
   if (tab === 'product' && !_prodLoaded) { loadProdTab(); _prodLoaded = true; }
+
 }
 
 function showKpiTab(tab,btn) {
@@ -3515,6 +3417,283 @@ function showConfluenceToast(type, msg) {
                   : '1px solid rgba(74,158,255,0.3)';
   el.style.color = '#fff';
   if (type !== 'loading') setTimeout(() => { el.style.display = 'none'; }, 7000);
+}
+
+// ─── 인원현황 조직도 ─────────────────────────────────────────
+const ORG_GROUPS = [
+  { key:'inspection', label:'인수검사', desc:'입고 자재 · 제품 품질 검증', color:'#00c48c', emoji:'🔍' },
+  { key:'as',         label:'AS판정',   desc:'클레임 판정 · 원인 분석',   color:'#ff6b7a', emoji:'🔧' },
+  { key:'lab',        label:'시험실',   desc:'제품 시험 · 인증 관리',     color:'#a78bfa', emoji:'🔬' },
+  { key:'office',     label:'사무실',   desc:'클레임 관리 · KPI · 기획', color:'#ffb347', emoji:'💼' },
+];
+let _orgData = [], _orgEditMode = false, _orgLoaded = false;
+let _orgDragId = null, _orgPopupId = null, _orgPendingChanges = {};
+
+async function loadOrgChart() {
+  try {
+    const url = `${SupabaseClient.SUPABASE_URL}/rest/v1/org_members?select=*&order=sort_order.asc`;
+    const r = await fetch(url, { headers:{ apikey:SupabaseClient.SUPABASE_ANON_KEY, Authorization:`Bearer ${SupabaseClient.SUPABASE_ANON_KEY}` } });
+    _orgData = await r.json();
+    _orgPendingChanges = {};
+    _renderOrgChart();
+  } catch(e) { console.error('loadOrgChart', e); }
+}
+
+function _renderOrgChart() {
+  const c = document.getElementById('orgChartContainer');
+  if (!c) return;
+  const total = _orgData.length;
+  const countEl = document.getElementById('orgMemberCount');
+  if (countEl) countEl.textContent = `품질관리팀 총 ${total}명`;
+
+  const leader = _orgData.find(m => m.group_key === 'leader');
+  let h = `<div style="display:flex;flex-direction:column;align-items:center;gap:0;padding:20px 0">`;
+
+  // ── 팀장 카드 ──
+  h += `<div style="background:linear-gradient(135deg,#0057b8,#2d7dd2);border-radius:14px;padding:20px 40px;text-align:center;box-shadow:0 8px 24px rgba(0,87,184,0.3);border:1px solid rgba(74,158,255,0.3);position:relative;min-width:220px"
+    ${!_orgEditMode && leader ? `onclick="_orgOpenPopup('${leader.id}')" style="background:linear-gradient(135deg,#0057b8,#2d7dd2);border-radius:14px;padding:20px 40px;text-align:center;box-shadow:0 8px 24px rgba(0,87,184,0.3);border:1px solid rgba(74,158,255,0.3);position:relative;min-width:220px;cursor:pointer"` : ''}>`;
+  if (_orgEditMode && leader) {
+    h += `<div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;margin-bottom:6px">TEAM LEADER</div>
+      <input value="${leader.name}" onchange="_orgPendingChanges['${leader.id}']={...(_orgPendingChanges['${leader.id}']||{}),name:this.value};_orgLocalUpdate('${leader.id}','name',this.value)"
+        style="font-size:17px;font-weight:700;color:white;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:3px 10px;text-align:center;width:160px;display:block;margin:0 auto 6px">
+      <input value="${leader.role}" placeholder="직책" onchange="_orgPendingChanges['${leader.id}']={...(_orgPendingChanges['${leader.id}']||{}),role:this.value};_orgLocalUpdate('${leader.id}','role',this.value)"
+        style="font-size:11px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:2px 8px;text-align:center;width:160px;display:block;margin:0 auto">`;
+  } else if (leader) {
+    h += `<div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px">TEAM LEADER</div>
+      <div style="font-size:18px;font-weight:700;color:white;margin-top:5px">${leader.name}${leader.role?` <span style="font-size:12px;opacity:0.75">${leader.role}</span>`:''}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:3px">품질관리팀 총괄</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:6px">클릭하여 업무 확인</div>`;
+  }
+  h += `</div>`;
+  h += `<div style="width:2px;height:32px;background:var(--border-light)"></div>`;
+  h += `<div style="height:2px;background:var(--border-light);align-self:stretch;margin:0 60px"></div>`;
+  h += `</div>`;
+
+  // ── 4개 그룹 ──
+  h += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;width:100%">`;
+  for (const g of ORG_GROUPS) {
+    const members = _orgData.filter(m => m.group_key === g.key).sort((a,b) => a.sort_order - b.sort_order);
+    h += `<div style="display:flex;flex-direction:column;align-items:center">
+      <div style="width:2px;height:20px;background:var(--border-light)"></div>
+      <div style="background:var(--sidiz-card);border:1px solid var(--border);border-top:3px solid ${g.color};border-radius:10px;padding:11px 14px;text-align:center;width:100%;box-sizing:border-box">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">${g.emoji} ${g.label}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${g.desc}</div>
+      </div>
+      <div id="org-members-${g.key}" style="display:flex;flex-direction:column;gap:6px;width:100%;margin-top:8px"
+        ondragover="event.preventDefault();_orgDragOver(event,'${g.key}')"
+        ondrop="_orgDrop(event,'${g.key}')">`;
+    for (const m of members) h += _orgMemberCard(m, g);
+    if (_orgEditMode) {
+      h += `<button onclick="_orgAddMember('${g.key}')"
+        style="width:100%;padding:8px;background:rgba(74,158,255,0.05);border:1px dashed rgba(74,158,255,0.25);border-radius:8px;color:var(--sidiz-blue-bright);font-size:12px;cursor:pointer;box-sizing:border-box;margin-top:2px">
+        + 인원 추가
+      </button>`;
+    }
+    h += `</div></div>`;
+  }
+  h += `</div>`;
+
+  // ── 하단 안내 ──
+  h += `<div style="margin-top:24px;padding:13px 20px;background:rgba(0,87,184,0.05);border:1px dashed rgba(0,87,184,0.2);border-radius:10px;font-size:11px;color:var(--text-muted);text-align:center">
+    📋 품질관리팀 총 <strong style="color:var(--text-secondary)">${total}명</strong>
+    ${_orgEditMode
+      ? ' &nbsp;·&nbsp; <span style="color:var(--accent-amber)">카드를 드래그해서 순서를 변경하세요. 변경사항은 저장 버튼으로 반영됩니다.</span>'
+      : ' &nbsp;·&nbsp; 카드를 클릭하면 담당 업무를 확인·편집할 수 있습니다'}
+  </div>`;
+
+  c.innerHTML = h;
+}
+
+function _orgMemberCard(m, g) {
+  if (_orgEditMode) {
+    return `<div id="org-card-${m.id}" draggable="true"
+      ondragstart="_orgDragStart(event,'${m.id}')"
+      ondragend="document.querySelectorAll('.org-drag-over').forEach(el=>{el.style.borderColor='var(--border)';el.classList.remove('org-drag-over')})"
+      style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;padding:9px 10px;display:flex;align-items:center;gap:7px;cursor:grab;box-sizing:border-box;transition:border-color 0.15s">
+      <span style="color:var(--text-muted);font-size:18px;cursor:grab;flex-shrink:0;line-height:1">⠿</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;gap:4px">
+          <input value="${m.name}" onchange="_orgLocalUpdate('${m.id}','name',this.value)"
+            style="font-size:12px;font-weight:600;color:var(--text-primary);background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:4px;padding:2px 6px;width:0;flex:1;min-width:0">
+          <input value="${m.role}" placeholder="직책" onchange="_orgLocalUpdate('${m.id}','role',this.value)"
+            style="font-size:10px;color:var(--text-muted);background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:4px;padding:2px 5px;width:52px;flex-shrink:0">
+        </div>
+      </div>
+      <button onclick="_orgDeleteMember('${m.id}')"
+        style="background:rgba(255,107,122,0.1);border:1px solid rgba(255,107,122,0.25);color:#ff6b7a;border-radius:6px;padding:3px 7px;font-size:12px;cursor:pointer;flex-shrink:0;line-height:1">×</button>
+    </div>`;
+  }
+  return `<div onclick="_orgOpenPopup('${m.id}')"
+    style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:border-color 0.15s,background 0.15s;box-sizing:border-box"
+    onmouseover="this.style.borderColor='${g.color}';this.style.background='var(--sidiz-card-hover)'"
+    onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--sidiz-card)'">
+    <div style="width:32px;height:32px;border-radius:8px;background:${g.color}22;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${g.emoji}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:600;color:var(--text-primary)">
+        ${m.name}${m.role?` <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${g.color}22;color:${g.color}">${m.role}</span>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.job_desc || '업무 미등록'}</div>
+    </div>
+    <span style="color:var(--text-muted);font-size:13px;flex-shrink:0">›</span>
+  </div>`;
+}
+
+function _orgLocalUpdate(id, field, value) {
+  const m = _orgData.find(x => x.id === id);
+  if (m) m[field] = value;
+  _orgPendingChanges[id] = { ...(_orgPendingChanges[id] || {}), [field]: value };
+}
+
+function _orgToggleEdit() {
+  _orgEditMode = !_orgEditMode;
+  document.getElementById('orgEditBtn').textContent    = _orgEditMode ? '💾 저장' : '✏️ 편집';
+  document.getElementById('orgEditBtn').style.background = _orgEditMode ? 'var(--sidiz-blue)' : 'var(--sidiz-card)';
+  document.getElementById('orgEditBtn').style.color    = _orgEditMode ? 'white' : 'var(--text-secondary)';
+  document.getElementById('orgCancelBtn').style.display = _orgEditMode ? '' : 'none';
+  document.getElementById('orgEditBadge').style.display = _orgEditMode ? '' : 'none';
+  if (!_orgEditMode) _orgSaveAll();
+  _renderOrgChart();
+}
+
+function _orgCancelEdit() {
+  _orgEditMode = false;
+  document.getElementById('orgEditBtn').textContent    = '✏️ 편집';
+  document.getElementById('orgEditBtn').style.background = 'var(--sidiz-card)';
+  document.getElementById('orgEditBtn').style.color    = 'var(--text-secondary)';
+  document.getElementById('orgCancelBtn').style.display = 'none';
+  document.getElementById('orgEditBadge').style.display = 'none';
+  _orgPendingChanges = {};
+  loadOrgChart(); // DB에서 다시 로드 (변경사항 버림)
+}
+
+async function _orgSaveAll() {
+  const ids = Object.keys(_orgPendingChanges);
+  if (ids.length === 0) return;
+  const BASE = SupabaseClient.SUPABASE_URL;
+  const KEY  = SupabaseClient.SUPABASE_ANON_KEY;
+  const HDR  = { apikey:KEY, Authorization:`Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' };
+  for (const id of ids) {
+    const payload = { ...(_orgPendingChanges[id]), updated_at: new Date().toISOString() };
+    await fetch(`${BASE}/rest/v1/org_members?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:HDR, body:JSON.stringify(payload) });
+  }
+  _orgPendingChanges = {};
+}
+
+async function _orgAddMember(groupKey) {
+  const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
+  const HDR  = { apikey:KEY, Authorization:`Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' };
+  const groupMembers = _orgData.filter(m => m.group_key === groupKey);
+  const maxOrder = groupMembers.length > 0 ? Math.max(...groupMembers.map(m => m.sort_order)) + 1 : 0;
+  const newId = `${groupKey}-${Date.now()}`;
+  const body = { id:newId, name:'이름', role:'', group_key:groupKey, sort_order:maxOrder, job_desc:'' };
+  const r = await fetch(`${BASE}/rest/v1/org_members`, { method:'POST', headers:HDR, body:JSON.stringify(body) });
+  const created = await r.json();
+  _orgData.push(Array.isArray(created) ? created[0] : body);
+  _renderOrgChart();
+}
+
+async function _orgDeleteMember(id) {
+  if (!confirm('해당 인원을 삭제하시겠습니까?')) return;
+  const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
+  const HDR  = { apikey:KEY, Authorization:`Bearer ${KEY}` };
+  await fetch(`${BASE}/rest/v1/org_members?id=eq.${encodeURIComponent(id)}`, { method:'DELETE', headers:HDR });
+  _orgData = _orgData.filter(m => m.id !== id);
+  delete _orgPendingChanges[id];
+  _renderOrgChart();
+}
+
+// ── 드래그앤드롭 ──
+function _orgDragStart(e, id) {
+  _orgDragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+}
+function _orgDragOver(e, groupKey) {
+  e.preventDefault();
+  const card = e.target.closest('[id^="org-card-"]');
+  document.querySelectorAll('.org-drag-over').forEach(el => { el.style.borderColor='var(--border)'; el.classList.remove('org-drag-over'); });
+  if (card && card.id !== `org-card-${_orgDragId}`) {
+    card.style.borderColor = '#4a9eff';
+    card.classList.add('org-drag-over');
+  }
+}
+async function _orgDrop(e, groupKey) {
+  e.preventDefault();
+  document.querySelectorAll('.org-drag-over').forEach(el => { el.style.borderColor='var(--border)'; el.classList.remove('org-drag-over'); });
+  if (!_orgDragId) return;
+  const targetCard = e.target.closest('[id^="org-card-"]');
+  const targetId = targetCard ? targetCard.id.replace('org-card-','') : null;
+  if (!targetId || targetId === _orgDragId) { _orgDragId = null; return; }
+
+  // 두 멤버의 sort_order 교환
+  const dragged = _orgData.find(m => m.id === _orgDragId);
+  const target  = _orgData.find(m => m.id === targetId);
+  if (!dragged || !target) { _orgDragId = null; return; }
+
+  const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
+  const HDR  = { apikey:KEY, Authorization:`Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' };
+
+  // 드래그 대상을 타겟 그룹으로 이동 + 순서 변경
+  const newGroup = target.group_key;
+  const tmpOrder = target.sort_order;
+  if (dragged.group_key === newGroup) {
+    // 같은 그룹: 순서 교환
+    [dragged.sort_order, target.sort_order] = [tmpOrder, dragged.sort_order];
+    await Promise.all([
+      fetch(`${BASE}/rest/v1/org_members?id=eq.${dragged.id}`, { method:'PATCH', headers:HDR, body:JSON.stringify({sort_order:dragged.sort_order, group_key:dragged.group_key}) }),
+      fetch(`${BASE}/rest/v1/org_members?id=eq.${target.id}`,  { method:'PATCH', headers:HDR, body:JSON.stringify({sort_order:target.sort_order}) })
+    ]);
+  } else {
+    // 다른 그룹으로 이동
+    const groupMembers = _orgData.filter(m => m.group_key === newGroup && m.id !== dragged.id).sort((a,b)=>a.sort_order-b.sort_order);
+    const idx = groupMembers.findIndex(m => m.id === targetId);
+    dragged.group_key = newGroup;
+    dragged.sort_order = idx >= 0 ? groupMembers[idx].sort_order - 0.5 : tmpOrder;
+    // 새 그룹 sort_order 재정렬
+    const newGroupAll = [...groupMembers.slice(0,idx<0?groupMembers.length:idx), dragged, ...groupMembers.slice(idx<0?groupMembers.length:idx)]
+      .map((m,i) => ({ ...m, sort_order:i }));
+    newGroupAll.forEach(m => { const d = _orgData.find(x=>x.id===m.id); if(d) d.sort_order=m.sort_order; if(d) d.group_key=m.group_key; });
+    await Promise.all(newGroupAll.map(m =>
+      fetch(`${BASE}/rest/v1/org_members?id=eq.${m.id}`, { method:'PATCH', headers:HDR, body:JSON.stringify({sort_order:m.sort_order, group_key:m.group_key}) })
+    ));
+  }
+  _orgDragId = null;
+  _renderOrgChart();
+}
+
+// ── 팝업 ──
+function _orgOpenPopup(id) {
+  if (!id) return;
+  const m = _orgData.find(x => x.id === id);
+  if (!m) return;
+  _orgPopupId = id;
+  const g = ORG_GROUPS.find(g => g.key === m.group_key) || { emoji:'👤', label:'', color:'#4a9eff' };
+  const isLeader = m.group_key === 'leader';
+  document.getElementById('popupAvatar').textContent = isLeader ? '🏅' : g.emoji;
+  document.getElementById('popupAvatar').style.background = isLeader ? 'rgba(0,87,184,0.2)' : `${g.color}22`;
+  document.getElementById('popupName').textContent = `${m.name}${m.role ? ' ' + m.role : ''}`;
+  document.getElementById('popupMeta').textContent = isLeader ? '품질관리팀 총괄' : g.label;
+  document.getElementById('popupJobDesc').value = m.job_desc || '';
+  document.getElementById('orgPopupOverlay').style.display = 'block';
+  document.getElementById('orgPopup').style.display = 'block';
+  setTimeout(() => document.getElementById('popupJobDesc').focus(), 50);
+}
+function _orgClosePopup() {
+  document.getElementById('orgPopupOverlay').style.display = 'none';
+  document.getElementById('orgPopup').style.display = 'none';
+  _orgPopupId = null;
+}
+async function _orgSaveJobDesc() {
+  if (!_orgPopupId) return;
+  const text = document.getElementById('popupJobDesc').value;
+  const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
+  const HDR  = { apikey:KEY, Authorization:`Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' };
+  await fetch(`${BASE}/rest/v1/org_members?id=eq.${encodeURIComponent(_orgPopupId)}`, {
+    method:'PATCH', headers:HDR, body:JSON.stringify({ job_desc:text, updated_at:new Date().toISOString() })
+  });
+  const m = _orgData.find(x => x.id === _orgPopupId);
+  if (m) m.job_desc = text;
+  _orgClosePopup();
+  _renderOrgChart();
 }
 </script>
 
