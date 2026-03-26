@@ -1913,6 +1913,7 @@ async function loadReceiptDashboard() {
     // 미분류 배지 — symptom_pending 실제 검토 큐 기준 (claims_receipt null 건수 아님)
     try {
       const pendingCnt = await SupabaseClient.countPending();
+      _rctPendingQueueCount = pendingCnt;   // 요약 카드에서도 재사용
       const badge = document.getElementById('pendingBadge');
       const cnt   = document.getElementById('pendingCount');
       if (badge && cnt) { cnt.textContent = pendingCnt; badge.style.display = pendingCnt > 0 ? '' : 'none'; }
@@ -1967,7 +1968,6 @@ function _renderRctSummary(allProductData) {
   const dateField = _rctDateMode === 'uploaded' ? 'uploaded_at' : 'receipt_date';
   const monthCount = data.filter(d => d[dateField] && d[dateField].startsWith(thisMonth)).length;
   const classified = data.filter(d => d.defect_normalized).length;
-  const pending = data.filter(d => !d.defect_normalized).length;
   const rate = total > 0 ? ((classified / total) * 100).toFixed(1) : '0.0';
 
   _animateCounter('rctCardTotal', total);
@@ -1976,7 +1976,7 @@ function _renderRctSummary(allProductData) {
   document.getElementById('rctCardMonthSub').textContent = `${thisMonth} 기준`;
   _animateCounter('rctCardClassified', classified);
   document.getElementById('rctCardClassifiedSub').textContent = `자동분류율 ${rate}%`;
-  _animateCounter('rctCardPending', pending);
+  _animateCounter('rctCardPending', _rctPendingQueueCount); // symptom_pending 검토 큐 기준
 }
 
 function _animateCounter(id, target) {
@@ -2065,6 +2065,7 @@ function getCatColorHex(cat) {
   return _CAT_BASE_COLORS[group] || _CAT_BASE_COLORS['기타'];
 }
 
+let _rctPendingQueueCount = 0;    // symptom_pending 실제 검토 큐 수
 let _rctSelectedCatGroup = null;
 
 function _renderRctCategory() {
