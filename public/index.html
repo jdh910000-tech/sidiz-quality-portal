@@ -1910,11 +1910,13 @@ async function loadReceiptDashboard() {
     if (products.includes(curVal)) sel.value = curVal;
     _rctSelectedProduct = sel.value;
 
-    // 미분류 배지
-    const pending = _rctAllData.filter(d => !d.defect_normalized).length;
-    const badge = document.getElementById('pendingBadge');
-    const cnt = document.getElementById('pendingCount');
-    if (badge && cnt) { cnt.textContent = pending; badge.style.display = pending > 0 ? '' : 'none'; }
+    // 미분류 배지 — symptom_pending 실제 검토 큐 기준 (claims_receipt null 건수 아님)
+    try {
+      const pendingCnt = await SupabaseClient.countPending();
+      const badge = document.getElementById('pendingBadge');
+      const cnt   = document.getElementById('pendingCount');
+      if (badge && cnt) { cnt.textContent = pendingCnt; badge.style.display = pendingCnt > 0 ? '' : 'none'; }
+    } catch(_) {}
 
     _applyRctFilter();
   } catch(e) {
