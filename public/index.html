@@ -1020,8 +1020,11 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
       <button onclick="_orgClosePopup()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;padding:0;margin-top:-4px">×</button>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:0.6px">담당 업무</div>
-    <textarea id="popupJobDesc" rows="7" style="width:100%;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;line-height:1.7;box-sizing:border-box;font-family:inherit;outline:none" placeholder="담당 업무를 입력하세요...&#10;여러 줄로 작성할 수 있습니다."></textarea>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px">세부 업무 내용</span>
+      <span style="font-size:10px;padding:2px 7px;background:rgba(100,116,139,0.12);color:var(--text-muted);border-radius:4px;border:1px solid rgba(100,116,139,0.2)">조직도에 표시되지 않음</span>
+    </div>
+    <textarea id="popupJobDesc" rows="7" style="width:100%;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;line-height:1.7;box-sizing:border-box;font-family:inherit;outline:none" placeholder="세부 담당 업무를 자유롭게 작성하세요.&#10;이 내용은 조직도 카드에 표시되지 않습니다."></textarea>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button onclick="_orgClosePopup()" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:8px 18px;border-radius:8px;font-size:12px;cursor:pointer">닫기</button>
       <button onclick="_orgSaveJobDesc()" style="background:var(--sidiz-blue);color:white;border:none;padding:8px 22px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">💾 저장</button>
@@ -3518,6 +3521,8 @@ function _orgMemberCard(m, g) {
           <input value="${m.role}" placeholder="직책" onchange="_orgLocalUpdate('${m.id}','role',this.value)"
             style="font-size:10px;color:var(--text-muted);background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:4px;padding:2px 5px;width:52px;flex-shrink:0">
         </div>
+        <input value="${m.job_desc||''}" placeholder="카드 표시 업무 타이틀" onchange="_orgLocalUpdate('${m.id}','job_desc',this.value)"
+          style="font-size:10px;color:var(--text-muted);background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:4px;padding:2px 6px;width:100%;box-sizing:border-box">
       </div>
       <button onclick="_orgDeleteMember('${m.id}')"
         style="background:rgba(255,107,122,0.1);border:1px solid rgba(255,107,122,0.25);color:#ff6b7a;border-radius:6px;padding:3px 7px;font-size:12px;cursor:pointer;flex-shrink:0;line-height:1">×</button>
@@ -3672,7 +3677,7 @@ function _orgOpenPopup(id) {
   document.getElementById('popupAvatar').style.background = isLeader ? 'rgba(0,87,184,0.2)' : `${g.color}22`;
   document.getElementById('popupName').textContent = `${m.name}${m.role ? ' ' + m.role : ''}`;
   document.getElementById('popupMeta').textContent = isLeader ? '품질관리팀 총괄' : g.label;
-  document.getElementById('popupJobDesc').value = m.job_desc || '';
+  document.getElementById('popupJobDesc').value = m.job_detail || '';
   document.getElementById('orgPopupOverlay').style.display = 'block';
   document.getElementById('orgPopup').style.display = 'block';
   setTimeout(() => document.getElementById('popupJobDesc').focus(), 50);
@@ -3688,12 +3693,12 @@ async function _orgSaveJobDesc() {
   const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
   const HDR  = { apikey:KEY, Authorization:`Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' };
   await fetch(`${BASE}/rest/v1/org_members?id=eq.${encodeURIComponent(_orgPopupId)}`, {
-    method:'PATCH', headers:HDR, body:JSON.stringify({ job_desc:text, updated_at:new Date().toISOString() })
+    method:'PATCH', headers:HDR, body:JSON.stringify({ job_detail:text, updated_at:new Date().toISOString() })
   });
   const m = _orgData.find(x => x.id === _orgPopupId);
-  if (m) m.job_desc = text;
+  if (m) m.job_detail = text;
   _orgClosePopup();
-  _renderOrgChart();
+  // 카드 화면은 변경하지 않음 (세부내용은 팝업에서만 확인)
 }
 </script>
 
