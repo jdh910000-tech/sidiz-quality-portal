@@ -2041,45 +2041,47 @@ function _renderRctTrend() {
   });
 }
 
-// ── 카테고리 그룹 추출 및 동적 색상 시스템 ────────────────────────────────────
+// ── 카테고리 그룹 추출 및 고정 색상 시스템 ────────────────────────────────────
 // "외관(오염)" → "외관", "작동성" → "작동성"
 function getCatGroup(cat) {
   if (!cat) return null;
   const idx = cat.indexOf('(');
   return idx > 0 ? cat.substring(0, idx).trim() : cat;
 }
-// 기본 카테고리 색상 (확장 불가 목록 제거)
+// 고정 카테고리 목록 (이 외의 카테고리는 '기타'로 표시)
+const FIXED_CATS = ['파손','작동성','체결','유격','소음','외관','오접수','수평','누락','시공불만'];
 const _CAT_BASE_COLORS = {
-  '작동성':'#4a9eff','소음':'#ffb347','파손':'#ff6b7a',
-  '유격':'#a78bfa','수평':'#00c6d7','체결':'#00c48c','외관':'#f59e0b'
+  '파손':'#ff6b7a', '작동성':'#4a9eff', '체결':'#00c48c',
+  '유격':'#a78bfa', '소음':'#ffb347',   '외관':'#f59e0b',
+  '오접수':'#94a3b8','수평':'#00c6d7',  '누락':'#fb923c',
+  '시공불만':'#e879f9','기타':'#64748b'
 };
-// 신규 카테고리는 자동으로 동적 색상 할당
-const _catDynColors = {};
-const _dynPalette = ['#84cc16','#22d3ee','#f43f5e','#818cf8','#34d399','#fb923c','#a3e635','#38bdf8','#e879f9','#fb7185'];
-let _dynColorIdx = 0;
 function getCatColorHex(cat) {
-  const group = getCatGroup(cat) || cat || '';
-  if (_CAT_BASE_COLORS[group]) return _CAT_BASE_COLORS[group];
-  if (!_catDynColors[group]) {
-    _catDynColors[group] = _dynPalette[_dynColorIdx % _dynPalette.length];
-    _dynColorIdx++;
-  }
-  return _catDynColors[group];
+  if (!cat) return _CAT_BASE_COLORS['기타'];
+  const group = getCatGroup(cat);
+  // 고정 목록에 있으면 해당 색상, 없으면 기타 색상
+  return _CAT_BASE_COLORS[group] || _CAT_BASE_COLORS['기타'];
 }
 
 let _rctSelectedCatGroup = null;
 
 function _renderRctCategory() {
   const data = _rctFilteredData;
-  // 부모 그룹 기준으로 집계 ("외관(오염)" → "외관" 로 카운팅)
+  // 부모 그룹 기준 집계, 고정 목록 외 → '기타'
   const counts = {};
   data.forEach(d => {
     if (!d.defect_category) return;
     const group = getCatGroup(d.defect_category);
-    counts[group] = (counts[group] || 0) + 1;
+    const key = FIXED_CATS.includes(group) ? group : '기타';
+    counts[key] = (counts[key] || 0) + 1;
   });
-  // 건수 내림차순 정렬
-  const entries = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  // 기타는 항상 마지막, 나머지는 건수 내림차순
+  const entries = Object.entries(counts)
+    .sort((a,b) => {
+      if (a[0]==='기타') return 1;
+      if (b[0]==='기타') return -1;
+      return b[1]-a[1];
+    });
   const labels = entries.map(e => e[0]);
   const values = entries.map(e => e[1]);
   const colors = labels.map(l => getCatColorHex(l));
@@ -2210,11 +2212,12 @@ function _renderRctDefectChips() {
   if (total) total.textContent = `총 ${sorted.length}가지 증상`;
 
   const totalCount = data.length;
-  const isAllActive = _rctSelectedDefect === '__ALL__';
-  const allChip = `<div class="rct-product-chip ${isAllActive ? 'active' : ''}"
-    onclick="selectDefectChip('__ALL__')"
-    style="border-color:${isAllActive ? 'var(--accent-cyan)' : ''}">
-    <div class="chip-name" style="word-break:keep-all;white-space:normal;line-height:1.3">전체</div>
+  const hasFilter = !!(_rctSelectedDefect || _rctSelectedCatGroup);
+  // 필터 활성 시 '전체' 칩은 초기화 버튼 역할
+  const allChip = `<div class="rct-product-chip ${hasFilter ? '' : 'active'}"
+    onclick="closeDefectDetail()"
+    style="border-color:${!hasFilter ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)'};${hasFilter ? 'opacity:0.6' : ''}">
+    <div class="chip-name" style="word-break:keep-all;white-space:normal;line-height:1.3">${hasFilter ? '✕ 초기화' : '전체'}</div>
     <div class="chip-count" style="color:var(--accent-cyan)">${totalCount}</div>
     <div class="chip-sub">건</div>
   </div>`;
@@ -2226,13 +2229,20 @@ function _renderRctDefectChips() {
       <div class="chip-name" style="word-break:keep-all;white-space:normal;line-height:1.3" title="${name}">${name}</div>
       <div class="chip-count">${cnt}</div>
       <div class="chip-sub">건</div>
+      ${isActive ? '<div class="chip-sub" style="color:var(--accent-rose);font-size:10px">▼ 보는 중</div>' : ''}
     </div>`;
   }).join('');
 }
 
 function selectDefectChip(defectName) {
+  // 이미 선택된 칩 재클릭 → 필터 해제
+  if (defectName === _rctSelectedDefect) {
+    closeDefectDetail();
+    return;
+  }
   _rctSelectedDefect = defectName;
-  _renderRctDefectChips(); // re-render to update active state
+  _rctSelectedCatGroup = null;
+  _renderRctDefectChips();
   _showDefectDetail(defectName);
 }
 

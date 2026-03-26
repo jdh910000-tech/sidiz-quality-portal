@@ -437,14 +437,14 @@ const HEADERS = {
   'Prefer': 'return=representation'
 };
 
-// 기본 카테고리 색상 (고정 목록 제거 — 새 카테고리 자동 지원)
+// 고정 카테고리 목록 및 색상 (index.html과 동기화)
+const FIXED_CATS = ['파손','작동성','체결','유격','소음','외관','오접수','수평','누락','시공불만'];
 const CAT_BASE_COLORS = {
-  '작동성':'#4a9eff','소음':'#ffb347','파손':'#ff6b7a',
-  '유격':'#a78bfa','수평':'#00c6d7','체결':'#00c48c','외관':'#f59e0b'
+  '파손':'#ff6b7a', '작동성':'#4a9eff', '체결':'#00c48c',
+  '유격':'#a78bfa', '소음':'#ffb347',   '외관':'#f59e0b',
+  '오접수':'#94a3b8','수평':'#00c6d7',  '누락':'#fb923c',
+  '시공불만':'#e879f9','기타':'#64748b'
 };
-const _adminDynColors = {};
-const _adminDynPalette = ['#84cc16','#22d3ee','#f43f5e','#818cf8','#34d399','#fb923c','#a3e635','#38bdf8','#e879f9','#fb7185'];
-let _adminDynIdx = 0;
 
 function getCatGroup(cat) {
   if (!cat) return null;
@@ -452,13 +452,9 @@ function getCatGroup(cat) {
   return idx > 0 ? cat.substring(0, idx).trim() : cat;
 }
 function getCatColorHex(cat) {
-  const group = getCatGroup(cat) || cat || '';
-  if (CAT_BASE_COLORS[group]) return CAT_BASE_COLORS[group];
-  if (!_adminDynColors[group]) {
-    _adminDynColors[group] = _adminDynPalette[_adminDynIdx % _adminDynPalette.length];
-    _adminDynIdx++;
-  }
-  return _adminDynColors[group];
+  if (!cat) return CAT_BASE_COLORS['기타'];
+  const group = getCatGroup(cat);
+  return CAT_BASE_COLORS[group] || CAT_BASE_COLORS['기타'];
 }
 
 // ─── HELPERS ───
@@ -1159,10 +1155,16 @@ async function loadNormTerms() {
     const terms = [...new Set((data || []).map(r => r.normalized).filter(Boolean))];
     const dlNorm = document.getElementById('norm-datalist');
     if (dlNorm) dlNorm.innerHTML = terms.map(t => `<option value="${escHtml(t)}">`).join('');
-    // 카테고리 datalist — 사전에 등록된 모든 고유 카테고리 + 기본값
-    const baseCats = ['작동성','유격','체결','수평','소음','파손','외관'];
+    // 카테고리 datalist — 고정 목록 + 사전에 등록된 서브카테고리
     const dictCats = [...new Set((data || []).map(r => r.category).filter(Boolean))];
-    const allCats = [...new Set([...baseCats, ...dictCats])].sort();
+    const allCats = [...new Set([...FIXED_CATS, '기타', ...dictCats])].sort((a,b) => {
+      // 고정 목록 먼저, 기타 마지막
+      const ai = FIXED_CATS.indexOf(a), bi = FIXED_CATS.indexOf(b);
+      if (a==='기타') return 1; if (b==='기타') return -1;
+      if (ai>=0 && bi>=0) return ai-bi;
+      if (ai>=0) return -1; if (bi>=0) return 1;
+      return a.localeCompare(b);
+    });
     const dlCat = document.getElementById('cat-datalist');
     if (dlCat) dlCat.innerHTML = allCats.map(c => `<option value="${escHtml(c)}">`).join('');
   } catch(e) { console.warn('loadNormTerms failed', e); }
@@ -1225,9 +1227,11 @@ async function bulkDeleteDict() {
 <datalist id="norm-datalist"></datalist>
 <datalist id="item-datalist"></datalist>
 <datalist id="cat-datalist">
-  <!-- 동적으로 채워짐 (loadNormTerms) — 증상 사전에 등록된 카테고리 + 기본값 -->
-  <option value="작동성"><option value="소음"><option value="파손">
-  <option value="유격"><option value="수평"><option value="체결"><option value="외관">
+  <!-- 고정 카테고리 기본값 + 동적으로 추가됨 (loadNormTerms) -->
+  <option value="파손"><option value="작동성"><option value="체결">
+  <option value="유격"><option value="소음"><option value="외관">
+  <option value="오접수"><option value="수평"><option value="누락"><option value="시공불만">
+  <option value="기타">
 </datalist>
 
 <!-- 요구내역 전체보기 팝업 -->
