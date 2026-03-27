@@ -697,12 +697,16 @@ async function handleClaimFile(file) {
         matchedCount++;
       } else {
         unmatchedCount++;
-        if (parseResult.rawSymptom && parseResult.rawSymptom.length > 3) {
+        // rawSymptom이 null이면 claim_detail에서 fallback 추출 (오포장·반품 등 비정형 텍스트 대응)
+        const pendingSymptom = (parseResult.rawSymptom && parseResult.rawSymptom.length > 3)
+          ? parseResult.rawSymptom
+          : (dbRow.claim_detail ? String(dbRow.claim_detail).replace(/\s+/g,' ').trim().slice(0, 120) : null);
+        if (pendingSymptom && pendingSymptom.length > 3) {
           claimPendingData.push({
             receipt_id:          dbRow.receipt_id,
             seq_no:              dbRow.seq_no,
             item:                dbRow.item,
-            raw_symptom:         parseResult.rawSymptom,
+            raw_symptom:         pendingSymptom,
             suggested_category:  parseResult.category || null,
             status:              'pending',
           });
