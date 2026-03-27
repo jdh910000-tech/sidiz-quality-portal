@@ -244,7 +244,7 @@ async function updateClaimsNormalized(receipt_id, defect_normalized, defect_cate
   });
   if (!res.ok) throw new Error(`update claims normalized ${res.status}`);
 }
-async function countPending() { return supabaseCount('symptom_pending?status=eq.pending'); }
+async function countPending() { return supabaseCountFiltered('symptom_pending', 'status=eq.pending'); }
 async function fetchReceiptByCategory(category, from, to) {
   let params = `select=*&defect_category=eq.${encodeURIComponent(category)}&order=receipt_date.desc&limit=500`;
   if (from) params += `&receipt_date=gte.${from}`;
