@@ -107,17 +107,25 @@ function extractSymptomBySeq(text, seqNo) {
   let t = String(text).replace(/\t/g, ' ');
   const seq = parseInt(seqNo) || 1;
 
-  // ── 전략 1: "NN-" 또는 "NN." 구간 추출 (증상 키워드 없어도 허용) ──
-  const seqStr = String(seq).padStart(2, '0');
-  const seqRegex = new RegExp(`(?:^|\\s)${seqStr}[\\-\\.:]\\s*(.+?)(?=\\s*\\d{2}[\\-\\.:]|<|$)`, 's');
-  const m1 = t.match(seqRegex);
-  if (m1) {
-    let symptom = m1[1]
-      .split(/[<>]/)[0]
-      .replace(/[★▶◀※！!\[\]]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (symptom.length > 4) return symptom;
+  // ── 전략 1: 순번 구간 추출 — "NN-", "NN.", "NN:", "N-", "N.", "N:", "N)" 모두 허용 ──
+  // seqStr: 2자리("01") + 1자리("1") 둘 다 시도 → 사람마다 작성 방식이 다름
+  const seqStr2 = String(seq).padStart(2, '0');  // 예: "01"
+  const seqStr1 = String(seq);                   // 예: "1"
+  // 다음 순번 패턴 (종료 앵커): 2자리 또는 1자리 순번 + 구분자
+  const nextSeqPat = `(?=\\s*(?:\\d{1,2}[\\-\\.:\\)])(?=\\s|$)|<|$)`;
+  const delim = `[\\-\\.:\\)]`;
+  // 2자리 먼저 시도, 없으면 1자리 시도
+  for (const s of [seqStr2, seqStr1]) {
+    const re = new RegExp(`(?:^|[\\s>])${s}${delim}\\s*(.+?)(?=\\s*\\d{1,2}${delim}|<|$)`, 's');
+    const m = t.match(re);
+    if (m) {
+      let symptom = m[1]
+        .split(/[<>]/)[0]
+        .replace(/[★▶◀※！!\[\]]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (symptom.length > 4) return symptom;
+    }
   }
 
   // ── 전략 2: 제품 설명 블록 이후 한글 증상 추출 ──
