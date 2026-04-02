@@ -148,16 +148,25 @@ async function updateKpiFromSupabase(year) {
         if (dVn[t][i] > 0) data.detail_vn[t][i] = dVn[t][i];
       });
     }
-    // 매출량 업데이트 (국내/베트남 별도)
+    // 매출량 업데이트 (product_sales_monthly에서 국가별 SUM)
     try {
-      const sales = await SupabaseClient.supabaseFetch('sales_monthly',
-        `select=*&year_month=gte.${year}-01&year_month=lte.${year}-12`);
-      if (sales) sales.forEach(s => {
-        const mi = parseInt(s.year_month.slice(5,7)) - 1;
-        if (mi < 0 || mi > 11) return;
-        if (s.country === '베트남' && s.sales_count > 0) data.sales.vn[mi] = s.sales_count;
-        else if (s.sales_count > 0) data.sales.kr[mi] = s.sales_count;
-      });
+      const sales = await SupabaseClient.supabaseFetch('product_sales_monthly',
+        `select=year_month,country,sales_count&year_month=gte.${year}-01&year_month=lte.${year}-12`);
+      if (sales) {
+        // 국가+월 기준으로 합산
+        const sumMap = {};
+        sales.forEach(s => {
+          const key = s.year_month + '_' + s.country;
+          sumMap[key] = (sumMap[key] || 0) + (s.sales_count || 0);
+        });
+        Object.entries(sumMap).forEach(([key, cnt]) => {
+          const [ym, country] = key.split('_');
+          const mi = parseInt(ym.slice(5,7)) - 1;
+          if (mi < 0 || mi > 11 || cnt <= 0) return;
+          if (country === '베트남') data.sales.vn[mi] = cnt;
+          else data.sales.kr[mi] = cnt;
+        });
+      }
     } catch(e) {}
   } catch(e) { console.error('[KPI] updateKpiFromSupabase 오류:', e); }
 }
