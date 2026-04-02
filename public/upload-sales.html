@@ -90,6 +90,7 @@ tr:hover td{background:rgba(74,158,255,0.04);}
     <div class="filter-rules">
       <strong>아래 데이터는 자동으로 제외됩니다</strong>
       <div class="filter-rule">일반사업소 = '하자조치내수'</div>
+      <div class="filter-rule">일반사업소 = '관계사'</div>
       <div class="filter-rule">브랜드구분 = '알로소'</div>
       <div class="filter-rule">제품구분에 '소파', '철재', '철제' 포함 또는 '외주상품'</div>
       <div class="filter-rule">매출수량이 0 이하 (마이너스)</div>
@@ -99,7 +100,9 @@ tr:hover td{background:rgba(74,158,255,0.04);}
       ✅ <strong>국가 구분</strong>: 제품구분 컬럼의 '베트남상품' → 베트남 / 그 외 → 국내<br>
       ✅ <strong>기간 구분</strong>: 매출일자에서 년-월(YYYY-MM) 자동 추출<br>
       ✅ <strong>제품 매핑</strong>: 단품코드 → 제품구분(item) 자동 변환 (동일한 item은 합산)<br>
-      ✅ <strong>중복 처리</strong>: 동일 제품+년월+국가가 이미 있으면 매출수량을 <strong>덮어씁니다</strong> (재업로드 가능)
+      ✅ <strong>중복 제거</strong>: 수주번호+라인번호 기준으로 파일 간 중복 행 자동 제거<br>
+      ✅ <strong>다중 파일</strong>: 여러 파일을 동시에 선택하면 합산 처리됩니다<br>
+      ✅ <strong>재업로드</strong>: 동일 제품+년월+국가가 이미 있으면 <strong>덮어씁니다</strong>
     </div>
   </div>
 
@@ -107,10 +110,10 @@ tr:hover td{background:rgba(74,158,255,0.04);}
   <div class="section">
     <h2>ERP 파일 업로드</h2>
     <div class="drop-zone" id="dropZone">
-      <input type="file" id="fileInput" accept=".xls,.xlsx" onchange="handleFile(this.files[0])">
+      <input type="file" id="fileInput" accept=".xls,.xlsx" multiple onchange="handleFiles(this.files)">
       <div class="icon">📊</div>
       <p>ERP 거래명세서 파일을 드래그하거나 클릭하여 업로드</p>
-      <p class="hint">.xls / .xlsx 형식 지원</p>
+      <p class="hint">.xls / .xlsx 형식 지원 · 여러 파일 동시 선택 가능</p>
     </div>
 
     <div class="status" id="statusMsg"></div>
@@ -127,7 +130,7 @@ tr:hover td{background:rgba(74,158,255,0.04);}
       </div>
       <div class="sum-card">
         <div class="val" id="sumSales" style="color:var(--amber)">-</div>
-        <div class="lbl">총 매출수량</div>
+        <div class="lbl">총 매출건수</div>
       </div>
       <div class="sum-card">
         <div class="val" id="sumItems" style="color:var(--violet)">-</div>
@@ -259,100 +262,111 @@ dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dra
 dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('drag-over');
-  const f = e.dataTransfer.files[0];
-  if (f) handleFile(f);
+  if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
 });
 
 let _parsedRows = [];
 
-// ─── 파일 처리 메인 ───
-async function handleFile(file) {
-  if (!file) return;
-  if (!file.name.match(/\.(xls|xlsx)$/i)) { showStatus('error', '.xls 또는 .xlsx 파일만 업로드 가능합니다.'); return; }
+// ─── 단일 파일 파싱 (raw rows 반환) ───
+async function parseFile(file) {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: 'array', codepage: 949 });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { defval: '' });
+}
 
-  showStatus('loading', `"${file.name}" 분석 중...`);
+// ─── 다중 파일 처리 메인 ───
+async function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  const fileArr = Array.from(files).filter(f => f.name.match(/\.(xls|xlsx)$/i));
+  if (fileArr.length === 0) { showStatus('error', '.xls 또는 .xlsx 파일만 업로드 가능합니다.'); return; }
+
   document.getElementById('summaryCards').style.display = 'none';
   document.getElementById('tableWrap').style.display = 'none';
   document.getElementById('actionBtns').style.display = 'none';
+  showStatus('loading', `파일 ${fileArr.length}개 분석 중...`);
 
   try {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array', codepage: 949 });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    let totalRawRows = 0;
+    let totalFilteredRows = 0;
+    const seenKeys = new Set();   // 수주번호+라인번호 기준 중복 제거
+    const groupMap = {};
 
-    const totalRows = raw.length;
-    showStatus('loading', `총 ${totalRows.toLocaleString()}행 파싱 완료. 필터링 중...`);
+    for (let fi = 0; fi < fileArr.length; fi++) {
+      const file = fileArr[fi];
+      showStatus('loading', `(${fi+1}/${fileArr.length}) "${file.name}" 분석 중...`);
 
-    // ─── 컬럼명 유연 탐색 (공백·특수문자 차이 대응) ───
-    const cols = raw.length > 0 ? Object.keys(raw[0]) : [];
-    const findCol = (...candidates) => cols.find(c => candidates.some(k => c.trim() === k)) || null;
+      const raw = await parseFile(file);
+      totalRawRows += raw.length;
 
-    const COL_BIZ    = findCol('일반사업소');
-    const COL_BRAND  = findCol('브랜드구분');
-    const COL_PROD   = findCol('제품구분');
-    const COL_QTY    = findCol('매출수량');
-    const COL_CODE   = findCol('단품코드');
-    const COL_DATE   = findCol('매출일자');
+      if (raw.length === 0) continue;
 
-    // 컬럼 탐지 실패 시 디버그 표시
-    if (!COL_QTY || !COL_CODE || !COL_DATE) {
-      const missing = [!COL_BIZ&&'일반사업소',!COL_BRAND&&'브랜드구분',!COL_PROD&&'제품구분',!COL_QTY&&'매출수량',!COL_CODE&&'단품코드',!COL_DATE&&'매출일자'].filter(Boolean);
-      showStatus('error', `⚠️ 컬럼 탐지 실패: [${missing.join(', ')}] — 파일의 실제 컬럼명: ${cols.slice(0,12).join(' / ')}`);
-      return;
+      // ─── 컬럼명 유연 탐색 ───
+      const cols = Object.keys(raw[0]);
+      const findCol = (...candidates) => cols.find(c => candidates.some(k => c.trim() === k)) || null;
+
+      const COL_BIZ    = findCol('일반사업소');
+      const COL_BRAND  = findCol('브랜드구분');
+      const COL_PROD   = findCol('제품구분');
+      const COL_QTY    = findCol('매출수량');
+      const COL_CODE   = findCol('단품코드');
+      const COL_DATE   = findCol('매출일자');
+      const COL_ORDER  = findCol('수주번호');
+      const COL_LINE   = findCol('라인번호');
+
+      if (!COL_QTY || !COL_CODE || !COL_DATE) {
+        const missing = [!COL_BIZ&&'일반사업소',!COL_BRAND&&'브랜드구분',!COL_PROD&&'제품구분',!COL_QTY&&'매출수량',!COL_CODE&&'단품코드',!COL_DATE&&'매출일자'].filter(Boolean);
+        showStatus('error', `⚠️ "${file.name}" 컬럼 탐지 실패: [${missing.join(', ')}]`);
+        return;
+      }
+
+      for (const r of raw) {
+        // ─── 수주번호+라인번호 중복 제거 ───
+        const orderNo = String(r[COL_ORDER] || '').trim();
+        const lineNo  = String(r[COL_LINE]  || '').trim();
+        const dupKey  = orderNo + '_' + lineNo;
+        if (orderNo && lineNo && seenKeys.has(dupKey)) continue;
+        if (orderNo && lineNo) seenKeys.add(dupKey);
+
+        // ─── 필터 ───
+        const biz   = String(r[COL_BIZ]   || '').trim();
+        const brand = String(r[COL_BRAND] || '').trim();
+        const prod  = String(r[COL_PROD]  || '').trim();
+        const qty   = parseFloat(String(r[COL_QTY] || '').replace(/,/g,'').trim()) || 0;
+
+        if (biz === '하자조치내수') continue;
+        if (biz === '관계사') continue;
+        if (brand === '알로소') continue;
+        if (/소파|철재|철제/.test(prod) || prod === '외주상품') continue;
+        if (qty <= 0) continue;
+
+        totalFilteredRows++;
+
+        // ─── 코드 매핑 & 날짜 파싱 ───
+        const code   = String(r[COL_CODE] || '').trim().toUpperCase();
+        const mapped = PRODUCT_CODE_MAP[code] || null;
+        const item   = mapped || prod || '기타';
+        const country = prod === '베트남상품' ? '베트남' : '국내';
+
+        const dateCell = r[COL_DATE];
+        let yearMonth = '';
+        if (typeof dateCell === 'number') {
+          const d = new Date(Math.round((dateCell - 25569) * 86400 * 1000));
+          yearMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+        } else {
+          const dateRaw = String(dateCell || '').trim();
+          if (/^\d{8}$/.test(dateRaw)) yearMonth = dateRaw.slice(0,4) + '-' + dateRaw.slice(4,6);
+          else yearMonth = dateRaw.slice(0,7).replace(/\//g,'-').replace(/\./g,'-');
+        }
+        if (!/^\d{4}-\d{2}$/.test(yearMonth)) continue;
+
+        // ─── 그룹핑 (건수 += 1) ───
+        const key = `${item}||${yearMonth}||${country}`;
+        if (!groupMap[key]) groupMap[key] = { item, year_month: yearMonth, country, sales_count: 0, mapped: !!mapped };
+        groupMap[key].sales_count += 1;
+      }
     }
 
-    // ─── 필터 적용 ───
-    let rows = raw.filter(r => {
-      const biz   = String(r[COL_BIZ]   || '').trim();
-      const brand = String(r[COL_BRAND] || '').trim();
-      const prod  = String(r[COL_PROD]  || '').trim();
-      // 매출수량: 숫자 또는 쉼표 포함 문자열 모두 처리
-      const qtyRaw = String(r[COL_QTY] || '').replace(/,/g, '').trim();
-      const qty = parseFloat(qtyRaw) || 0;
-      if (biz === '하자조치내수') return false;
-      if (brand === '알로소') return false;
-      if (/소파|철재|철제/.test(prod) || prod === '외주상품') return false;
-      if (qty <= 0) return false;
-      return true;
-    });
-
-    // ─── 단품코드 → item 매핑 (미매핑 시 제품구분 값 그대로 사용) ───
-    let mappedCount = 0;
-    rows = rows.map(r => {
-      const code    = String(r[COL_CODE] || '').trim().toUpperCase();
-      const prod    = String(r[COL_PROD] || '').trim();
-      const mapped  = PRODUCT_CODE_MAP[code] || null;
-      // 매핑 성공 → 매핑값 사용 / 미매핑 → 제품구분 컬럼 값 fallback
-      const item    = mapped || prod || '기타';
-      const country = prod === '베트남상품' ? '베트남' : '국내';
-      // 날짜: Excel 숫자 시리얼 또는 문자열(YYYY/MM/DD, YYYYMMDD, YYYY-MM-DD) 모두 처리
-      const dateCell = r[COL_DATE];
-      let yearMonth = '';
-      if (typeof dateCell === 'number') {
-        const d = new Date(Math.round((dateCell - 25569) * 86400 * 1000));
-        yearMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
-      } else {
-        const dateRaw = String(dateCell || '').trim();
-        if (/^\d{8}$/.test(dateRaw)) {
-          yearMonth = dateRaw.slice(0,4) + '-' + dateRaw.slice(4,6);
-        } else {
-          yearMonth = dateRaw.slice(0,7).replace(/\//g, '-').replace(/\./g,'-');
-        }
-      }
-      const qtyRaw = String(r[COL_QTY] || '').replace(/,/g, '').trim();
-      const qty = parseFloat(qtyRaw) || 0;
-      if (mapped) mappedCount++;
-      return { code, item, mapped: !!mapped, country, yearMonth, qty };
-    }).filter(r => /^\d{4}-\d{2}$/.test(r.yearMonth));
-
-    // ─── item + yearMonth + country 그룹핑 ───
-    const groupMap = {};
-    rows.forEach(r => {
-      const key = `${r.item}||${r.yearMonth}||${r.country}`;
-      if (!groupMap[key]) groupMap[key] = { item: r.item, year_month: r.yearMonth, country: r.country, sales_count: 0, mapped: r.mapped };
-      groupMap[key].sales_count += r.qty;
-    });
     _parsedRows = Object.values(groupMap).sort((a,b) => {
       if (a.item < b.item) return -1;
       if (a.item > b.item) return 1;
@@ -360,34 +374,33 @@ async function handleFile(file) {
     });
 
     // ─── 요약 카드 ───
-    const totalSales = _parsedRows.reduce((s,r) => s + r.sales_count, 0);
+    const totalSales  = _parsedRows.reduce((s,r) => s + r.sales_count, 0);
     const uniqueItems = new Set(_parsedRows.map(r => r.item)).size;
-    const mappedItems = _parsedRows.filter(r => r.mapped).length;
-    const unmappedItems = _parsedRows.length - mappedItems;
-    document.getElementById('sumTotal').textContent = totalRows.toLocaleString();
-    document.getElementById('sumFiltered').textContent = rows.length.toLocaleString();
-    document.getElementById('sumSales').textContent = totalSales.toLocaleString();
-    document.getElementById('sumItems').textContent = uniqueItems;
+    const unmappedItems = _parsedRows.filter(r => !r.mapped).length;
+    document.getElementById('sumTotal').textContent    = totalRawRows.toLocaleString();
+    document.getElementById('sumFiltered').textContent = totalFilteredRows.toLocaleString();
+    document.getElementById('sumSales').textContent    = totalSales.toLocaleString();
+    document.getElementById('sumItems').textContent    = uniqueItems;
     document.getElementById('summaryCards').style.display = 'grid';
 
     // ─── 미리보기 테이블 ───
-    const tbody = document.getElementById('previewBody');
-    tbody.innerHTML = _parsedRows.map(r => `
+    document.getElementById('previewBody').innerHTML = _parsedRows.map(r => `
       <tr>
         <td style="font-weight:600;color:${r.mapped?'var(--cyan)':'var(--amber)'}">
-          ${r.item}
-          ${!r.mapped ? '<span style="font-size:9px;color:var(--muted);margin-left:4px">(제품구분)</span>' : ''}
+          ${r.item}${!r.mapped?'<span style="font-size:9px;color:var(--muted);margin-left:4px">(제품구분)</span>':''}
         </td>
         <td>${r.year_month}</td>
         <td><span class="badge ${r.country==='베트남'?'badge-vn':'badge-dom'}">${r.country}</span></td>
-        <td style="text-align:right;color:var(--amber);font-weight:600">${Math.round(r.sales_count).toLocaleString()}</td>
+        <td style="text-align:right;color:var(--amber);font-weight:600">${r.sales_count.toLocaleString()}</td>
       </tr>`).join('');
     document.getElementById('tableWrap').style.display = 'block';
     document.getElementById('actionBtns').style.display = 'flex';
     document.getElementById('actionHint').textContent = `${_parsedRows.length}개 항목을 Supabase에 저장할 준비가 완료됐습니다.`;
 
-    const unmappedNote = unmappedItems > 0 ? ` (단품코드 미매핑 ${unmappedItems}개는 제품구분 값으로 저장)` : '';
-    showStatus('success', `✅ 분석 완료 — ${_parsedRows.length}개 항목 (총 매출수량 ${totalSales.toLocaleString()}개)${unmappedNote}`);
+    const dupNote = seenKeys.size > 0 ? ` · 중복제거 ${(totalRawRows - seenKeys.size - (totalRawRows - totalFilteredRows - (totalRawRows - seenKeys.size))).toLocaleString()}건` : '';
+    const unmappedNote = unmappedItems > 0 ? ` · 미매핑 ${unmappedItems}개는 제품구분 값으로 저장` : '';
+    showStatus('success', `✅ ${fileArr.length}개 파일 분석 완료 — 총 매출건수 ${totalSales.toLocaleString()}건 (국내+베트남)${unmappedNote}`);
+
   } catch(e) {
     showStatus('error', '파일 분석 오류: ' + e.message);
   }
@@ -423,7 +436,7 @@ async function uploadToSupabase() {
     }
 
     if (fail === 0) {
-      showStatus('success', `✅ 저장 완료! ${ok}개 항목이 Supabase에 저장됐습니다. (중복 시 덮어쓰기 적용)`);
+      showStatus('success', `✅ 저장 완료! ${ok}개 항목이 Supabase에 저장됐습니다. (동일 제품+월+국가는 덮어쓰기)`);
       _parsedRows = [];
       document.getElementById('actionBtns').style.display = 'none';
       loadHistory();
