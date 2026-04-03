@@ -724,7 +724,7 @@ body.share-mode .section > .header .header-left p { display: none; }
                 <th style="padding:9px 10px;text-align:left;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수번호</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">순번</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수일</th>
-                <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">제품구분</th>
+                <th style="padding:9px 10px;text-align:center;color:var(--accent-violet);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">제품구분 ✏️</th>
                 <th style="padding:9px 10px;text-align:left;color:var(--accent-emerald);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">표준증상 ✏️</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--accent-cyan);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">카테고리 ✏️</th>
                 <th style="padding:9px 10px;text-align:left;color:var(--accent-amber);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">요구내역</th>
@@ -2390,7 +2390,9 @@ function _showDefectDetail(defectName, catGroup) {
       <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);white-space:nowrap">${d.receipt_id||'-'}</td>
       <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px">${d.seq_no||'-'}</td>
       <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap">${d.receipt_date||'-'}</td>
-      <td style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600;white-space:nowrap">${d.item||'-'}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer"
+          onclick="startEdit(this,'item','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}',${d.seq_no||1},'','${(d.item||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','')"
+          title="클릭하여 제품구분 편집">${d.item||'<span style="color:var(--accent-violet);font-style:italic">미확인</span>'}</td>
       <td style="padding:7px 10px;cursor:pointer;color:var(--accent-emerald)"
           onclick="startEdit(this,'defect_normalized','${(d.receipt_id||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\') }',${d.seq_no||1},'${(d.raw_symptom||'').replace(/'/g,"\\'").replace(/\n/g,' ').replace(/\\/g,'\\\\')}','${(d.defect_normalized||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\')}','${(d.defect_category||'기타').replace(/'/g,"\\'")}')"
           title="클릭하여 편집">${d.defect_normalized||'<span style="color:var(--text-muted);font-style:italic">미분류</span>'}</td>
@@ -2420,20 +2422,29 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
   const originalText = cell.textContent.trim();
   const originalHTML = cell.innerHTML;
 
-  // 카테고리 datalist: 현재 데이터의 고유 카테고리 동적 수집
+  // datalist / input 생성
   const input = document.createElement('input');
   input.type = 'text';
   if (field === 'defect_category') {
-    // 기존 카테고리 값 (텍스트 노드에서 추출)
     input.value = currentCat || originalText || '';
     input.placeholder = '예: 외관(오염), 작동성 등';
     input.style.cssText = 'background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--sidiz-blue-bright);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;min-width:110px;box-sizing:border-box';
-    // datalist 동적 생성
     const dlId = '_catEditList';
     let dl = document.getElementById(dlId);
     if (!dl) { dl = document.createElement('datalist'); dl.id = dlId; document.body.appendChild(dl); }
     const existing = [...new Set(_rctAllData.map(d=>d.defect_category).filter(Boolean))].sort();
     dl.innerHTML = existing.map(c=>`<option value="${c}">`).join('');
+    input.setAttribute('list', dlId);
+  } else if (field === 'item') {
+    // currentNorm에 현재 item 값 전달됨
+    input.value = currentNorm || '';
+    input.placeholder = '예: T50, T90, S51 등';
+    input.style.cssText = 'background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid rgba(167,139,250,0.6);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;min-width:90px;box-sizing:border-box';
+    const dlId = '_itemEditList';
+    let dl = document.getElementById(dlId);
+    if (!dl) { dl = document.createElement('datalist'); dl.id = dlId; document.body.appendChild(dl); }
+    const existingItems = [...new Set(_rctAllData.map(d=>d.item).filter(Boolean))].sort();
+    dl.innerHTML = existingItems.map(c=>`<option value="${c}">`).join('');
     input.setAttribute('list', dlId);
   } else {
     input.value = originalText === '미분류' ? '' : originalText;
@@ -2461,11 +2472,25 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
       });
       if (!res.ok) throw new Error(`PATCH ${res.status}`);
 
-      // 2. 학습: defect_normalized 또는 defect_category 변경 시 사전 업데이트
-      const learnNorm = field === 'defect_normalized' ? newValue : currentNorm;
-      const learnCat  = field === 'defect_category'  ? newValue : currentCat;
-      if ((field === 'defect_normalized' || field === 'defect_category') && rawSymptom && rawSymptom.length > 2) {
-        await SupabaseClient.upsertSymptomPattern(rawSymptom, learnNorm, learnCat, 'dashboard');
+      // 2. 학습
+      if (field === 'item') {
+        // item 편집 학습: symptom_pending 레코드에도 item 반영
+        try {
+          const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
+          await fetch(
+            `${BASE}/rest/v1/symptom_pending?receipt_id=eq.${encodeURIComponent(receiptId)}&seq_no=eq.${seqNo}`,
+            { method: 'PATCH',
+              headers: { 'apikey': KEY, 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+              body: JSON.stringify({ item: newValue }) }
+          );
+        } catch(_) {} // pending 없는 경우 무시
+      } else {
+        // defect_normalized / defect_category 학습: 증상 사전 업데이트
+        const learnNorm = field === 'defect_normalized' ? newValue : currentNorm;
+        const learnCat  = field === 'defect_category'  ? newValue : currentCat;
+        if (rawSymptom && rawSymptom.length > 2) {
+          await SupabaseClient.upsertSymptomPattern(rawSymptom, learnNorm, learnCat, 'dashboard');
+        }
       }
 
       // 3. 로컬 캐시 업데이트
@@ -2473,9 +2498,13 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
       if (cachedRow) cachedRow[field] = newValue;
       const filteredRow = _rctFilteredData.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
       if (filteredRow) filteredRow[field] = newValue;
+      // _rctDetailSorted도 갱신 (삭제 참조용 배열)
+      const detailRow = _rctDetailSorted.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
+      if (detailRow) detailRow[field] = newValue;
 
-      cell.innerHTML = `<span style="color:var(--accent-emerald)">${newValue}</span>`;
-      cell.style.color = 'var(--accent-emerald)';
+      const highlightColor = field === 'item' ? 'var(--accent-violet)' : 'var(--accent-emerald)';
+      cell.innerHTML = `<span style="color:${highlightColor}">${newValue}</span>`;
+      cell.style.color = highlightColor;
       setTimeout(() => { cell.style.color = ''; }, 2000);
 
       // 칩 재렌더

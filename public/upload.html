@@ -704,6 +704,11 @@ async function handleClaimFile(file) {
         matchedCount++;
       } else {
         unmatchedCount++;
+      }
+
+      // 미분류 큐: 증상 미매칭 OR 제품구분 미확인 건 모두 포함
+      const noItem = !dbRow.item;
+      if (!parseResult.matched || noItem) {
         // rawSymptom이 null이면 claim_detail에서 fallback 추출 (오포장·반품 등 비정형 텍스트 대응)
         const pendingSymptom = (parseResult.rawSymptom && parseResult.rawSymptom.length > 3)
           ? parseResult.rawSymptom
