@@ -342,7 +342,7 @@ function handleClaimsTableFile(file) {
       return '국내';
     }
 
-    const valid = [];
+    let valid = [];
     const seen = new Set();
     let dates = [];
 
@@ -378,6 +378,15 @@ function handleClaimsTableFile(file) {
         country: detectCountry(r['회사'], r['브랜드']),
       });
     });
+
+    // 소파 건 자동 제외 (의자 품질 포털 대상 외)
+    const beforeSofa = valid.length;
+    valid = valid.filter(r =>
+      !String(r.item || '').includes('소파') &&
+      !String(r.claim_detail || '').includes('소파')
+    );
+    const sofaRemovedCt = beforeSofa - valid.length;
+    if (sofaRemovedCt > 0) console.log(`[claims 소파 필터] ${sofaRemovedCt}건 제외됨`);
 
     _ctParsedRows = valid;
 
@@ -652,9 +661,13 @@ async function handleClaimFile(file) {
     });
     allRows = Array.from(seenComposite.values());
 
-    // 소파 건 자동 제외 (의자 품질 포털 대상 외)
+    // 소파 건 자동 제외: item(제품구분) 또는 claim_detail(요구내역)에 '소파' 포함 시 제외
     const beforeSofaFilter = allRows.length;
-    allRows = allRows.filter(r => !r.item || !String(r.item).includes('소파'));
+    allRows = allRows.filter(r => {
+      const itemStr   = String(r.item          || '');
+      const detailStr = String(r.claim_detail  || r._rawDetail || '');
+      return !itemStr.includes('소파') && !detailStr.includes('소파');
+    });
     const sofaExcluded = beforeSofaFilter - allRows.length;
     if (sofaExcluded > 0) console.log(`[소파 필터] ${sofaExcluded}건 제외됨`);
 
