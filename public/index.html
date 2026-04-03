@@ -606,7 +606,7 @@ body.share-mode .section > .header .header-left p { display: none; }
       <select id="rctProductFilter" onchange="onRctProductChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
         <option value="all">전체 제품</option>
       </select>
-      <div id="rctDateRangeArea" style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
         <input type="date" id="rctDateFrom" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px" value="">
         <span style="color:var(--text-muted)">~</span>
         <input type="date" id="rctDateTo" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px" value="">
@@ -615,10 +615,6 @@ body.share-mode .section > .header .header-left p { display: none; }
         <button onclick="setRctQuick('1m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 1개월</button>
         <button onclick="setRctQuick('3m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 3개월</button>
         <button onclick="setRctQuick('all')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">전체</button>
-      </div>
-      <div id="rctFixedDateLabel" style="display:none;align-items:center;gap:8px;flex:1;font-size:12px;color:var(--text-muted)">
-        📤 업로드일 고정: <strong id="rctFixedDateValue" style="color:var(--text-primary)">-</strong>
-        <span style="font-size:10px;opacity:0.6">(오늘 업로드된 클레임 조회)</span>
       </div>
     </div>
 
@@ -702,6 +698,10 @@ body.share-mode .section > .header .header-left p { display: none; }
           </h3>
           <div style="display:flex;gap:8px;align-items:center">
             <span id="rctDetailCount" style="font-size:11px;color:var(--text-muted)"></span>
+            <button id="rctDeleteSelectedBtn" onclick="deleteSelectedDetailRows()"
+              style="background:rgba(255,107,122,0.12);color:var(--accent-rose);border:1px solid rgba(255,107,122,0.3);padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">
+              🗑 선택 삭제
+            </button>
             <button onclick="closeDefectDetail()" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer">✕ 닫기</button>
           </div>
         </div>
@@ -716,6 +716,11 @@ body.share-mode .section > .header .header-left p { display: none; }
           <table style="width:100%;border-collapse:collapse;font-size:11px">
             <thead style="position:sticky;top:0;z-index:2">
               <tr style="background:rgba(13,27,42,0.97)">
+                <th style="padding:9px 8px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);width:32px">
+                  <input type="checkbox" id="rctSelectAll" title="전체 선택/해제"
+                    onchange="document.querySelectorAll('#rctDetailTableBody input[type=checkbox]').forEach(cb=>cb.checked=this.checked)"
+                    style="cursor:pointer;width:14px;height:14px;accent-color:var(--accent-rose)">
+                </th>
                 <th style="padding:9px 10px;text-align:left;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수번호</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">순번</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수일</th>
@@ -1304,7 +1309,18 @@ function showClaimTab(tab,btn) {
   document.getElementById('claim-'+tab).style.display='block';
   document.querySelectorAll('#section-claim .sub-tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  if (tab === 'receipt') initReceiptDateDefaults();
+  if (tab === 'receipt') {
+    initReceiptDateDefaults();
+    // 탭 진입 시 업로드일 모드 기본 활성화
+    _rctDateMode = 'uploaded';
+    const btnR = document.getElementById('rctModeReceipt');
+    const btnU = document.getElementById('rctModeUploaded');
+    if (btnR) { btnR.style.background = 'var(--sidiz-card)'; btnR.style.color = 'var(--text-muted)'; }
+    if (btnU) { btnU.style.background = 'var(--sidiz-blue)'; btnU.style.color = 'white'; }
+    const titleEl = document.querySelector('#claim-receipt .section-title span');
+    if (titleEl) titleEl.textContent = '(업로드일 기준)';
+    loadReceiptDashboard();
+  }
   if (tab === 'product' && !_prodLoaded) { loadProdTab(); _prodLoaded = true; }
 
 }
@@ -1754,32 +1770,17 @@ function setRctDateMode(mode) {
   _rctDateMode = mode;
   const btnReceipt  = document.getElementById('rctModeReceipt');
   const btnUploaded = document.getElementById('rctModeUploaded');
-  const rangeArea   = document.getElementById('rctDateRangeArea');
-  const fixedLabel  = document.getElementById('rctFixedDateLabel');
 
   if (mode === 'receipt') {
     btnReceipt.style.background  = 'var(--sidiz-blue)';
     btnReceipt.style.color       = 'white';
     btnUploaded.style.background = 'var(--sidiz-card)';
     btnUploaded.style.color      = 'var(--text-muted)';
-    // 접수일 모드: 날짜 입력 영역 표시
-    if (rangeArea)  rangeArea.style.display  = 'flex';
-    if (fixedLabel) fixedLabel.style.display = 'none';
   } else {
     btnUploaded.style.background = 'var(--sidiz-blue)';
     btnUploaded.style.color      = 'white';
     btnReceipt.style.background  = 'var(--sidiz-card)';
     btnReceipt.style.color       = 'var(--text-muted)';
-    // 업로드일 모드: 오늘 날짜로 고정, 날짜 입력 영역 숨김
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('rctDateFrom').value = todayStr;
-    document.getElementById('rctDateTo').value   = todayStr;
-    if (rangeArea)  rangeArea.style.display  = 'none';
-    if (fixedLabel) {
-      fixedLabel.style.display = 'flex';
-      const fixedVal = document.getElementById('rctFixedDateValue');
-      if (fixedVal) fixedVal.textContent = todayStr;
-    }
   }
   // 헤더 타이틀 동기화
   const titleEl = document.querySelector('#claim-receipt .section-title span');
@@ -2151,6 +2152,7 @@ function _renderRctProductChart() {
 let _rctSelectedDefect = null;
 let _rctChartProductFilter = null;   // 도넛 차트 제품 클릭 필터
 let _rctDefectTrendChart = null;
+let _rctDetailSorted = [];           // 현재 상세 테이블에 표시 중인 행 (삭제 참조용)
 
 function _renderRctDefectChips() {
   // 1단계: 제품 필터 (도넛 차트 클릭)
@@ -2217,6 +2219,53 @@ function selectDefectChip(defectName) {
   _rctSelectedCatGroup = null;
   _renderRctDefectChips();
   _showDefectDetail(defectName);
+}
+
+// ── 상세 테이블 선택 삭제 ──
+async function deleteSelectedDetailRows() {
+  const checks = document.querySelectorAll('#rctDetailTableBody input[type="checkbox"]:checked');
+  if (!checks.length) { alert('삭제할 항목을 선택해 주세요.'); return; }
+
+  const toDelete = Array.from(checks).map(cb => {
+    const idx = parseInt(cb.dataset.idx);
+    return _rctDetailSorted[idx];
+  }).filter(Boolean);
+
+  if (!confirm(`선택한 ${toDelete.length}건을 claims_receipt에서 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.`)) return;
+
+  const btn = document.getElementById('rctDeleteSelectedBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '삭제 중...'; }
+
+  try {
+    const BASE = SupabaseClient.SUPABASE_URL;
+    const KEY  = SupabaseClient.SUPABASE_ANON_KEY;
+    await Promise.all(toDelete.map(d =>
+      fetch(`${BASE}/rest/v1/claims_receipt?receipt_id=eq.${encodeURIComponent(d.receipt_id)}&seq_no=eq.${d.seq_no}`, {
+        method: 'DELETE',
+        headers: { 'apikey': KEY, 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json' }
+      })
+    ));
+
+    // 메모리에서도 제거
+    const deleteSet = new Set(toDelete.map(d => `${d.receipt_id}::${d.seq_no}`));
+    _rctAllData = _rctAllData.filter(d => !deleteSet.has(`${d.receipt_id}::${d.seq_no}`));
+
+    // 차트·카드 전체 갱신
+    _applyRctFilter();
+    // 상세 패널 닫기
+    closeDefectDetail();
+
+    // 삭제 완료 토스트
+    const toast = document.createElement('div');
+    toast.textContent = `✅ ${toDelete.length}건 삭제 완료`;
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#00c48c;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,196,140,0.3)';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  } catch(e) {
+    alert('삭제 오류: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🗑 선택 삭제'; }
+  }
 }
 
 function closeDefectDetail() {
@@ -2322,14 +2371,22 @@ function _showDefectDetail(defectName, catGroup) {
 
   // 상세 테이블 (접수일 오름차순)
   const sorted = [...matched].sort((a,b) => (a.receipt_date||'').localeCompare(b.receipt_date||''));
+  _rctDetailSorted = sorted;  // 전역에 저장 (삭제 시 참조)
   const tbody = document.getElementById('rctDetailTableBody');
   if (!tbody) return;
+
+  // 전체 선택 체크박스 초기화
+  const selectAllCb = document.getElementById('rctSelectAll');
+  if (selectAllCb) selectAllCb.checked = false;
 
   const CATS = ['작동성','소음','파손','유격','수평','체결','외관','기타'];
 
   tbody.innerHTML = sorted.map((d, idx) => {
     const rowId = `row_${idx}`;
     return `<tr id="${rowId}" style="border-bottom:1px solid rgba(36,59,90,0.3)" onmouseover="this.style.background='rgba(0,87,184,0.04)'" onmouseout="this.style.background=''">
+      <td style="padding:7px 8px;text-align:center">
+        <input type="checkbox" data-idx="${idx}" style="cursor:pointer;width:14px;height:14px;accent-color:var(--accent-rose)">
+      </td>
       <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);white-space:nowrap">${d.receipt_id||'-'}</td>
       <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px">${d.seq_no||'-'}</td>
       <td style="padding:7px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap">${d.receipt_date||'-'}</td>
@@ -2346,11 +2403,11 @@ function _showDefectDetail(defectName, catGroup) {
     </tr>`;
   }).join('');
 
-  // 합계 행
+  // 합계 행 (colspan 8로 수정)
   const tfoot = document.getElementById('rctDetailTableFoot');
   if (tfoot) {
     tfoot.innerHTML = `<tr style="background:rgba(13,27,42,0.97)">
-      <td colspan="7" style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:11px;font-weight:600;border-top:2px solid var(--border)">
+      <td colspan="8" style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:11px;font-weight:600;border-top:2px solid var(--border)">
         합계&nbsp;<span style="color:var(--accent-amber);font-size:13px;font-weight:700">${sorted.length}</span>건
       </td>
     </tr>`;
