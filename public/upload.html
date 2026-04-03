@@ -651,6 +651,13 @@ async function handleClaimFile(file) {
       seenComposite.set(key, r); // 같은 키면 마지막 행으로 덮어씀
     });
     allRows = Array.from(seenComposite.values());
+
+    // 소파 건 자동 제외 (의자 품질 포털 대상 외)
+    const beforeSofaFilter = allRows.length;
+    allRows = allRows.filter(r => !r.item || !String(r.item).includes('소파'));
+    const sofaExcluded = beforeSofaFilter - allRows.length;
+    if (sofaExcluded > 0) console.log(`[소파 필터] ${sofaExcluded}건 제외됨`);
+
     const totalRows = allRows.length;
     let matchedCount = 0;
     let unmatchedCount = 0;

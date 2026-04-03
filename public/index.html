@@ -333,7 +333,8 @@ body.share-mode .section > .header .header-left p { display: none; }
 .rct-card:nth-child(2) { animation-delay: 0.1s; }
 .rct-card:nth-child(3) { animation-delay: 0.15s; }
 .rct-card:nth-child(4) { animation-delay: 0.2s; }
-.rct-card-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.rct-card-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.rct-card-desc { font-size: 10px; color: var(--text-muted); opacity: 0.7; margin-bottom: 6px; line-height: 1.4; }
 .rct-card-value { font-size: 1.6rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
 .rct-card-sub { font-size: 11px; color: var(--text-muted); }
 .rct-rank-item {
@@ -605,7 +606,7 @@ body.share-mode .section > .header .header-left p { display: none; }
       <select id="rctProductFilter" onchange="onRctProductChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
         <option value="all">전체 제품</option>
       </select>
-      <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
+      <div id="rctDateRangeArea" style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
         <input type="date" id="rctDateFrom" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px" value="">
         <span style="color:var(--text-muted)">~</span>
         <input type="date" id="rctDateTo" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px" value="">
@@ -615,27 +616,35 @@ body.share-mode .section > .header .header-left p { display: none; }
         <button onclick="setRctQuick('3m')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">최근 3개월</button>
         <button onclick="setRctQuick('all')" style="background:var(--sidiz-dark2);color:var(--text-muted);border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">전체</button>
       </div>
+      <div id="rctFixedDateLabel" style="display:none;align-items:center;gap:8px;flex:1;font-size:12px;color:var(--text-muted)">
+        📤 업로드일 고정: <strong id="rctFixedDateValue" style="color:var(--text-primary)">-</strong>
+        <span style="font-size:10px;opacity:0.6">(오늘 업로드된 클레임 조회)</span>
+      </div>
     </div>
 
     <!-- 요약 카드 4개 -->
     <div style="display:flex;flex-direction:row;gap:10px;margin-bottom:14px;flex-wrap:nowrap" id="rctSummaryCards">
       <div class="rct-card" style="border-top-color:var(--sidiz-blue-bright);padding:14px;flex:1;min-width:0">
         <div class="rct-card-label">총 클레임</div>
+        <div class="rct-card-desc">조회 기간 내 분류 완료된 전체 클레임 건수 (미분류 제외)</div>
         <div class="rct-card-value" id="rctCardTotal" style="color:var(--sidiz-blue-bright)">-</div>
         <div class="rct-card-sub" id="rctCardTotalSub">조회 전</div>
       </div>
       <div class="rct-card" style="border-top-color:var(--accent-cyan);padding:14px;flex:1;min-width:0">
         <div class="rct-card-label">이번 달 신규</div>
+        <div class="rct-card-desc">현재 달(이번 달)에 접수 또는 업로드된 건수</div>
         <div class="rct-card-value" id="rctCardMonth" style="color:var(--accent-cyan)">-</div>
         <div class="rct-card-sub" id="rctCardMonthSub">조회 전</div>
       </div>
       <div class="rct-card" style="border-top-color:var(--accent-emerald);padding:14px;flex:1;min-width:0">
         <div class="rct-card-label">분류 완료</div>
+        <div class="rct-card-desc">AI가 불량 유형을 자동 분류한 건수</div>
         <div class="rct-card-value" id="rctCardClassified" style="color:var(--accent-emerald)">-</div>
         <div class="rct-card-sub" id="rctCardClassifiedSub">자동분류율</div>
       </div>
       <div class="rct-card" style="border-top-color:var(--accent-amber);padding:14px;flex:1;min-width:0">
         <div class="rct-card-label">미분류(검토 필요)</div>
+        <div class="rct-card-desc">어드민 검토 대기 중인 건수 (symptom_pending 큐)</div>
         <div class="rct-card-value" id="rctCardPending" style="color:var(--accent-amber)">-</div>
         <div class="rct-card-sub">어드민에서 검토</div>
       </div>
@@ -1745,16 +1754,32 @@ function setRctDateMode(mode) {
   _rctDateMode = mode;
   const btnReceipt  = document.getElementById('rctModeReceipt');
   const btnUploaded = document.getElementById('rctModeUploaded');
+  const rangeArea   = document.getElementById('rctDateRangeArea');
+  const fixedLabel  = document.getElementById('rctFixedDateLabel');
+
   if (mode === 'receipt') {
     btnReceipt.style.background  = 'var(--sidiz-blue)';
     btnReceipt.style.color       = 'white';
     btnUploaded.style.background = 'var(--sidiz-card)';
     btnUploaded.style.color      = 'var(--text-muted)';
+    // 접수일 모드: 날짜 입력 영역 표시
+    if (rangeArea)  rangeArea.style.display  = 'flex';
+    if (fixedLabel) fixedLabel.style.display = 'none';
   } else {
     btnUploaded.style.background = 'var(--sidiz-blue)';
     btnUploaded.style.color      = 'white';
     btnReceipt.style.background  = 'var(--sidiz-card)';
     btnReceipt.style.color       = 'var(--text-muted)';
+    // 업로드일 모드: 오늘 날짜로 고정, 날짜 입력 영역 숨김
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('rctDateFrom').value = todayStr;
+    document.getElementById('rctDateTo').value   = todayStr;
+    if (rangeArea)  rangeArea.style.display  = 'none';
+    if (fixedLabel) {
+      fixedLabel.style.display = 'flex';
+      const fixedVal = document.getElementById('rctFixedDateValue');
+      if (fixedVal) fixedVal.textContent = todayStr;
+    }
   }
   // 헤더 타이틀 동기화
   const titleEl = document.querySelector('#claim-receipt .section-title span');
@@ -1856,7 +1881,7 @@ function _applyRctFilter() {
   if (empty) empty.style.display = 'none';
   if (cards) cards.style.display = 'flex';
 
-  _renderRctSummary(productFiltered);  // 요약 카드는 미분류 포함 전체
+  _renderRctSummary(_rctFilteredData);  // 총 클레임 카드 = 차트 건수 일치 (미분류 제외)
   _renderRctTrend();
   _renderRctCategory();
   _renderRctProductChart();
@@ -1864,14 +1889,15 @@ function _applyRctFilter() {
   closeDefectDetail();
 }
 
-function _renderRctSummary(allProductData) {
-  // 요약 카드는 미분류 포함 전체 기준, 차트/테이블은 _rctFilteredData(미분류 제외) 기준
-  const data = allProductData || _rctFilteredData;
+function _renderRctSummary(filteredData) {
+  // 총 클레임·차트·테이블 모두 미분류 제외 기준(_rctFilteredData)으로 통일
+  const data = filteredData || _rctFilteredData;
   const total = data.length;
   const today = new Date();
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   const dateField = _rctDateMode === 'uploaded' ? 'uploaded_at' : 'receipt_date';
   const monthCount = data.filter(d => d[dateField] && d[dateField].startsWith(thisMonth)).length;
+  // 분류완료: 미분류 제외 데이터이므로 defect_normalized 있는 건수 = 전체
   const classified = data.filter(d => d.defect_normalized).length;
   const rate = total > 0 ? ((classified / total) * 100).toFixed(1) : '0.0';
 
