@@ -1161,6 +1161,54 @@ body.share-mode .section > .header .header-left p { display: none; }
     .okr-note-lbl { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; margin-top: 4px; }
     .okr-note-area { width: 100%; background: var(--sidiz-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); padding: 10px 12px; font-size: 12px; resize: vertical; line-height: 1.7; box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; outline: none; min-height: 68px; }
     .okr-note-area:focus { border-color: var(--sidiz-blue); }
+    /* OKR 편집 컨트롤 */
+    .okr-ctrl-wrap { display:flex;gap:3px;align-items:center;flex-shrink:0; }
+    .okr-ctrl-btn { background:none;border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;color:var(--text-muted);transition:all 0.15s;line-height:1.6; }
+    .okr-ctrl-btn:hover { background:var(--sidiz-card-hover);color:var(--text-primary); }
+    .okr-ctrl-btn.del:hover { border-color:var(--accent-rose);color:var(--accent-rose); }
+    .okr-add-kr-btn,.okr-add-obj-btn { width:100%;padding:8px;border:1px dashed var(--border);border-radius:8px;background:none;cursor:pointer;font-size:12px;color:var(--text-muted);transition:all 0.15s;margin-top:6px;font-family:'Noto Sans KR',sans-serif; }
+    .okr-add-kr-btn:hover,.okr-add-obj-btn:hover { border-color:var(--sidiz-blue);color:var(--sidiz-blue);background:var(--sidiz-blue-pale); }
+    .okr-add-obj-btn { font-size:13px;font-weight:600;padding:12px;margin:10px 0 4px; }
+    /* 성과 내용 테이블 */
+    .okr-note-tbl-wrap { margin-top:8px;overflow:hidden;border-radius:8px;border:1px solid var(--border); }
+    .okr-note-tbl { width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed; }
+    .okr-note-th { padding:6px 10px;background:var(--sidiz-dark2);color:var(--text-secondary);font-weight:700;font-size:10px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:0.3px; }
+    .okr-note-th:not(:last-child),.okr-note-td:not(:last-child) { border-right:1px solid var(--border); }
+    .okr-note-td { vertical-align:top;padding:0; }
+    .okr-note-cell { display:block;padding:8px 10px;min-height:64px;color:var(--text-primary);font-size:12px;line-height:1.7;outline:none;background:var(--sidiz-card);white-space:pre-wrap;word-break:break-word;font-family:'Noto Sans KR',sans-serif; }
+    .okr-note-cell:focus { background:var(--sidiz-blue-pale); }
+    .okr-note-cell:empty:before { content:attr(data-ph);color:var(--text-muted);pointer-events:none; }
+    /* 링크 섹션 */
+    .okr-links-section { margin-top:10px; }
+    .okr-links-hdr { display:flex;align-items:center;justify-content:space-between;margin-bottom:5px; }
+    .okr-links-lbl { font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px; }
+    .okr-add-link-btn { font-size:10px;padding:2px 9px;border:1px solid var(--sidiz-blue);color:var(--sidiz-blue);border-radius:5px;background:none;cursor:pointer;transition:all 0.15s; }
+    .okr-add-link-btn:hover { background:var(--sidiz-blue-pale); }
+    .okr-links-list { display:flex;flex-direction:column;gap:4px; }
+    .okr-link-item { display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--sidiz-dark);border:1px solid var(--border);border-radius:6px;font-size:11px; }
+    .okr-link-a { color:var(--sidiz-blue);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .okr-link-a:hover { text-decoration:underline; }
+    .okr-link-del { color:var(--text-muted);cursor:pointer;font-size:13px;background:none;border:none;padding:0 2px;line-height:1; }
+    .okr-link-del:hover { color:var(--accent-rose); }
+    /* 모달 */
+    .okr-modal-bg { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.32);z-index:10000;align-items:center;justify-content:center; }
+    .okr-modal-bg.on { display:flex; }
+    .okr-modal { background:var(--sidiz-card);border-radius:14px;padding:24px;width:440px;max-width:92vw;box-shadow:0 16px 48px rgba(0,0,43,0.18); }
+    .okr-modal-ttl { font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text-primary); }
+    .okr-modal-tabs { display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border); }
+    .okr-modal-tab { padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-muted);border:none;background:none;border-bottom:2px solid transparent;transition:all 0.15s; }
+    .okr-modal-tab.on { color:var(--sidiz-blue);border-bottom-color:var(--sidiz-blue); }
+    .okr-modal-pane { display:none; }
+    .okr-modal-pane.on { display:block; }
+    .okr-modal-row { margin-bottom:12px; }
+    .okr-modal-lbl { font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px; }
+    .okr-modal-inp { width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--sidiz-dark);color:var(--text-primary);box-sizing:border-box;outline:none;font-family:'Noto Sans KR',sans-serif; }
+    .okr-modal-inp:focus { border-color:var(--sidiz-blue); }
+    .okr-modal-fns { display:flex;gap:8px;justify-content:flex-end;margin-top:16px; }
+    .okr-modal-ok { padding:8px 20px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer; }
+    .okr-modal-ok:hover { background:var(--sidiz-blue-bright); }
+    .okr-modal-cx { padding:8px 16px;background:var(--sidiz-card);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;font-size:13px;cursor:pointer; }
+    .okr-modal-file-hint { font-size:11px;color:var(--text-muted);margin-top:4px; }
   </style>
 
   <!-- Year Tabs -->
@@ -1831,6 +1879,19 @@ body.share-mode .section > .header .header-left p { display: none; }
 </div>
 
 </div>
+
+<!-- OKR 모달 (링크/파일 추가, Objective/KR 추가·편집) -->
+<div class="okr-modal-bg" id="okrModalBg" onclick="if(event.target===this)_closeOkrModal()">
+  <div class="okr-modal">
+    <div class="okr-modal-ttl" id="okrModalTitle">추가</div>
+    <div id="okrModalBody"></div>
+    <div class="okr-modal-fns">
+      <button class="okr-modal-cx" onclick="_closeOkrModal()">취소</button>
+      <button class="okr-modal-ok" id="okrModalOk" onclick="_okrModalConfirm()">저장</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
@@ -4576,6 +4637,7 @@ function _okrCalcSummary(year) {
 function initOkrProgress() {
   const d = _okrData();
   ['2025','2026'].forEach(year => {
+    _applyOkrStructure(year);
     document.querySelectorAll(`.okr-kr[data-year="${year}"]`).forEach(el => {
       const o = el.dataset.obj, k = el.dataset.kr;
       const kd = d[year]?.[o]?.[k];
@@ -4585,9 +4647,436 @@ function initOkrProgress() {
     objs.forEach(o => _okrCalcObj(year, o));
     _okrCalcSummary(year);
   });
+  _enhanceOkrUI();
 }
 
 document.addEventListener('DOMContentLoaded', () => setTimeout(initOkrProgress, 100));
+
+// ── OKR 구조 변경 적용 (삭제/추가/텍스트 편집) ─────────────────────────────
+function _applyOkrStructure(year) {
+  const d = _okrData(); const yd = d[year] || {};
+  // 텍스트 편집 적용
+  Object.entries(yd._text || {}).forEach(([key, val]) => {
+    if (key.includes('_')) {
+      const [o, k] = key.split('_');
+      const el = document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${k}"]`);
+      if (el && val.plan != null) { const p = el.querySelector('.okr-kr-plan'); if (p) p.textContent = val.plan; }
+    } else {
+      const el = document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${key}"]`);
+      if (el) {
+        if (val.title != null) { const t = el.querySelector('.okr-obj-title'); if (t) t.textContent = val.title; }
+        if (val.sub != null) { const s = el.querySelector('.okr-obj-sub'); if (s) s.textContent = val.sub; }
+      }
+    }
+  });
+  // 삭제 적용
+  (yd._del_objs || []).forEach(o => document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"]`)?.remove());
+  Object.entries(yd._del_krs || {}).forEach(([o, arr]) =>
+    arr.forEach(k => document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${k}"]`)?.remove()));
+  // 새 Objective 추가
+  (yd._new_objs || []).forEach(obj => {
+    if (!document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${obj.id}"]`))
+      _insertObjEl(year, obj);
+  });
+  // 새 KR 추가
+  Object.entries(yd._new_krs || {}).forEach(([o, krs]) => {
+    const body = document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"] .okr-obj-body`);
+    if (!body) return;
+    krs.forEach(kr => {
+      if (!document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${kr.id}"]`))
+        _insertKrEl(body, year, o, kr);
+    });
+  });
+}
+
+// ── OKR UI 강화 (편집/삭제 버튼, 성과 테이블, 링크 섹션, 추가 버튼) ────────
+function _enhanceOkrUI() {
+  document.querySelectorAll('.okr-kr').forEach(el => _enhanceSingleKr(el));
+  document.querySelectorAll('.okr-objective').forEach(el => _enhanceSingleObj(el));
+  document.querySelectorAll('.okr-year-content').forEach(sec => {
+    const year = sec.id.replace('okr-', '');
+    if (!year || isNaN(+year) || sec.querySelector('.okr-add-obj-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'okr-add-obj-btn';
+    btn.textContent = '+ Objective 추가';
+    btn.onclick = () => _openObjModal(year, null);
+    sec.appendChild(btn);
+  });
+}
+
+function _enhanceSingleKr(el) {
+  const year = el.dataset.year, o = el.dataset.obj, k = el.dataset.kr;
+  if (!year || !o || !k) return;
+  // 편집/삭제 버튼
+  const header = el.querySelector('.okr-kr-header');
+  if (header && !header.querySelector('.okr-ctrl-wrap')) {
+    const ctrl = document.createElement('div');
+    ctrl.className = 'okr-ctrl-wrap';
+    ctrl.innerHTML = `<button class="okr-ctrl-btn" title="편집" onclick="event.stopPropagation();_openKrModal('${year}','${o}','${k}')">✏️</button><button class="okr-ctrl-btn del" title="삭제" onclick="event.stopPropagation();_deleteKr('${year}','${o}','${k}')">🗑️</button>`;
+    header.querySelector('.okr-kr-arrow').before(ctrl);
+  }
+  // 성과 내용 테이블로 교체
+  const editSec = el.querySelector('.okr-edit-section');
+  if (!editSec || editSec.querySelector('.okr-note-tbl-wrap')) return;
+  const noteLbl = editSec.querySelector('.okr-note-lbl');
+  const noteArea = editSec.querySelector('.okr-note-area');
+  if (!noteLbl || !noteArea) return;
+  const d = _okrData(); const notes = d[year]?.[o]?.[k]?.notes || {};
+  const tmp = document.createElement('div');
+  tmp.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-top:4px;margin-bottom:6px">📌 성과 내용</div>
+    <div class="okr-note-tbl-wrap">
+      <table class="okr-note-tbl">
+        <thead><tr>
+          <th class="okr-note-th">✅ 효과</th>
+          <th class="okr-note-th">👍 잘한점</th>
+          <th class="okr-note-th">💡 아쉬운점</th>
+        </tr></thead>
+        <tbody><tr>
+          <td class="okr-note-td"><div class="okr-note-cell" contenteditable="true" data-ph="효과를 입력하세요" oninput="setOkrNote('${year}','${o}','${k}','효과',this.innerText)" onclick="event.stopPropagation()"></div></td>
+          <td class="okr-note-td"><div class="okr-note-cell" contenteditable="true" data-ph="잘한점을 입력하세요" oninput="setOkrNote('${year}','${o}','${k}','잘한점',this.innerText)" onclick="event.stopPropagation()"></div></td>
+          <td class="okr-note-td"><div class="okr-note-cell" contenteditable="true" data-ph="아쉬운점을 입력하세요" oninput="setOkrNote('${year}','${o}','${k}','아쉬운점',this.innerText)" onclick="event.stopPropagation()"></div></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="okr-links-section">
+      <div class="okr-links-hdr">
+        <span class="okr-links-lbl">🔗 첨부 링크 / 파일</span>
+        <button class="okr-add-link-btn" onclick="event.stopPropagation();_openLinkModal('${year}','${o}','${k}')">+ 추가</button>
+      </div>
+      <div class="okr-links-list" id="okr-links-${year}-${o}-${k}"></div>
+    </div>`;
+  // 순서대로 참조 뽑기 (DOM 이동 전)
+  const lblEl = tmp.children[0];
+  const tblEl = tmp.children[1];
+  const lnkEl = tmp.children[2];
+  noteLbl.replaceWith(lblEl);   // label → labelEl
+  noteArea.replaceWith(tblEl, lnkEl); // textarea → table + links
+  // 저장된 노트 값 복원
+  const cells = el.querySelectorAll('.okr-note-cell');
+  const cols = ['효과','잘한점','아쉬운점'];
+  cells.forEach((c, i) => { if (notes[cols[i]]) c.textContent = notes[cols[i]]; });
+  _renderLinks(year, o, k);
+}
+
+function _enhanceSingleObj(el) {
+  const year = el.dataset.year, o = el.dataset.obj;
+  if (!year || !o) return;
+  const header = el.querySelector(':scope > .okr-obj-header');
+  if (header && !header.querySelector('.okr-ctrl-wrap')) {
+    const ctrl = document.createElement('div');
+    ctrl.className = 'okr-ctrl-wrap';
+    ctrl.style.marginLeft = '6px';
+    ctrl.innerHTML = `<button class="okr-ctrl-btn" title="편집" onclick="event.stopPropagation();_openObjModal('${year}','${o}')">✏️</button><button class="okr-ctrl-btn del" title="삭제" onclick="event.stopPropagation();_deleteObj('${year}','${o}')">🗑️</button>`;
+    header.appendChild(ctrl);
+  }
+  const body = el.querySelector('.okr-obj-body');
+  if (body && !body.querySelector('.okr-add-kr-btn')) {
+    const btn = document.createElement('button');
+    btn.className = 'okr-add-kr-btn';
+    btn.textContent = '+ KR 추가';
+    btn.onclick = e => { e.stopPropagation(); _openKrModal(year, o, null); };
+    body.appendChild(btn);
+  }
+}
+
+// ── 성과 노트 저장 ────────────────────────────────────────────────────────
+function setOkrNote(year, o, k, col, value) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year][o]) d[year][o] = {};
+  if (!d[year][o][k]) d[year][o][k] = {};
+  if (!d[year][o][k].notes) d[year][o][k].notes = {};
+  d[year][o][k].notes[col] = value;
+  _okrSave(d);
+}
+
+// ── 링크/파일 ─────────────────────────────────────────────────────────────
+function _renderLinks(year, o, k) {
+  const el = document.getElementById(`okr-links-${year}-${o}-${k}`);
+  if (!el) return;
+  const d = _okrData(); const links = d[year]?.[o]?.[k]?.links || [];
+  el.innerHTML = links.map((lk, i) => `
+    <div class="okr-link-item">
+      <span style="font-size:13px">${lk.type==='file'?'📎':'🔗'}</span>
+      <a class="okr-link-a" href="${_escAttr(lk.url)}" target="_blank" rel="noopener">${_escHtml(lk.label||lk.url)}</a>
+      <button class="okr-link-del" onclick="event.stopPropagation();_removeLink('${year}','${o}','${k}',${i})" title="삭제">✕</button>
+    </div>`).join('');
+}
+
+function _removeLink(year, o, k, idx) {
+  const d = _okrData();
+  const links = d[year]?.[o]?.[k]?.links;
+  if (links) { links.splice(idx, 1); _okrSave(d); _renderLinks(year, o, k); }
+}
+
+// ── 모달 공통 ─────────────────────────────────────────────────────────────
+let _modalCallback = null;
+function _closeOkrModal() { document.getElementById('okrModalBg').classList.remove('on'); _modalCallback = null; }
+function _okrModalConfirm() { if (_modalCallback) _modalCallback(); }
+
+// ── 링크/파일 모달 ────────────────────────────────────────────────────────
+function _openLinkModal(year, o, k) {
+  document.getElementById('okrModalTitle').textContent = '링크 / 파일 첨부';
+  document.getElementById('okrModalBody').innerHTML = `
+    <div class="okr-modal-tabs">
+      <button class="okr-modal-tab on" id="tabLink" onclick="_switchTab('link')">🔗 URL 링크</button>
+      <button class="okr-modal-tab" id="tabFile" onclick="_switchTab('file')">📎 파일 업로드</button>
+    </div>
+    <div class="okr-modal-pane on" id="paneLink">
+      <div class="okr-modal-row"><div class="okr-modal-lbl">URL</div><input class="okr-modal-inp" id="mlUrl" placeholder="https://..." onclick="event.stopPropagation()"></div>
+      <div class="okr-modal-row"><div class="okr-modal-lbl">표시 이름 (생략 시 URL 사용)</div><input class="okr-modal-inp" id="mlLabel" placeholder="링크 이름" onclick="event.stopPropagation()"></div>
+    </div>
+    <div class="okr-modal-pane" id="paneFile">
+      <div class="okr-modal-row"><div class="okr-modal-lbl">파일 선택</div><input type="file" class="okr-modal-inp" id="mlFile" onclick="event.stopPropagation()"></div>
+      <div class="okr-modal-file-hint">※ 파일은 브라우저 로컬에 저장됩니다 (최대 2MB). 이미지·PDF·문서 파일 권장.</div>
+    </div>`;
+  _modalCallback = () => {
+    const isLink = document.getElementById('paneLink').classList.contains('on');
+    if (isLink) {
+      const url = document.getElementById('mlUrl').value.trim();
+      if (!url) { alert('URL을 입력해 주세요.'); return; }
+      const label = document.getElementById('mlLabel').value.trim() || url;
+      _saveLink(year, o, k, { url, label, type: 'link' });
+    } else {
+      const fileEl = document.getElementById('mlFile');
+      if (!fileEl.files.length) { alert('파일을 선택해 주세요.'); return; }
+      const file = fileEl.files[0];
+      if (file.size > 2 * 1024 * 1024) { alert('파일 크기가 2MB를 초과합니다. URL 링크 방식을 사용해 주세요.'); return; }
+      const reader = new FileReader();
+      reader.onload = e => {
+        _saveLink(year, o, k, { url: e.target.result, label: file.name, type: 'file' });
+        _closeOkrModal();
+      };
+      reader.readAsDataURL(file);
+      return; // async, modal closed in reader.onload
+    }
+    _closeOkrModal();
+  };
+  document.getElementById('okrModalBg').classList.add('on');
+}
+
+function _switchTab(tab) {
+  ['Link','File'].forEach(t => {
+    document.getElementById('tab'+t)?.classList.toggle('on', t.toLowerCase()===tab);
+    document.getElementById('pane'+t)?.classList.toggle('on', t.toLowerCase()===tab);
+  });
+}
+
+function _saveLink(year, o, k, lk) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year][o]) d[year][o] = {};
+  if (!d[year][o][k]) d[year][o][k] = {};
+  if (!d[year][o][k].links) d[year][o][k].links = [];
+  d[year][o][k].links.push(lk);
+  _okrSave(d);
+  _renderLinks(year, o, k);
+}
+
+// ── Objective 추가/편집 모달 ──────────────────────────────────────────────
+function _openObjModal(year, o) {
+  const isEdit = o !== null;
+  const d = _okrData(); const yd = d[year] || {};
+  let curTitle = '', curSub = '';
+  if (isEdit) {
+    const txt = yd._text?.[o] || {};
+    const el = document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"]`);
+    curTitle = txt.title ?? (el?.querySelector('.okr-obj-title')?.textContent || '');
+    curSub = txt.sub ?? (el?.querySelector('.okr-obj-sub')?.textContent || '');
+  }
+  document.getElementById('okrModalTitle').textContent = isEdit ? 'Objective 편집' : 'Objective 추가';
+  document.getElementById('okrModalBody').innerHTML = `
+    <div class="okr-modal-row"><div class="okr-modal-lbl">목표 (Objective)</div><input class="okr-modal-inp" id="moTitle" value="${_escAttr(curTitle)}" placeholder="목표를 입력하세요" onclick="event.stopPropagation()"></div>
+    <div class="okr-modal-row"><div class="okr-modal-lbl">부제목 (선택)</div><input class="okr-modal-inp" id="moSub" value="${_escAttr(curSub)}" placeholder="부제목을 입력하세요" onclick="event.stopPropagation()"></div>`;
+  _modalCallback = () => {
+    const title = document.getElementById('moTitle').value.trim();
+    const sub = document.getElementById('moSub').value.trim();
+    if (!title) { alert('목표를 입력해 주세요.'); return; }
+    if (isEdit) {
+      _saveObjText(year, o, title, sub);
+    } else {
+      _createNewObj(year, title, sub);
+    }
+    _closeOkrModal();
+  };
+  document.getElementById('okrModalBg').classList.add('on');
+  setTimeout(() => document.getElementById('moTitle')?.focus(), 50);
+}
+
+function _saveObjText(year, o, title, sub) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year]._text) d[year]._text = {};
+  d[year]._text[o] = { title, sub };
+  _okrSave(d);
+  const el = document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"]`);
+  if (el) {
+    const t = el.querySelector('.okr-obj-title'); if (t) t.textContent = title;
+    const s = el.querySelector('.okr-obj-sub'); if (s) s.textContent = sub;
+  }
+}
+
+function _createNewObj(year, title, sub) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year]._new_objs) d[year]._new_objs = [];
+  const existing = document.querySelectorAll(`.okr-objective[data-year="${year}"]`).length;
+  const id = 'n' + (Date.now());
+  const objData = { id, title, sub, n: existing + 1 };
+  d[year]._new_objs.push(objData);
+  _okrSave(d);
+  const sec = document.getElementById('okr-' + year);
+  const addBtn = sec?.querySelector('.okr-add-obj-btn');
+  const newEl = _insertObjEl(year, objData);
+  if (newEl) { _enhanceSingleObj(newEl); }
+}
+
+function _insertObjEl(year, obj) {
+  const sec = document.getElementById('okr-' + year);
+  if (!sec) return null;
+  const badges = ['o1','o2','o3','o4','o5','o1'];
+  const n = obj.n || (document.querySelectorAll(`.okr-objective[data-year="${year}"]`).length + 1);
+  const badge = badges[Math.min(n-1, 4)];
+  const div = document.createElement('div');
+  div.className = 'okr-objective';
+  div.dataset.year = year; div.dataset.obj = obj.id;
+  div.setAttribute('onclick', "event.stopPropagation();this.classList.toggle('open')");
+  div.innerHTML = `
+    <div class="okr-obj-header">
+      <div class="okr-obj-left">
+        <div class="okr-obj-badge ${badge}">O${n}</div>
+        <div><div class="okr-obj-title">${_escHtml(obj.title)}</div><div class="okr-obj-sub">${_escHtml(obj.sub||'')}</div></div>
+      </div>
+      <div class="okr-progress-mini">
+        <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:0%;background:var(--gradient-brand)"></div></div>
+        <div class="okr-progress-text" style="color:var(--sidiz-blue-bright)">0%</div>
+        <span class="okr-obj-arrow">▼</span>
+      </div>
+    </div>
+    <div class="okr-obj-body"></div>`;
+  const addBtn = sec.querySelector('.okr-add-obj-btn');
+  if (addBtn) addBtn.before(div); else sec.appendChild(div);
+  return div;
+}
+
+// ── KR 추가/편집 모달 ─────────────────────────────────────────────────────
+function _openKrModal(year, o, k) {
+  const isEdit = k !== null;
+  const d = _okrData(); const yd = d[year] || {};
+  let curPlan = '';
+  if (isEdit) {
+    const txt = yd._text?.[`${o}_${k}`] || {};
+    const el = document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${k}"]`);
+    curPlan = txt.plan ?? (el?.querySelector('.okr-kr-plan')?.textContent || '');
+  }
+  document.getElementById('okrModalTitle').textContent = isEdit ? 'Key Result 편집' : 'Key Result 추가';
+  document.getElementById('okrModalBody').innerHTML = `
+    <div class="okr-modal-row"><div class="okr-modal-lbl">Key Result 내용</div><input class="okr-modal-inp" id="mkPlan" value="${_escAttr(curPlan)}" placeholder="KR 내용을 입력하세요" onclick="event.stopPropagation()"></div>`;
+  _modalCallback = () => {
+    const plan = document.getElementById('mkPlan').value.trim();
+    if (!plan) { alert('KR 내용을 입력해 주세요.'); return; }
+    if (isEdit) {
+      _saveKrText(year, o, k, plan);
+    } else {
+      _createNewKr(year, o, plan);
+    }
+    _closeOkrModal();
+  };
+  document.getElementById('okrModalBg').classList.add('on');
+  setTimeout(() => document.getElementById('mkPlan')?.focus(), 50);
+}
+
+function _saveKrText(year, o, k, plan) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year]._text) d[year]._text = {};
+  d[year]._text[`${o}_${k}`] = { plan };
+  _okrSave(d);
+  const el = document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${k}"]`);
+  const p = el?.querySelector('.okr-kr-plan'); if (p) p.textContent = plan;
+}
+
+function _createNewKr(year, o, plan) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year]._new_krs) d[year]._new_krs = {};
+  if (!d[year]._new_krs[o]) d[year]._new_krs[o] = [];
+  const id = 'n' + Date.now();
+  const krData = { id, plan };
+  d[year]._new_krs[o].push(krData);
+  _okrSave(d);
+  const body = document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"] .okr-obj-body`);
+  if (body) {
+    const newEl = _insertKrEl(body, year, o, krData);
+    if (newEl) _enhanceSingleKr(newEl);
+  }
+}
+
+function _insertKrEl(body, year, o, kr) {
+  const n = body.querySelectorAll('.okr-kr').length + 1;
+  const div = document.createElement('div');
+  div.className = 'okr-kr';
+  div.dataset.year = year; div.dataset.obj = o; div.dataset.kr = kr.id;
+  div.setAttribute('onclick', "event.stopPropagation();this.classList.toggle('open')");
+  div.innerHTML = `
+    <div class="okr-kr-header">
+      <div class="okr-kr-badge">KR${n}</div>
+      <div><div class="okr-kr-plan">${_escHtml(kr.plan)}</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
+      <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:0%;background:var(--gradient-brand)"></div></div></div>
+      <div class="okr-kr-arrow">▼</div>
+    </div>
+    <div class="okr-kr-detail">
+      <div class="okr-edit-section">
+        <div class="okr-edit-row">
+          <span class="okr-edit-lbl">진행률</span>
+          <input type="range" class="okr-progress-slider" min="0" max="100" value="0" oninput="this.nextElementSibling.value=this.value;setOkrKr('${year}','${o}','${kr.id}','progress',+this.value)" onclick="event.stopPropagation()">
+          <input type="number" class="okr-pct-input" min="0" max="100" value="0" oninput="this.previousElementSibling.value=this.value;setOkrKr('${year}','${o}','${kr.id}','progress',+this.value)" onclick="event.stopPropagation()">
+          <span style="font-size:12px;color:var(--text-muted)">%</span>
+          <select class="okr-status-sel" onchange="setOkrKr('${year}','${o}','${kr.id}','status',this.value)" onclick="event.stopPropagation()">
+            <option value="진행중" selected>진행중</option><option value="달성">달성</option><option value="미달">미달</option>
+          </select>
+        </div>
+        <div class="okr-note-lbl">📌 성과 내용</div>
+        <textarea class="okr-note-area" placeholder="성과 내용을 입력해 주세요." onclick="event.stopPropagation()"></textarea>
+      </div>
+    </div>`;
+  const addBtn = body.querySelector('.okr-add-kr-btn');
+  if (addBtn) addBtn.before(div); else body.appendChild(div);
+  return div;
+}
+
+// ── 삭제 ──────────────────────────────────────────────────────────────────
+function _deleteObj(year, o) {
+  if (!confirm('이 Objective와 모든 KR을 삭제할까요?')) return;
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year]._del_objs) d[year]._del_objs = [];
+  if (!d[year]._del_objs.includes(o)) d[year]._del_objs.push(o);
+  // new_objs에 있으면 거기서도 제거
+  if (d[year]._new_objs) d[year]._new_objs = d[year]._new_objs.filter(x => x.id !== o);
+  _okrSave(d);
+  document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"]`)?.remove();
+  _okrCalcSummary(year);
+}
+
+function _deleteKr(year, o, k) {
+  if (!confirm('이 Key Result를 삭제할까요?')) return;
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year]._del_krs) d[year]._del_krs = {};
+  if (!d[year]._del_krs[o]) d[year]._del_krs[o] = [];
+  if (!d[year]._del_krs[o].includes(k)) d[year]._del_krs[o].push(k);
+  if (d[year]._new_krs?.[o]) d[year]._new_krs[o] = d[year]._new_krs[o].filter(x => x.id !== k);
+  _okrSave(d);
+  document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${k}"]`)?.remove();
+  _okrCalcObj(year, o);
+  _okrCalcSummary(year);
+}
+
+// ── 유틸 ──────────────────────────────────────────────────────────────────
+function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 async function _orgSaveJobDesc() {
   if (!_orgPopupId) return;
