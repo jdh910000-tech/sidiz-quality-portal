@@ -464,12 +464,6 @@ body.share-mode .section > .header .header-left p { display: none; }
     document.getElementById('loginOverlay').style.display = 'none';
     return;
   }
-  // 비밀번호 미설정(첫 방문) 여부
-  if (!localStorage.getItem('sidiz_pw_hash')) {
-    document.getElementById('loginModeLabel').textContent = '처음 방문을 환영합니다. 사용할 비밀번호를 설정해 주세요.';
-    document.getElementById('loginConfirmWrap').style.display = 'block';
-    document.getElementById('loginBtn').textContent = '비밀번호 설정';
-  }
   document.getElementById('loginPwInput').focus();
 })();
 </script>
@@ -5180,6 +5174,9 @@ async function _sha256(text) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
+// 비밀번호 해시 (sidiz123! 의 SHA-256)
+const _PW_HASH = '3667a42cf6ad2274b5f59f903394225d088a5f6b67870b73b1f140da62dbfdc3';
+
 async function _loginSubmit() {
   const pw    = document.getElementById('loginPwInput').value;
   const errEl = document.getElementById('loginErr');
@@ -5187,27 +5184,14 @@ async function _loginSubmit() {
 
   if (!pw) { _loginShake(); errEl.textContent = '비밀번호를 입력해 주세요.'; return; }
 
-  const stored = localStorage.getItem('sidiz_pw_hash');
-
-  if (!stored) {
-    // ── 첫 설정 모드 ──
-    const pw2 = document.getElementById('loginPwConfirm').value;
-    if (pw.length < 4) { _loginShake(); errEl.textContent = '비밀번호는 4자 이상이어야 합니다.'; return; }
-    if (pw !== pw2)    { _loginShake(); errEl.textContent = '비밀번호가 일치하지 않습니다.'; return; }
-    const hash = await _sha256(pw);
-    localStorage.setItem('sidiz_pw_hash', hash);
+  const hash = await _sha256(pw);
+  if (hash === _PW_HASH) {
     _loginSuccess();
   } else {
-    // ── 로그인 모드 ──
-    const hash = await _sha256(pw);
-    if (hash === stored) {
-      _loginSuccess();
-    } else {
-      _loginShake();
-      errEl.textContent = '비밀번호가 올바르지 않습니다.';
-      document.getElementById('loginPwInput').value = '';
-      document.getElementById('loginPwInput').focus();
-    }
+    _loginShake();
+    errEl.textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('loginPwInput').value = '';
+    document.getElementById('loginPwInput').focus();
   }
 }
 
@@ -5232,23 +5216,12 @@ function _togglePwVis(id, eye) {
   eye.textContent = el.type === 'password' ? '👁' : '🙈';
 }
 
-// 비밀번호 변경: 콘솔에서 _changePassword() 실행
-async function _changePassword() {
-  const np = prompt('새 비밀번호를 입력하세요 (4자 이상):');
-  if (!np || np.length < 4) { alert('비밀번호가 너무 짧습니다.'); return; }
-  const nc = prompt('새 비밀번호 확인:');
-  if (np !== nc) { alert('비밀번호가 일치하지 않습니다.'); return; }
-  const hash = await _sha256(np);
-  localStorage.setItem('sidiz_pw_hash', hash);
-  alert('✅ 비밀번호가 변경되었습니다. 다음 로그인 시 새 비밀번호를 사용하세요.');
-}
-
-// 비밀번호 초기화: 콘솔에서 _resetPassword() 실행
-function _resetPassword() {
-  if (!confirm('비밀번호를 초기화하면 다음 접속 시 재설정이 필요합니다. 계속할까요?')) return;
-  localStorage.removeItem('sidiz_pw_hash');
-  sessionStorage.removeItem('sidiz_auth');
-  alert('✅ 비밀번호가 초기화되었습니다. 페이지를 새로고침하면 재설정 화면이 나타납니다.');
+// 비밀번호 변경: 콘솔에서 _getHash('새비밀번호') 실행 → 출력된 해시를 _PW_HASH 에 교체
+async function _getHash(pw) {
+  const hash = await _sha256(pw);
+  console.log('🔑 새 비밀번호 해시:', hash);
+  console.log('→ index.html 의 _PW_HASH 값을 위 해시로 교체 후 재배포하세요.');
+  return hash;
 }
 
 async function _orgSaveJobDesc() {
