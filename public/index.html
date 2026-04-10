@@ -1149,149 +1149,324 @@ body.share-mode .section > .header .header-left p { display: none; }
     .okr-perf-entry-date { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
     .okr-perf-entry-text { color: var(--text-secondary); line-height: 1.6; }
     .okr-perf-empty { text-align: center; padding: 16px; color: var(--text-muted); font-size: 11px; border: 1px dashed var(--border); border-radius: 8px; }
+    /* OKR 편집 UI */
+    .okr-edit-section { padding: 0 14px 14px; }
+    .okr-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .okr-edit-lbl { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; width: 44px; flex-shrink: 0; }
+    .okr-progress-slider { flex: 1; min-width: 80px; accent-color: var(--sidiz-blue); cursor: pointer; }
+    .okr-pct-input { width: 52px; padding: 3px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: 'JetBrains Mono', monospace; text-align: center; background: var(--sidiz-card); color: var(--text-primary); outline: none; }
+    .okr-pct-input:focus { border-color: var(--sidiz-blue); }
+    .okr-status-sel { padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--sidiz-card); color: var(--text-primary); cursor: pointer; outline: none; }
+    .okr-status-sel:focus { border-color: var(--sidiz-blue); }
+    .okr-note-lbl { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; margin-top: 4px; }
+    .okr-note-area { width: 100%; background: var(--sidiz-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); padding: 10px 12px; font-size: 12px; resize: vertical; line-height: 1.7; box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; outline: none; min-height: 68px; }
+    .okr-note-area:focus { border-color: var(--sidiz-blue); }
   </style>
 
   <!-- Year Tabs -->
   <div class="okr-year-tabs">
-    <button class="okr-year-tab active" onclick="showOkrYear(2025, this)">2025</button>
-    <button class="okr-year-tab" onclick="showOkrYear(2026, this)">2026</button>
+    <button class="okr-year-tab active" onclick="showOkrYear(2026, this)">2026</button>
+    <button class="okr-year-tab" onclick="showOkrYear(2025, this)">2025</button>
     <button class="okr-add-year" onclick="addOkrYear()">+ 연도 추가</button>
   </div>
 
   <!-- 2025 OKR -->
-  <div id="okr-2025" class="okr-year-content active">
+  <div id="okr-2025" class="okr-year-content">
     <div class="okr-summary">
-      <div class="okr-summary-card"><div class="okr-summary-label">Objectives</div><div class="okr-summary-value" style="color:var(--sidiz-blue-bright)">4</div></div>
-      <div class="okr-summary-card"><div class="okr-summary-label">Key Results</div><div class="okr-summary-value" style="color:var(--accent-cyan)">12</div></div>
-      <div class="okr-summary-card"><div class="okr-summary-label">평균 달성률</div><div class="okr-summary-value" style="color:var(--accent-amber)">62%</div></div>
-      <div class="okr-summary-card"><div class="okr-summary-label">완료</div><div class="okr-summary-value" style="color:var(--accent-emerald)">5/12</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">Objectives</div><div class="okr-summary-value" style="color:var(--sidiz-blue-bright)">3</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">Key Results</div><div class="okr-summary-value" style="color:var(--accent-cyan)">9</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">평균 달성률</div><div class="okr-summary-value" style="color:var(--accent-amber)">88%</div></div>
+      <div class="okr-summary-card"><div class="okr-summary-label">완료</div><div class="okr-summary-value" style="color:var(--accent-emerald)">8/9</div></div>
     </div>
 
-    <!-- O1 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <!-- O1: 품질 고도화 -->
+    <div class="okr-objective" data-year="2025" data-obj="1" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o1">O1</div>
-          <div><div class="okr-obj-title">고객 클레임 불량지수 1.5% 이하 달성</div><div class="okr-obj-sub">클레임 감소 및 품질 개선을 통한 고객 만족도 향상</div></div>
+          <div><div class="okr-obj-title">품질 고도화</div><div class="okr-obj-sub">BIFMA 인증 확대 및 감성 품질 측정 인프라 기반 구축</div></div>
         </div>
         <div class="okr-progress-mini">
-          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:55%;background:var(--gradient-brand)"></div></div>
-          <div class="okr-progress-text" style="color:var(--sidiz-blue-bright)">55%</div>
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:95%;background:var(--gradient-brand)"></div></div>
+          <div class="okr-progress-text" style="color:var(--sidiz-blue-bright)">95%</div>
           <span class="okr-obj-arrow">▼</span>
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2025" data-obj="1" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR1</div>
-            <div><div class="okr-kr-plan">월평균 불량지수 1.5% 이하 유지</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
-            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:45%;background:var(--accent-amber)"></div></div></div>
+            <div><div class="okr-kr-plan">사외하자 처리 건수 182건 이하 달성</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div>
             <div class="okr-kr-arrow">▼</div>
           </div>
           <div class="okr-kr-detail">
-            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 1.80% — 목표 대비 +0.30%p 초과</div>
-            <div class="okr-perf-section">
-              <div class="okr-perf-title">📌 성과 내용</div>
-              <div class="okr-perf-empty">성과 내용을 입력해 주세요. (추후 데이터 입력 예정)</div>
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">연간 사외하자 처리 건수 목표 달성 — 분기별 지속 감소 추세</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','1','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','1','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','1','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','1','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
             </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2025" data-obj="1" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR2</div>
-            <div><div class="okr-kr-plan">T50 헤드 컬링 하자 월 50건 이하로 감소</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div>
-            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:35%;background:var(--accent-rose)"></div></div></div>
+            <div><div class="okr-kr-plan">BIFMA 인증 제품 8개 이상 확보</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div>
             <div class="okr-kr-arrow">▼</div>
           </div>
           <div class="okr-kr-detail">
-            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">8월 기준 112건 — 감소 추세이나 목표 미달</div>
-            <div class="okr-perf-section">
-              <div class="okr-perf-title">📌 성과 내용</div>
-              <div class="okr-perf-empty">성과 내용을 입력해 주세요.</div>
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">BIFMA 인증 8개 품목 달성 — 글로벌 인증 포트폴리오 확대</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','1','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','1','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','1','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','1','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
             </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2025" data-obj="1" data-kr="3" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR3</div>
-            <div><div class="okr-kr-plan">4000G 레버 하자 개선안 적용 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
-            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:70%;background:var(--gradient-brand)"></div></div></div>
+            <div><div class="okr-kr-plan">감성 품질 측정 설비 도입 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div>
             <div class="okr-kr-arrow">▼</div>
           </div>
           <div class="okr-kr-detail">
-            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">개선안 설계 완료, 양산 적용 진행 중</div>
-            <div class="okr-perf-section">
-              <div class="okr-perf-title">📌 성과 내용</div>
-              <div class="okr-perf-empty">성과 내용을 입력해 주세요.</div>
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">감성 품질 측정 설비 도입 및 기준 수립 완료</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','1','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','1','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','1','3','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','1','3','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="okr-kr" data-year="2025" data-obj="1" data-kr="4" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR4</div>
+            <div><div class="okr-kr-plan">BIFMA LEVEL 2 인증 확대 추진</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:80%;background:var(--accent-amber)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">BIFMA LEVEL 2 인증 80% 달성 — 잔여 품목 인증 추진 중</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="80" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','1','4','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="80" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','1','4','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','1','4','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','1','4','note',this.value)" onclick="event.stopPropagation()"></textarea>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- O2 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <!-- O2: 품질 보증 -->
+    <div class="okr-objective" data-year="2025" data-obj="2" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o2">O2</div>
-          <div><div class="okr-obj-title">실패비용 매출 대비 1.09% 이하 달성</div><div class="okr-obj-sub">하자보수비 및 AS 용역료 절감</div></div>
+          <div><div class="okr-obj-title">품질 보증 체계 강화</div><div class="okr-obj-sub">비전검사 확대·KC인증 완료·협력업체 AUDIT 정례화</div></div>
         </div>
         <div class="okr-progress-mini">
-          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:40%;background:linear-gradient(135deg,#00c48c,#00c6d7)"></div></div>
-          <div class="okr-progress-text" style="color:var(--accent-emerald)">40%</div>
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:97%;background:linear-gradient(135deg,#00c48c,#00c6d7)"></div></div>
+          <div class="okr-progress-text" style="color:var(--accent-emerald)">97%</div>
           <span class="okr-obj-arrow">▼</span>
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR1</div><div><div class="okr-kr-plan">월평균 하자보수비 4,480만원 이하</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:30%;background:var(--accent-rose)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 6,191만원 — 목표 대비 38% 초과</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR2</div><div><div class="okr-kr-plan">바로스 AS 용역료 월 7,000만원 이하</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:35%;background:var(--accent-rose)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 9,865만원</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR3</div><div><div class="okr-kr-plan">T50RE 헤드 자재비 월 350만원 이하</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 199만원 — 목표 달성</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
+        <div class="okr-kr" data-year="2025" data-obj="2" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR1</div>
+            <div><div class="okr-kr-plan">협력업체 비전검사 적용 90% 이상 달성</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:90%;background:var(--accent-emerald)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">비전검사 시스템 90% 적용 달성 — 주요 협력업체 품질 자동화 확대</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="90" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','2','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="90" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','2','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','2','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','2','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="okr-kr" data-year="2025" data-obj="2" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR2</div>
+            <div><div class="okr-kr-plan">KC 안전인증 전 모델 취득 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">KC 인증 대상 전 모델 인증 완료 — 법적 요구사항 100% 충족</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','2','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','2','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','2','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','2','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="okr-kr" data-year="2025" data-obj="2" data-kr="3" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR3</div>
+            <div><div class="okr-kr-plan">협력업체 AUDIT 연 27회 실시 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">협력업체 정기 품질감사 27회 완료 — 품질 보증 체계 정례화</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','2','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','2','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','2','3','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','2','3','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- O3 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <!-- O3: CS 개선 -->
+    <div class="okr-objective" data-year="2025" data-obj="3" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o3">O3</div>
-          <div><div class="okr-obj-title">품질관리 시스템 디지털 전환</div><div class="okr-obj-sub">수기 업무 자동화 및 데이터 기반 의사결정 체계 구축</div></div>
+          <div><div class="okr-obj-title">CS 서비스 개선</div><div class="okr-obj-sub">고객 응대 역량 강화 및 불만 콘텐츠 품질 개선</div></div>
         </div>
         <div class="okr-progress-mini">
-          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:75%;background:linear-gradient(135deg,#a78bfa,#0057b8)"></div></div>
-          <div class="okr-progress-text" style="color:var(--accent-violet)">75%</div>
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:60%;background:linear-gradient(135deg,#a78bfa,#0057b8)"></div></div>
+          <div class="okr-progress-text" style="color:var(--accent-violet)">60%</div>
           <span class="okr-obj-arrow">▼</span>
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR1</div><div><div class="okr-kr-plan">클레임 자동화 대시보드 구축 (Supabase + Vercel)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">일/월 클레임 대시보드 운영 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR2</div><div><div class="okr-kr-plan">품질관리 통합 포털 구축</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:65%;background:var(--gradient-brand)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">프로토타입 완성, 세부 기능 구현 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR3</div><div><div class="okr-kr-plan">시험소 일정 관리 시스템 구축 (Google Apps Script)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">웹 대시보드 운영 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-      </div>
-    </div>
-
-    <!-- O4 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
-      <div class="okr-obj-header">
-        <div class="okr-obj-left">
-          <div class="okr-obj-badge o4">O4</div>
-          <div><div class="okr-obj-title">제조/설계 클레임 선제 대응 체계 확립</div><div class="okr-obj-sub">반복 하자 근본 원인 분석 및 개선 프로세스 정착</div></div>
+        <div class="okr-kr" data-year="2025" data-obj="3" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR1</div>
+            <div><div class="okr-kr-plan">품질팀 CS 역량 교육 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">CS 응대 교육 전 팀원 이수 완료 — 고객 대응 역량 강화</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','3','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','3','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','3','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','3','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
+          </div>
         </div>
-        <div class="okr-progress-mini">
-          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:60%;background:linear-gradient(135deg,#ffb347,#ff6b7a)"></div></div>
-          <div class="okr-progress-text" style="color:var(--accent-amber)">60%</div>
-          <span class="okr-obj-arrow">▼</span>
+        <div class="okr-kr" data-year="2025" data-obj="3" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <div class="okr-kr-header">
+            <div class="okr-kr-badge">KR2</div>
+            <div><div class="okr-kr-plan">고객 불만 콘텐츠 개선율 목표 달성</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag miss">미달</span></div></div>
+            <div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:20%;background:var(--accent-rose)"></div></div></div>
+            <div class="okr-kr-arrow">▼</div>
+          </div>
+          <div class="okr-kr-detail">
+            <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">콘텐츠 개선 20% 수준 — 목표 대비 미달, 지속 추진 필요</div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="20" oninput="this.nextElementSibling.value=this.value;setOkrKr('2025','3','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="20" oninput="this.previousElementSibling.value=this.value;setOkrKr('2025','3','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2025','3','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달" selected>미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2025','3','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR1</div><div><div class="okr-kr-plan">상위 5개 반복 하자 개선안 도출 및 적용</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:60%;background:var(--gradient-brand)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">3/5건 개선완료 (헤드레스트, 틸팅레버, 락커)</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR2</div><div><div class="okr-kr-plan">베트남 공장 품질 협력 체계 강화 (월 1회 품질 회의)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:100%;background:var(--accent-emerald)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">월별 정기 회의 운영 중</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')"><div class="okr-kr-header"><div class="okr-kr-badge">KR3</div><div><div class="okr-kr-plan">제조 클레임율 0.15% 이하 유지</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div><div class="okr-kr-progress"><div class="okr-kr-progress-bar"><div class="okr-kr-progress-fill" style="width:50%;background:var(--accent-amber)"></div></div></div><div class="okr-kr-arrow">▼</div></div><div class="okr-kr-detail"><div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">현재 평균 0.21% — 감소 추세</div><div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div></div></div>
       </div>
     </div>
   </div>
 
   <!-- 2026 OKR -->
-  <div id="okr-2026" class="okr-year-content">
+  <div id="okr-2026" class="okr-year-content active">
     <div class="okr-summary">
       <div class="okr-summary-card"><div class="okr-summary-label">Objectives</div><div class="okr-summary-value" style="color:var(--sidiz-blue-bright)">4</div></div>
       <div class="okr-summary-card"><div class="okr-summary-label">Key Results</div><div class="okr-summary-value" style="color:var(--accent-cyan)">11</div></div>
@@ -1300,7 +1475,7 @@ body.share-mode .section > .header .header-left p { display: none; }
     </div>
 
     <!-- O1 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <div class="okr-objective" data-year="2026" data-obj="1" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o1">O1</div>
@@ -1313,7 +1488,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="1" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR1</div>
             <div><div class="okr-kr-plan">팔걸이 작동 시험 설비 도입 및 브랜드 자체 기준 확립 (3월)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1322,10 +1497,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">BIFMA 기준 외 브랜드 자체 작동성·작동력 기준 강화 — 양산품 시험 기반 마련</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="50" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','1','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="50" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','1','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','1','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','1','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="1" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR2</div>
             <div><div class="okr-kr-plan">헤드레스트 작동 시험 설비 도입 및 브랜드 자체 기준 확립 (9월)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1334,10 +1523,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">BIFMA 기준 외 헤드레스트 작동성·작동력 기준 표준화 — 9월 설비 도입 예정</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="10" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','1','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="10" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','1','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','1','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','1','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="1" data-kr="3" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR3</div>
             <div><div class="okr-kr-plan">대표 품목 작동력·내구성 기준 일원화 및 도면 표기 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1346,14 +1549,28 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">① 대표 품목 1개 시범 → ② 품목 확대 → ③ 기준 일원화 및 도면 표기 순서로 추진</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="20" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','1','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="20" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','1','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','1','3','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','1','3','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- O2 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <div class="okr-objective" data-year="2026" data-obj="2" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o2">O2</div>
@@ -1366,7 +1583,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="2" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR1</div>
             <div><div class="okr-kr-plan">협력업체 등급화(A/B/C) 체계 수립 및 품질 지표 정기 관리 정착</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1375,10 +1592,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">협력업체 품질 점검 기준 수립 및 등급화 지표 관리 체계 구축 진행 중</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="30" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','2','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="30" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','2','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','2','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','2','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="2" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR2</div>
             <div><div class="okr-kr-plan">인수검사 한도 샘플 등급 체계(OK/임시) 제정 및 적용 품목 선정</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1387,27 +1618,41 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">Top 불량유형, Top 클레임 자재, 핵심 외관, 조립품 등 대상 선정 후 한도 샘플 등급 체계 수립</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="20" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','2','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="20" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','2','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','2','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','2','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- O3 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <div class="okr-objective" data-year="2026" data-obj="3" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o3">O3</div>
           <div><div class="okr-obj-title">품질업무 디지털 자동화 구축</div><div class="okr-obj-sub">AI 활용 반복업무 자동화 — 목표 8hr/1day 업무 시간 단축</div></div>
         </div>
         <div class="okr-progress-mini">
-          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:55%;background:linear-gradient(135deg,#a78bfa,#0057b8)"></div></div>
-          <div class="okr-progress-text" style="color:var(--accent-violet)">55%</div>
+          <div class="okr-progress-bar"><div class="okr-progress-fill" style="width:77%;background:linear-gradient(135deg,#a78bfa,#0057b8)"></div></div>
+          <div class="okr-progress-text" style="color:var(--accent-violet)">77%</div>
           <span class="okr-obj-arrow">▼</span>
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="3" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR1</div>
             <div><div class="okr-kr-plan">일일사외하자 업무 자동화·고도화 및 회의실 예약 자동화 완료 (1월)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
@@ -1416,10 +1661,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">1월 완료 — 일일사외하자 보고 자동화 및 회의실 예약 자동화 운영 중</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','3','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','3','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','3','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','3','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="3" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR2</div>
             <div><div class="okr-kr-plan">일일 수출건 보고 자동화 및 품경위(KPI·하자보수비) 업무 자동화 완료 (2월)</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag done">달성</span></div></div>
@@ -1428,10 +1687,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">2월 완료 — 수출건 보고 및 품경위 KPI/하자보수비 자동화 운영 중</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','3','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="100" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','3','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','3','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중">진행중</option>
+                  <option value="달성" selected>달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','3','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="3" data-kr="3" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR3</div>
             <div><div class="okr-kr-plan">시험실 대시보드 구축 및 월 마감 업무 자동화 완료</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1440,14 +1713,28 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">시험실 대시보드 검토 중 · 월 마감 자동화 구현 진행 중 — 목표: 8hr/1day 업무 단축</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="30" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','3','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="30" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','3','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','3','3','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','3','3','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- O4 -->
-    <div class="okr-objective" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <div class="okr-objective" data-year="2026" data-obj="4" onclick="event.stopPropagation();this.classList.toggle('open')">
       <div class="okr-obj-header">
         <div class="okr-obj-left">
           <div class="okr-obj-badge o4">O4</div>
@@ -1460,7 +1747,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         </div>
       </div>
       <div class="okr-obj-body">
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="4" data-kr="1" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR1</div>
             <div><div class="okr-kr-plan">신제품 출시 전 AUDIT 100% 실시 — 품질 리스크 사전 점검</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1469,10 +1756,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">AUDIT를 통한 출시 전 품질 리스크 발굴 및 개선 요청 — 신제품 품질 사전 검증 강화</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="20" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','4','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="20" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','4','1','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','4','1','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','4','1','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="4" data-kr="2" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR2</div>
             <div><div class="okr-kr-plan">신제품 협력사 초기 3개월 집중 품질 관리 체계 적용</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1481,10 +1782,24 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">신제품 적용 협력사 대상 초기 최소 3개월 인수검사 집중 관리 기준 강화</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="20" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','4','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="20" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','4','2','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','4','2','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','4','2','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
-        <div class="okr-kr" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <div class="okr-kr" data-year="2026" data-obj="4" data-kr="3" onclick="event.stopPropagation();this.classList.toggle('open')">
           <div class="okr-kr-header">
             <div class="okr-kr-badge">KR3</div>
             <div><div class="okr-kr-plan">제품별 사외하자율 1% 미만 — 월실적회의 지표 관리 및 개선활동 보고</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span class="okr-kr-result-tag progress">진행중</span></div></div>
@@ -1493,7 +1808,21 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
           <div class="okr-kr-detail">
             <div class="okr-kr-result" style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">제품별 하자 지표 월별 관리 및 개선활동 월실적회의 보고 체계 운영</div>
-            <div class="okr-perf-section"><div class="okr-perf-title">📌 성과 내용</div><div class="okr-perf-empty">성과 내용을 입력해 주세요.</div></div>
+            <div class="okr-edit-section">
+              <div class="okr-edit-row">
+                <span class="okr-edit-lbl">진행률</span>
+                <input type="range" class="okr-progress-slider" min="0" max="100" value="25" oninput="this.nextElementSibling.value=this.value;setOkrKr('2026','4','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <input type="number" class="okr-pct-input" min="0" max="100" value="25" oninput="this.previousElementSibling.value=this.value;setOkrKr('2026','4','3','progress',+this.value)" onclick="event.stopPropagation()">
+                <span style="font-size:12px;color:var(--text-muted)">%</span>
+                <select class="okr-status-sel" onchange="setOkrKr('2026','4','3','status',this.value)" onclick="event.stopPropagation()">
+                  <option value="진행중" selected>진행중</option>
+                  <option value="달성">달성</option>
+                  <option value="미달">미달</option>
+                </select>
+              </div>
+              <div class="okr-note-lbl">📌 성과 내용</div>
+              <textarea class="okr-note-area" rows="3" placeholder="성과 내용을 입력해 주세요." oninput="setOkrKr('2026','4','3','note',this.value)" onclick="event.stopPropagation()"></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -4153,6 +4482,113 @@ function _orgClosePopup() {
   document.getElementById('orgPopup').style.display = 'none';
   _orgPopupId = null;
 }
+// ── OKR 수동 편집 (localStorage) ──────────────────────────────────────────
+const _OKR_KEY = 'sidiz_okr_v1';
+function _okrData() { try { return JSON.parse(localStorage.getItem(_OKR_KEY)||'{}'); } catch { return {}; } }
+function _okrSave(d) { localStorage.setItem(_OKR_KEY, JSON.stringify(d)); }
+
+function setOkrKr(year, o, k, field, value) {
+  const d = _okrData();
+  if (!d[year]) d[year] = {};
+  if (!d[year][o]) d[year][o] = {};
+  if (!d[year][o][k]) d[year][o][k] = {};
+  d[year][o][k][field] = value;
+  _okrSave(d);
+  _okrApplyKr(year, o, k, d[year][o][k]);
+  _okrCalcObj(year, o);
+  _okrCalcSummary(year);
+}
+
+function _okrApplyKr(year, o, k, kd) {
+  const el = document.querySelector(`.okr-kr[data-year="${year}"][data-obj="${o}"][data-kr="${k}"]`);
+  if (!el) return;
+  const pct = kd.progress !== undefined ? +kd.progress : null;
+  const status = kd.status || null;
+  if (pct !== null) {
+    const bar = el.querySelector('.okr-kr-progress-fill');
+    const slider = el.querySelector('.okr-progress-slider');
+    const num = el.querySelector('.okr-pct-input');
+    if (bar) bar.style.width = pct + '%';
+    if (slider) slider.value = pct;
+    if (num) num.value = pct;
+  }
+  if (status) {
+    const tag = el.querySelector('.okr-kr-result-tag');
+    const sel = el.querySelector('.okr-status-sel');
+    if (tag) {
+      tag.className = 'okr-kr-result-tag ' + (status==='달성'?'done':status==='미달'?'miss':'progress');
+      tag.textContent = status;
+    }
+    if (sel) sel.value = status;
+    const bar = el.querySelector('.okr-kr-progress-fill');
+    if (bar) bar.style.background = status==='달성'?'var(--accent-emerald)':status==='미달'?'var(--accent-rose)':'var(--gradient-brand)';
+  }
+  if (kd.note !== undefined) {
+    const ta = el.querySelector('.okr-note-area');
+    if (ta) ta.value = kd.note;
+  }
+}
+
+function _okrCalcObj(year, o) {
+  const d = _okrData();
+  const krs = document.querySelectorAll(`.okr-kr[data-year="${year}"][data-obj="${o}"]`);
+  let sum = 0, cnt = 0;
+  krs.forEach(el => {
+    const k = el.dataset.kr;
+    const pct = (d[year]?.[o]?.[k]?.progress !== undefined)
+      ? +d[year][o][k].progress
+      : +(el.querySelector('.okr-progress-slider')?.value || 0);
+    sum += pct; cnt++;
+  });
+  if (!cnt) return;
+  const avg = Math.round(sum / cnt);
+  const objEl = document.querySelector(`.okr-objective[data-year="${year}"][data-obj="${o}"]`);
+  if (objEl) {
+    const bar = objEl.querySelector(':scope > .okr-obj-header .okr-progress-fill');
+    const txt = objEl.querySelector(':scope > .okr-obj-header .okr-progress-text');
+    if (bar) bar.style.width = avg + '%';
+    if (txt) txt.textContent = avg + '%';
+  }
+}
+
+function _okrCalcSummary(year) {
+  const d = _okrData();
+  const krEls = document.querySelectorAll(`.okr-kr[data-year="${year}"]`);
+  let sum = 0, total = krEls.length, done = 0;
+  krEls.forEach(el => {
+    const o = el.dataset.obj, k = el.dataset.kr;
+    const kd = d[year]?.[o]?.[k] || {};
+    const pct = kd.progress !== undefined ? +kd.progress : +(el.querySelector('.okr-progress-slider')?.value || 0);
+    sum += pct;
+    const tag = el.querySelector('.okr-kr-result-tag');
+    const htmlStatus = tag ? (tag.classList.contains('done')?'달성':tag.classList.contains('miss')?'미달':'진행중') : '진행중';
+    if ((kd.status || htmlStatus) === '달성') done++;
+  });
+  const sec = document.getElementById('okr-' + year);
+  if (!sec) return;
+  const cards = sec.querySelectorAll('.okr-summary-card .okr-summary-value');
+  if (cards.length >= 4) {
+    cards[2].textContent = total > 0 ? Math.round(sum / total) + '%' : '-';
+    cards[3].textContent = done + '/' + total;
+  }
+}
+
+function initOkrProgress() {
+  const d = _okrData();
+  ['2025','2026'].forEach(year => {
+    document.querySelectorAll(`.okr-kr[data-year="${year}"]`).forEach(el => {
+      const o = el.dataset.obj, k = el.dataset.kr;
+      const kd = d[year]?.[o]?.[k];
+      if (kd) _okrApplyKr(year, o, k, kd);
+    });
+    const objs = new Set([...document.querySelectorAll(`.okr-kr[data-year="${year}"]`)].map(e => e.dataset.obj));
+    objs.forEach(o => _okrCalcObj(year, o));
+    _okrCalcSummary(year);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => setTimeout(initOkrProgress, 100));
+
 async function _orgSaveJobDesc() {
   if (!_orgPopupId) return;
   const text = document.getElementById('popupJobDesc').value;
