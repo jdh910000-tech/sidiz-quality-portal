@@ -367,17 +367,11 @@ body.share-mode .section > .header .header-left p { display: none; }
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo-area">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:38px;height:38px;background:linear-gradient(135deg,#002BD2,#1A59FF);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,43,210,0.25)">
-        <span style="color:white;font-weight:900;font-size:13px;letter-spacing:-0.5px;font-family:'Outfit',sans-serif">QC</span>
-      </div>
-      <div>
-        <div style="font-size:14px;font-weight:700;letter-spacing:-0.3px;line-height:1.25;font-family:'Outfit',sans-serif">
-          <span style="color:#000000">SIDIZ</span><span style="color:#002BD2"> Quality Control</span>
-        </div>
-        <div style="font-size:9.5px;font-weight:600;letter-spacing:2.5px;color:#9a9aaa;margin-top:2px;font-family:'Outfit',sans-serif">QUALITY PORTAL</div>
-      </div>
+    <div style="font-size:18px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;font-family:'Outfit',sans-serif">
+      <span style="color:#000000">SIDIZ</span><span style="color:#002BD2"> Quality</span><br>
+      <span style="color:#002BD2">Control</span>
     </div>
+    <div style="font-size:10px;font-weight:600;letter-spacing:3px;color:#9a9aaa;margin-top:5px;font-family:'Outfit',sans-serif">QUALITY PORTAL</div>
   </div>
   <div class="sidebar-nav">
     <a class="nav-item active" onclick="showSection('home')"><div class="nav-icon">🏠</div><span class="nav-label">메인 홈</span></a>
@@ -1120,8 +1114,8 @@ body.share-mode .section > .header .header-left p { display: none; }
     .okr-summary-value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
     .okr-kr:hover { border-color: var(--border-light); }
     .okr-kr-header { display: grid; grid-template-columns: 40px 1fr 100px 60px; gap: 12px; align-items: center; padding: 12px 14px; }
-    .okr-kr.open .okr-kr-header { border-bottom: 1px solid rgba(36,59,90,0.3); }
-    .okr-kr-detail { display: none; padding: 16px 14px 16px 54px; background: rgba(0,0,0,0.15); }
+    .okr-kr.open .okr-kr-header { border-bottom: 1px solid rgba(0,0,0,0.08); }
+    .okr-kr-detail { display: none; padding: 16px 14px 16px 54px; background: rgba(0,0,0,0.03); }
     .okr-kr.open .okr-kr-detail { display: block; }
     .okr-kr-arrow { font-size: 10px; color: var(--text-muted); transition: transform 0.3s; text-align: center; }
     .okr-kr.open .okr-kr-arrow { transform: rotate(180deg); }
@@ -2087,7 +2081,7 @@ function _renderRctCategory() {
             const val = ds.data[idx];
             if (!val) return;
             c.save();
-            c.fillStyle = '#f0f4f8';
+            c.fillStyle = '#222233';
             c.font = 'bold 12px "Noto Sans KR", sans-serif';
             c.textAlign = 'left';
             c.textBaseline = 'middle';
@@ -2134,7 +2128,7 @@ function _renderRctProductChart() {
       aspectRatio: 2,
       cutout: '55%',
       plugins: {
-        legend: { position: 'right', labels: { padding: 12, usePointStyle: true, font: { size: 13 }, boxWidth: 13, color: '#a0b4cb' } },
+        legend: { position: 'right', labels: { padding: 12, usePointStyle: true, font: { size: 13 }, boxWidth: 13, color: '#333344' } },
         tooltip: {
           backgroundColor: '#ffffff',
           callbacks: {
@@ -2397,7 +2391,7 @@ function _showDefectDetail(defectName, catGroup) {
 
   tbody.innerHTML = sorted.map((d, idx) => {
     const rowId = `row_${idx}`;
-    return `<tr id="${rowId}" style="border-bottom:1px solid rgba(36,59,90,0.3)" onmouseover="this.style.background='rgba(0,87,184,0.04)'" onmouseout="this.style.background=''">
+    return `<tr id="${rowId}" style="border-bottom:1px solid rgba(0,0,0,0.06)" onmouseover="this.style.background='rgba(0,43,210,0.03)'" onmouseout="this.style.background=''">
       <td style="padding:7px 8px;text-align:center">
         <input type="checkbox" data-idx="${idx}" style="cursor:pointer;width:14px;height:14px;accent-color:var(--accent-rose)">
       </td>
@@ -2790,10 +2784,10 @@ function renderProdBarChart(claims) {
     options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins: {
         legend: { display:false },
-        tooltip: { backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1, callbacks:{ label: ctx=>' '+ctx.parsed.x+'건' } },
+        tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#e2e2ea',borderWidth:1, callbacks:{ label: ctx=>' '+ctx.parsed.x+'건' } },
         datalabels: {
           anchor: 'end', align: 'end',
-          color: '#f0f4f8',
+          color: '#222233',
           font: { size:11, weight:'bold', family:"'JetBrains Mono'" },
           formatter: v => v + '건',
           clamp: true,
@@ -2802,8 +2796,8 @@ function renderProdBarChart(claims) {
       },
       layout: { padding: { right: 52 } },
       scales: {
-        x: { grid:{color:'rgba(36,59,90,0.3)'}, ticks:{color:'#6b83a0',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}, beginAtZero:true },
-        y: { grid:{display:false}, ticks:{color:'#a0b4cb',font:{size:11,weight:'600'}} }
+        x: { grid:{color:'rgba(0,0,0,0.07)'}, ticks:{color:'#555566',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}, beginAtZero:true },
+        y: { grid:{display:false}, ticks:{color:'#333344',font:{size:11,weight:'600'}} }
       }
     },
     plugins: [ ChartDataLabels ]
@@ -2824,10 +2818,10 @@ function renderProdPieChart(claims) {
   const PIE_COLORS = ['#4a9eff','#00c48c','#ffb347','#ff6b7a','#a78bfa','#00c6d7','#f59e0b','#6366f1','#10b981','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316'];
   _prodPieChart = new Chart(ctx, {
     type: 'doughnut',
-    data: { labels: sorted.map(e=>e[0]), datasets: [{ data: sorted.map(e=>e[1]), backgroundColor: PIE_COLORS, borderColor: '#17293f', borderWidth: 2 }] },
+    data: { labels: sorted.map(e=>e[0]), datasets: [{ data: sorted.map(e=>e[1]), backgroundColor: PIE_COLORS, borderColor: '#ffffff', borderWidth: 2 }] },
     options: { responsive:true, maintainAspectRatio:false,
-      plugins: { legend:{position:'right',labels:{color:'#a0b4cb',font:{size:10},usePointStyle:true,padding:6,boxWidth:8}},
-        tooltip:{backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}건`}} } }
+      plugins: { legend:{position:'right',labels:{color:'#444455',font:{size:10},usePointStyle:true,padding:6,boxWidth:8}},
+        tooltip:{backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}건`}} } }
   });
 }
 
@@ -2854,12 +2848,12 @@ function renderProdTrendChart(claims, from, to) {
     },
     options: { responsive:true, maintainAspectRatio:false,
       plugins: { legend:{display:false}, tooltip:{
-        backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,
+        backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
         callbacks:{ title: items => keys[items[0].dataIndex], label: ctx=>' '+ctx.parsed.y+'건' }
       }},
       scales: {
-        x:{grid:{color:'rgba(36,59,90,0.2)'},ticks:{color:'#6b83a0',font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:40}},
-        y:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
+        x:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#555566',font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:40}},
+        y:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#555566',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
       }
     }
   });
@@ -2938,18 +2932,18 @@ function renderProdMonthlyBarChart(allData, item) {
     type: 'bar',
     data: { labels: monthLabels,
       datasets: [{ label:'클레임 건수', data: monthCounts,
-        backgroundColor: monthCounts.map(v => v > 0 ? 'rgba(255,140,0,0.75)' : 'rgba(36,59,90,0.3)'),
+        backgroundColor: monthCounts.map(v => v > 0 ? 'rgba(255,140,0,0.75)' : 'rgba(0,0,0,0.08)'),
         borderColor: 'rgba(255,140,0,1)', borderWidth:1, borderRadius:4
       }]
     },
     options: { responsive:true, maintainAspectRatio:false,
       plugins: { legend:{display:false}, tooltip:{
-        backgroundColor:'rgba(23,41,63,0.95)',titleColor:'#f0f4f8',bodyColor:'#a0b4cb',borderColor:'#243b5a',borderWidth:1,
+        backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
         callbacks:{ label: ctx => ' ' + ctx.parsed.y + '건' }
       }},
       scales: {
-        x:{grid:{color:'rgba(36,59,90,0.2)'},ticks:{color:'#a0b4cb',font:{size:11}}},
-        y:{grid:{color:'rgba(36,59,90,0.3)'},ticks:{color:'#6b83a0',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
+        x:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#555566',font:{size:11}}},
+        y:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#555566',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
       }
     }
   });
@@ -3842,16 +3836,16 @@ async function _orgSaveJobDesc() {
 <div id="confluenceToast" style="display:none;position:fixed;bottom:28px;right:28px;z-index:9999;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:380px;line-height:1.6"></div>
 
 <div id="confluenceGuideModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#17293f;border:1px solid #243b5a;border-radius:16px;padding:32px;max-width:560px;width:90%;position:relative">
-    <button onclick="document.getElementById('confluenceGuideModal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#6b83a0;font-size:20px;cursor:pointer;line-height:1">✕</button>
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:#f0f4f8;display:flex;align-items:center;gap:8px"><span>🔗</span> Confluence iframe 삽입 가이드</h3>
-    <p style="font-size:12px;color:#6b83a0;margin-bottom:20px">Confluence Cloud 페이지에 대시보드를 직접 임베드하는 방법</p>
-    <ol style="font-size:13px;line-height:2.2;color:#a0b4cb;padding-left:20px;margin-bottom:16px">
-      <li>Confluence 페이지를 <strong style="color:#f0f4f8">편집 모드</strong>로 열기</li>
-      <li><code style="background:rgba(0,87,184,0.2);padding:2px 7px;border-radius:4px;font-size:11px;color:#4a9eff">삽입(+)</code> → <code style="background:rgba(0,87,184,0.2);padding:2px 7px;border-radius:4px;font-size:11px;color:#4a9eff">다른 매크로</code> → <strong style="color:#f0f4f8">iframe</strong> 검색 후 선택</li>
+  <div style="background:#ffffff;border:1px solid #E2E2EA;border-radius:16px;padding:32px;max-width:560px;width:90%;position:relative;box-shadow:0 8px 32px rgba(0,0,43,0.10)">
+    <button onclick="document.getElementById('confluenceGuideModal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#8a8a9a;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:#111111;display:flex;align-items:center;gap:8px"><span>🔗</span> Confluence iframe 삽입 가이드</h3>
+    <p style="font-size:12px;color:#8a8a9a;margin-bottom:20px">Confluence Cloud 페이지에 대시보드를 직접 임베드하는 방법</p>
+    <ol style="font-size:13px;line-height:2.2;color:#444455;padding-left:20px;margin-bottom:16px">
+      <li>Confluence 페이지를 <strong style="color:#111111">편집 모드</strong>로 열기</li>
+      <li><code style="background:rgba(0,43,210,0.08);padding:2px 7px;border-radius:4px;font-size:11px;color:#002BD2">삽입(+)</code> → <code style="background:rgba(0,43,210,0.08);padding:2px 7px;border-radius:4px;font-size:11px;color:#002BD2">다른 매크로</code> → <strong style="color:#111111">iframe</strong> 검색 후 선택</li>
       <li>URL 입력란에 아래 주소를 붙여넣기</li>
     </ol>
-    <div style="background:#0d1b2a;border:1px solid #243b5a;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#00c6d7;word-break:break-all;user-select:all">https://sidiz-quality-portal.vercel.app/index.html</div>
+    <div style="background:#F5F5F7;border:1px solid #E2E2EA;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#002BD2;word-break:break-all;user-select:all">https://sidiz-quality-portal.vercel.app/index.html</div>
     <div style="background:rgba(255,179,71,0.07);border:1px solid rgba(255,179,71,0.2);border-radius:8px;padding:12px 14px;font-size:12px;color:#ffb347;line-height:1.7;margin-bottom:16px">
       ⚠️ <strong>관리자 설정 필요:</strong> Confluence Cloud 관리자가 <em>허용된 iframe 소스(Allowlisted iframe sources)</em>에 <code style="background:rgba(255,179,71,0.15);padding:1px 5px;border-radius:3px">vercel.app</code> 도메인을 추가해야 합니다.<br>
       경로: <strong>Confluence 설정 → 보안 → 허용된 iframe 소스</strong>
