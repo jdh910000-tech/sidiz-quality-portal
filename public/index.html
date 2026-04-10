@@ -161,10 +161,13 @@ body.share-mode .section > .header .header-left p { display: none; }
 
 /* ===== KPI CARDS ===== */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-.kpi-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; }
-.kpi-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.3px; }
-.kpi-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
-.kpi-change { font-size: 13px; display: flex; align-items: center; gap: 3px; }
+.kpi-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; position: relative; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,43,0.04); transition: box-shadow 0.2s, transform 0.2s; }
+.kpi-card:hover { box-shadow: 0 6px 20px rgba(0,43,210,0.10); transform: translateY(-2px); }
+.kpi-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gradient-brand); border-radius: 0 0 2px 2px; opacity: 0; transition: opacity 0.2s; }
+.kpi-card:hover::after { opacity: 1; }
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.5px; text-transform: uppercase; }
+.kpi-value { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; background: var(--gradient-brand); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.kpi-change { font-size: 12px; display: flex; align-items: center; gap: 3px; }
 .kpi-change.up { color: var(--accent-rose); }
 .kpi-change.down { color: var(--accent-emerald); }
 
@@ -279,8 +282,10 @@ body.share-mode .section > .header .header-left p { display: none; }
 .bar-fill.brand { background: var(--gradient-brand); }
 
 .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
-.chart-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
-.chart-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+.chart-card { background: var(--sidiz-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 2px 12px rgba(0,0,43,0.05); transition: box-shadow 0.2s; }
+.chart-card:hover { box-shadow: 0 4px 20px rgba(0,43,210,0.08); }
+.chart-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--text-primary); display: flex; align-items: center; gap: 7px; }
+.chart-card h3::before { content: ''; width: 3px; height: 14px; background: var(--gradient-brand); border-radius: 2px; flex-shrink: 0; }
 
 /* Placeholder */
 .placeholder-section { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 55vh; text-align: center; }
@@ -310,7 +315,6 @@ body.share-mode .section > .header .header-left p { display: none; }
 .rct-card {
   background: var(--sidiz-card);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--sidiz-blue);
   border-radius: 14px;
   padding: 20px;
   position: relative;
@@ -318,15 +322,34 @@ body.share-mode .section > .header .header-left p { display: none; }
   opacity: 0;
   transform: translateY(16px);
   animation: rctCardIn 0.5s ease-out forwards;
+  box-shadow: 0 2px 12px rgba(0,0,43,0.05);
+  transition: box-shadow 0.2s, transform 0.2s;
 }
+.rct-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gradient-brand);
+}
+.rct-card::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,43,210,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.rct-card:hover { box-shadow: 0 6px 24px rgba(0,43,210,0.10); transform: translateY(-2px); }
 @keyframes rctCardIn { to { opacity: 1; transform: translateY(0); } }
 .rct-card:nth-child(1) { animation-delay: 0.05s; }
 .rct-card:nth-child(2) { animation-delay: 0.1s; }
 .rct-card:nth-child(3) { animation-delay: 0.15s; }
 .rct-card:nth-child(4) { animation-delay: 0.2s; }
-.rct-card-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.rct-card-label { font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
 .rct-card-desc { font-size: 10px; color: var(--text-muted); opacity: 0.7; margin-bottom: 6px; line-height: 1.4; }
-.rct-card-value { font-size: 1.6rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.rct-card-value { font-size: 1.8rem; font-weight: 900; line-height: 1; margin-bottom: 5px; background: var(--gradient-brand); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .rct-card-sub { font-size: 11px; color: var(--text-muted); }
 .rct-rank-item {
   display: flex; align-items: center; gap: 10px;
@@ -367,11 +390,11 @@ body.share-mode .section > .header .header-left p { display: none; }
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo-area">
-    <div style="font-size:18px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;font-family:'Outfit',sans-serif">
-      <span style="color:#000000">SIDIZ</span><span style="color:#002BD2"> Quality</span><br>
-      <span style="color:#002BD2">Control</span>
+    <div style="font-family:'Outfit',sans-serif;line-height:1.15">
+      <div style="font-size:28px;font-weight:900;letter-spacing:-1.5px;color:#000000;line-height:1">SIDIZ</div>
+      <div style="font-size:13px;font-weight:700;letter-spacing:-0.2px;color:#002BD2;white-space:nowrap">Quality Control</div>
     </div>
-    <div style="font-size:10px;font-weight:600;letter-spacing:3px;color:#9a9aaa;margin-top:5px;font-family:'Outfit',sans-serif">QUALITY PORTAL</div>
+    <div style="font-size:9px;font-weight:600;letter-spacing:3px;color:#b0b0c0;margin-top:6px;font-family:'Outfit',sans-serif;text-transform:uppercase">Quality Portal</div>
   </div>
   <div class="sidebar-nav">
     <a class="nav-item active" onclick="showSection('home')"><div class="nav-icon">🏠</div><span class="nav-label">메인 홈</span></a>
@@ -1962,22 +1985,62 @@ function _renderRctTrend() {
       datasets: [{
         label: '접수 건수',
         data: values,
-        borderColor: '#00c6d7',
-        backgroundColor: 'rgba(0,198,215,0.08)',
-        borderWidth: 2,
-        pointRadius: labels.length > 30 ? 2 : 4,
-        pointBackgroundColor: '#00c6d7',
+        borderColor: '#002BD2',
+        backgroundColor: 'rgba(0,43,210,0.08)',
+        borderWidth: 2.5,
+        pointRadius: labels.length > 30 ? 2 : 5,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: '#002BD2',
+        pointBorderWidth: 2,
+        pointHoverRadius: 7,
+        pointHoverBackgroundColor: '#002BD2',
         fill: true,
-        tension: 0.3,
+        tension: 0.4,
       }]
     },
+    plugins: [{
+      id: 'trendGradient',
+      beforeDatasetsDraw(chart) {
+        const { ctx: c, chartArea } = chart;
+        if (!chartArea) return;
+        const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        grad.addColorStop(0, 'rgba(0,43,210,0.22)');
+        grad.addColorStop(0.55, 'rgba(0,43,210,0.05)');
+        grad.addColorStop(1, 'rgba(0,43,210,0.00)');
+        chart.data.datasets[0].backgroundColor = grad;
+      }
+    }],
     options: {
       responsive: true,
       scales: {
-        x: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 10 }, maxTicksLimit: 12 } },
-        y: { grid: { color: 'rgba(0,0,0,0.06)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+        x: {
+          grid: { color: 'rgba(0,0,0,0.05)', drawTicks: false },
+          ticks: { color: '#8a8a9a', font: { size: 10, family: "'JetBrains Mono'" }, maxTicksLimit: 12, padding: 6 },
+          border: { dash: [3, 3] }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          beginAtZero: true,
+          ticks: { stepSize: 1, color: '#8a8a9a', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => Number.isInteger(v) ? v : '' }
+        }
       },
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#ffffff', titleFont: { family: "'Noto Sans KR'" }, bodyFont: { family: "'Noto Sans KR'" } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#ffffff',
+          titleColor: '#111111',
+          bodyColor: '#444455',
+          borderColor: '#E2E2EA',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          titleFont: { family: "'Noto Sans KR'", weight: '700' },
+          bodyFont: { family: "'Noto Sans KR'" },
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y}건`
+          }
+        }
+      },
       animation: { duration: 1000, easing: 'easeOutQuart' }
     }
   });
@@ -2032,37 +2095,69 @@ function _renderRctCategory() {
   if (_rctChartCat) _rctChartCat.destroy();
   const ctx = document.getElementById('rctCategoryChart');
   if (!ctx) return;
+  // 브랜드 컬러 팔레트 (세련된 그라데이션 색상)
+  const BRAND_CAT_COLORS = {
+    '파손':    { solid: '#FF4C6A', light: 'rgba(255,76,106,0.15)' },
+    '작동성':  { solid: '#002BD2', light: 'rgba(0,43,210,0.13)' },
+    '체결':    { solid: '#00B87A', light: 'rgba(0,184,122,0.13)' },
+    '유격':    { solid: '#7c5fe6', light: 'rgba(124,95,230,0.13)' },
+    '소음':    { solid: '#E6A800', light: 'rgba(230,168,0,0.15)' },
+    '외관':    { solid: '#F59E0B', light: 'rgba(245,158,11,0.13)' },
+    '오접수':  { solid: '#94A3B8', light: 'rgba(148,163,184,0.15)' },
+    '수평':    { solid: '#54DBC2', light: 'rgba(84,219,194,0.13)' },
+    '누락':    { solid: '#FF6C39', light: 'rgba(255,108,57,0.13)' },
+    '시공불만':{ solid: '#D946EF', light: 'rgba(217,70,239,0.13)' },
+    '기타':    { solid: '#64748B', light: 'rgba(100,116,139,0.13)' }
+  };
+  const barBg = labels.map(l => (BRAND_CAT_COLORS[l] || BRAND_CAT_COLORS['기타']).solid + 'cc');
+  const barBorder = labels.map(l => (BRAND_CAT_COLORS[l] || BRAND_CAT_COLORS['기타']).solid);
+
   _rctChartCat = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
       datasets: [{
         data: values,
-        backgroundColor: colors.map(c => c + 'cc'),
-        borderColor: colors,
-        borderWidth: 1,
-        borderRadius: 6,
+        backgroundColor: barBg,
+        borderColor: barBorder,
+        borderWidth: 0,
+        borderRadius: 8,
+        borderSkipped: false,
       }]
     },
     options: {
       indexAxis: 'y',
       responsive: true,
       cursor: 'pointer',
+      layout: { padding: { right: 48 } },
       scales: {
-        x: { grid: { color: 'rgba(0,0,0,0.06)' }, beginAtZero: true },
-        y: { grid: { display: false }, ticks: { font: { size: 12, weight: 'bold' } } }
+        x: {
+          grid: { color: 'rgba(0,0,0,0.04)', drawTicks: false },
+          beginAtZero: true,
+          ticks: { color: '#8a8a9a', font: { size: 10, family: "'JetBrains Mono'" }, callback: v => Number.isInteger(v) ? v : '' }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#222233', font: { size: 12, weight: '700', family: "'Noto Sans KR'" }, padding: 4 }
+        }
       },
       plugins: {
         legend: { display: false },
         tooltip: {
           backgroundColor: '#ffffff',
+          titleColor: '#111111',
+          bodyColor: '#444455',
+          borderColor: '#E2E2EA',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
           callbacks: {
-            label: ctx => `${ctx.parsed.x}건 (클릭하면 상세보기)`,
+            label: ctx => ` ${ctx.parsed.x}건  (클릭 시 상세)`,
             title: ctx => ctx[0]?.label ? `📂 ${ctx[0].label}` : ''
           }
         }
       },
-      animation: { duration: 900, delay: ctx => ctx.dataIndex * 80 },
+      animation: { duration: 900, delay: ctx => ctx.dataIndex * 70 },
       onClick(e, elements) {
         if (!elements.length) return;
         const idx = elements[0].index;
@@ -2081,11 +2176,11 @@ function _renderRctCategory() {
             const val = ds.data[idx];
             if (!val) return;
             c.save();
-            c.fillStyle = '#222233';
-            c.font = 'bold 12px "Noto Sans KR", sans-serif';
+            c.fillStyle = '#333344';
+            c.font = 'bold 11px "JetBrains Mono", monospace';
             c.textAlign = 'left';
             c.textBaseline = 'middle';
-            c.fillText(`${val}건`, bar.x + 7, bar.y);
+            c.fillText(`${val}건`, bar.x + 8, bar.y);
             c.restore();
           });
         });
@@ -2106,7 +2201,8 @@ function _renderRctProductChart() {
   const sorted = Object.entries(byProd).sort((a,b) => b[1]-a[1]).slice(0, 10);
   const labels = sorted.map(([k]) => k);
   const values = sorted.map(([,v]) => v);
-  const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4','#f472b6','#ef4444','#64748b','#34d399','#fbbf24'];
+  // SIDIZ 브랜드 기반 제품 팔레트 (채도 높고 선명한 색상)
+  const palette = ['#002BD2','#FF4C6A','#00B87A','#E6A800','#7c5fe6','#54DBC2','#FF6C39','#1A59FF','#D946EF','#64748B'];
 
   if (_rctChartProd) _rctChartProd.destroy();
   const ctx = document.getElementById('rctProductChart');
@@ -2117,22 +2213,51 @@ function _renderRctProductChart() {
       labels,
       datasets: [{
         data: values,
-        backgroundColor: palette.slice(0, labels.length).map(c => c + 'cc'),
-        borderColor: '#111827',
-        borderWidth: 2,
-        hoverOffset: 6,
+        backgroundColor: palette.slice(0, labels.length),
+        borderColor: '#ffffff',
+        borderWidth: 3,
+        hoverOffset: 10,
+        hoverBorderColor: '#ffffff',
       }]
     },
     options: {
       responsive: true,
       aspectRatio: 2,
-      cutout: '55%',
+      cutout: '62%',
       plugins: {
-        legend: { position: 'right', labels: { padding: 12, usePointStyle: true, font: { size: 13 }, boxWidth: 13, color: '#333344' } },
+        legend: {
+          position: 'right',
+          labels: {
+            padding: 14,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            font: { size: 12, family: "'Noto Sans KR'", weight: '600' },
+            boxWidth: 10,
+            color: '#333344',
+            generateLabels(chart) {
+              const data = chart.data;
+              return data.labels.map((label, i) => ({
+                text: `${label}  ${data.datasets[0].data[i]}건`,
+                fillStyle: data.datasets[0].backgroundColor[i],
+                strokeStyle: '#ffffff',
+                lineWidth: 2,
+                hidden: false,
+                index: i,
+                datasetIndex: 0,
+              }));
+            }
+          }
+        },
         tooltip: {
           backgroundColor: '#ffffff',
+          titleColor: '#111111',
+          bodyColor: '#444455',
+          borderColor: '#E2E2EA',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
           callbacks: {
-            label: ctx => `${ctx.label}: ${ctx.parsed}건`,
+            label: ctx => ` ${ctx.label}: ${ctx.parsed}건 (${((ctx.parsed / values.reduce((a,b)=>a+b,0))*100).toFixed(1)}%)`,
             footer: () => '클릭하면 증상·상세 조회'
           }
         }
@@ -2841,19 +2966,37 @@ function renderProdTrendChart(claims, from, to) {
     data: { labels: keys.map(k => k.slice(5).replace('-','/')),
       datasets: [{
         label:'클레임 건수', data:keys.map(k=>dateMap[k]),
-        borderColor:'rgba(0,198,215,1)', backgroundColor:'rgba(0,198,215,0.08)',
-        borderWidth:2, pointRadius:4, pointBackgroundColor:'rgba(0,198,215,1)',
-        tension:0.35, fill:true
+        borderColor:'#002BD2', backgroundColor:'rgba(0,43,210,0.08)',
+        borderWidth:2.5,
+        pointRadius: keys.length > 30 ? 2 : 5,
+        pointBackgroundColor:'#ffffff',
+        pointBorderColor:'#002BD2',
+        pointBorderWidth:2,
+        pointHoverRadius:7,
+        tension:0.4, fill:true
       }]
     },
+    plugins: [{
+      id: 'prodTrendGrad',
+      beforeDatasetsDraw(chart) {
+        const { ctx: c, chartArea } = chart;
+        if (!chartArea) return;
+        const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        grad.addColorStop(0, 'rgba(0,43,210,0.20)');
+        grad.addColorStop(0.55, 'rgba(0,43,210,0.04)');
+        grad.addColorStop(1, 'rgba(0,43,210,0.00)');
+        chart.data.datasets[0].backgroundColor = grad;
+      }
+    }],
     options: { responsive:true, maintainAspectRatio:false,
       plugins: { legend:{display:false}, tooltip:{
         backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
+        padding:12, cornerRadius:10,
         callbacks:{ title: items => keys[items[0].dataIndex], label: ctx=>' '+ctx.parsed.y+'건' }
       }},
       scales: {
-        x:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#555566',font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:40}},
-        y:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#555566',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
+        x:{grid:{color:'rgba(0,0,0,0.04)',drawTicks:false},ticks:{color:'#8a8a9a',font:{size:10,family:"'JetBrains Mono'"},maxRotation:45,autoSkip:true,maxTicksLimit:40}},
+        y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a9a',font:{size:10,family:"'JetBrains Mono'"},stepSize:1,callback:v=>Number.isInteger(v)?v:''},beginAtZero:true}
       }
     }
   });
@@ -2932,8 +3075,16 @@ function renderProdMonthlyBarChart(allData, item) {
     type: 'bar',
     data: { labels: monthLabels,
       datasets: [{ label:'클레임 건수', data: monthCounts,
-        backgroundColor: monthCounts.map(v => v > 0 ? 'rgba(255,140,0,0.75)' : 'rgba(0,0,0,0.08)'),
-        borderColor: 'rgba(255,140,0,1)', borderWidth:1, borderRadius:4
+        backgroundColor: monthCounts.map((v,i) => {
+          if (v === 0) return 'rgba(0,0,0,0.06)';
+          const max = Math.max(...monthCounts);
+          const ratio = v / max;
+          const r = Math.round(0 + (26 - 0) * (1 - ratio));
+          const g = Math.round(43 + (89 - 43) * (1 - ratio));
+          const b = Math.round(210 + (255 - 210) * (1 - ratio));
+          return `rgba(${r},${g},${b},0.85)`;
+        }),
+        borderColor: 'transparent', borderWidth:0, borderRadius:7, borderSkipped:false
       }]
     },
     options: { responsive:true, maintainAspectRatio:false,

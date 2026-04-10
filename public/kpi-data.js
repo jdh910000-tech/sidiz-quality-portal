@@ -225,11 +225,11 @@ function updateKpiComboChart(data, year, range) {
     defIdx.push(ts > 0 ? parseFloat(((tc/ts)*100).toFixed(2)) : 0);
   }
 
-  // 범위 밖 막대 투명 처리용 배경색 배열
-  const krBg = krJ.map((v,i) => i < range ? 'rgba(45,125,210,0.75)' : 'rgba(45,125,210,0.1)');
-  const vnBg = vnJ.map((v,i) => i < range ? 'rgba(216,87,72,0.7)' : 'rgba(216,87,72,0.1)');
-  const krBd = krJ.map((v,i) => i < range ? 'rgba(45,125,210,1)' : 'rgba(45,125,210,0.15)');
-  const vnBd = vnJ.map((v,i) => i < range ? 'rgba(216,87,72,1)' : 'rgba(216,87,72,0.15)');
+  // SIDIZ 브랜드 컬러 — 범위 밖 투명 처리
+  const krBg = krJ.map((v,i) => i < range ? 'rgba(0,43,210,0.80)' : 'rgba(0,43,210,0.10)');
+  const vnBg = vnJ.map((v,i) => i < range ? 'rgba(255,76,106,0.75)' : 'rgba(255,76,106,0.10)');
+  const krBd = krJ.map((v,i) => i < range ? '#002BD2' : 'rgba(0,43,210,0.15)');
+  const vnBd = vnJ.map((v,i) => i < range ? '#FF4C6A' : 'rgba(255,76,106,0.15)');
 
   const totalLabelPlugin = {
     id: 'totalLabel',
@@ -237,12 +237,12 @@ function updateKpiComboChart(data, year, range) {
       const { ctx: c, data: d, scales: { x, y } } = chart;
       const kr = d.datasets[0].data, vn = d.datasets[1].data;
       c.save();
-      c.font = 'bold 13px JetBrains Mono, monospace';
+      c.font = 'bold 12px "JetBrains Mono", monospace';
       c.textAlign = 'center';
       for (let i = 0; i < kr.length; i++) {
         const total = kr[i] + vn[i];
         if (total === 0) continue;
-        c.fillStyle = i < range ? '#f0f4f8' : 'rgba(160,180,203,0.3)';
+        c.fillStyle = i < range ? '#222233' : 'rgba(0,0,0,0.18)';
         const xPos = x.getPixelForValue(i);
         const yPos = y.getPixelForValue(total);
         c.fillText(total.toLocaleString(), xPos, yPos - 8);
@@ -259,7 +259,7 @@ function updateKpiComboChart(data, year, range) {
       const { ctx: c, chartArea: { left, right, top, bottom }, scales: { x } } = chart;
       const startX = x.getPixelForValue(range - 0.5);
       c.save();
-      c.fillStyle = 'rgba(0,0,0,0.15)';
+      c.fillStyle = 'rgba(0,0,0,0.04)';
       c.fillRect(startX, top, right - startX, bottom - top);
       c.restore();
     }
@@ -270,10 +270,10 @@ function updateKpiComboChart(data, year, range) {
     data: {
       labels: MONTHS,
       datasets: [
-        { label: '국내', data: krJ, backgroundColor: krBg, borderColor: krBd, borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '베트남', data: vnJ, backgroundColor: vnBg, borderColor: vnBd, borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '불량지수(%)', data: defIdx, type: 'line', borderColor: '#ffb347', backgroundColor: 'rgba(255,179,71,0.1)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#ffb347', pointBorderColor: '#17293f', pointBorderWidth: 2, tension: 0.3, fill: false, order: 1, yAxisID: 'y1', spanGaps: false },
-        { label: '목표(1.50%)', data: Array(12).fill(1.50), type: 'line', borderColor: 'rgba(255,107,122,0.7)', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
+        { label: '국내', data: krJ, backgroundColor: krBg, borderColor: krBd, borderWidth: 0, borderRadius: 6, borderSkipped: false, order: 3, yAxisID: 'y' },
+        { label: '베트남', data: vnJ, backgroundColor: vnBg, borderColor: vnBd, borderWidth: 0, borderRadius: 6, borderSkipped: false, order: 3, yAxisID: 'y' },
+        { label: '불량지수(%)', data: defIdx, type: 'line', borderColor: '#E6A800', backgroundColor: 'rgba(230,168,0,0.08)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#ffffff', pointBorderColor: '#E6A800', pointBorderWidth: 2, pointHoverRadius: 7, tension: 0.4, fill: false, order: 1, yAxisID: 'y1', spanGaps: false },
+        { label: '목표(1.50%)', data: Array(12).fill(1.50), type: 'line', borderColor: 'rgba(255,76,106,0.6)', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
       ]
     },
     plugins: [totalLabelPlugin, rangeOverlay],
@@ -281,14 +281,27 @@ function updateKpiComboChart(data, year, range) {
       responsive: true, maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 13, family: "'Noto Sans KR'" }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
-        tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
-          callbacks: { label: c => c.dataset.yAxisID==='y1' ? c.dataset.label+': '+c.parsed.y+'%' : c.dataset.label+': '+(c.parsed.y||0).toLocaleString()+'건' } }
+        legend: {
+          position: 'top', align: 'end',
+          labels: {
+            color: '#555566',
+            font: { size: 12, family: "'Noto Sans KR'", weight: '600' },
+            usePointStyle: true, pointStyle: 'rectRounded', padding: 18,
+            boxWidth: 14
+          }
+        },
+        tooltip: {
+          backgroundColor: '#ffffff', titleColor: '#111111', bodyColor: '#444455',
+          borderColor: '#E2E2EA', borderWidth: 1, cornerRadius: 10, padding: 12,
+          titleFont: { family: "'Noto Sans KR'", weight: '700' },
+          bodyFont: { family: "'Noto Sans KR'" },
+          callbacks: { label: c => c.dataset.yAxisID==='y1' ? ' ' + c.dataset.label+': '+c.parsed.y+'%' : ' ' + c.dataset.label+': '+(c.parsed.y||0).toLocaleString()+'건' }
+        }
       },
       scales: {
-        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 13 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#6b83a0', font: { size: 13 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 12, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 1000 },
-        y1: { position: 'right', title: { display: true, text: '불량지수(%)', color: '#6b83a0', font: { size: 13 } }, grid: { drawOnChartArea: false }, ticks: { color: '#ffb347', font: { size: 12, family: "'JetBrains Mono'" }, callback: v=>v+'%' }, min: 0, max: 3.5 }
+        x: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)', drawTicks: false }, ticks: { color: '#666677', font: { size: 12, family: "'Noto Sans KR'" } } },
+        y: { stacked: true, position: 'left', title: { display: true, text: '판정종합 건수', color: '#666677', font: { size: 12 } }, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#666677', font: { size: 11, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 1000 },
+        y1: { position: 'right', title: { display: true, text: '불량지수(%)', color: '#E6A800', font: { size: 12 } }, grid: { drawOnChartArea: false }, ticks: { color: '#E6A800', font: { size: 11, family: "'JetBrains Mono'" }, callback: v=>v+'%' }, min: 0, max: 3.5 }
       }
     }
   });
