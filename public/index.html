@@ -635,14 +635,14 @@ body.share-mode .section > .header .header-left p { display: none; }
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);display:inline-block"></span>
           판정 유형별 현황
         </h3>
-        <canvas id="prodBarChart" height="150"></canvas>
+        <div style="position:relative;height:220px"><canvas id="prodBarChart"></canvas></div>
       </div>
       <div class="chart-card" style="padding:20px">
         <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-violet);display:inline-block"></span>
           제품별 클레임 현황
         </h3>
-        <canvas id="prodPieChart" height="150"></canvas>
+        <div style="position:relative;height:220px"><canvas id="prodPieChart"></canvas></div>
       </div>
     </div>
 
@@ -3572,7 +3572,7 @@ function renderProdBarChart(claims) {
   _prodBarChart = new Chart(ctx, {
     type: 'bar',
     data: { labels: sorted.map(e=>e[0]), datasets: [{ label: '건수', data: sorted.map(e=>e[1]), backgroundColor: sorted.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]), borderRadius: 4, borderWidth: 1 }] },
-    options: { indexAxis:'y', responsive:true,
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins: {
         legend: { display:false },
         tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#e2e2ea',borderWidth:1, callbacks:{ label: ctx=>' '+ctx.parsed.x+'건' } },
@@ -3612,7 +3612,7 @@ function renderProdPieChart(claims) {
   _prodPieChart = new Chart(ctx, {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: '#ffffff', borderWidth: 2 }] },
-    options: { responsive:true,
+    options: { responsive:true, maintainAspectRatio:false,
       plugins: {
         legend: { position:'right', labels:{color:'#444455',font:{size:10},usePointStyle:true,padding:6,boxWidth:8} },
         tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
