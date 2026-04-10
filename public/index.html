@@ -401,14 +401,14 @@ body.share-mode .section > .header .header-left p { display: none; }
     <a class="nav-item active" onclick="showSection('home')"><div class="nav-icon">🏠</div><span class="nav-label">메인 홈</span></a>
     <a class="nav-item" onclick="showSection('claim')"><div class="nav-icon">📋</div><span class="nav-label">고객클레임 현황</span></a>
     <a class="nav-item" onclick="showSection('kpi')"><div class="nav-icon">📊</div><span class="nav-label">KPI 현황</span></a>
-    <a class="nav-item" onclick="showSection('closing')"><div class="nav-icon">💰</div><span class="nav-label">월 마감</span></a>
     <a class="nav-item" onclick="showSection('lab')"><div class="nav-icon">🔬</div><span class="nav-label">시디즈 시험소</span></a>
     <a class="nav-item" onclick="showSection('as')"><div class="nav-icon">🔧</div><span class="nav-label">AS판정 현황</span></a>
     <a class="nav-item" onclick="showSection('inspect')"><div class="nav-icon">✅</div><span class="nav-label">인수검사 현황</span></a>
+    <a class="nav-item" onclick="window.open('https://sidiz-export-qc.vercel.app/','_blank')" title="새 탭에서 열기"><div class="nav-icon">🚢</div><span class="nav-label">수출품 검사서</span></a>
+    <a class="nav-item" onclick="showSection('closing')"><div class="nav-icon">💰</div><span class="nav-label">월 마감</span></a>
     <a class="nav-item" onclick="showSection('cert')"><div class="nav-icon">📜</div><span class="nav-label">인증현황</span></a>
     <a class="nav-item" onclick="showSection('team')"><div class="nav-icon">👥</div><span class="nav-label">인원현황</span></a>
     <a class="nav-item" onclick="showSection('okr')"><div class="nav-icon">🎯</div><span class="nav-label">팀 목표</span></a>
-    <a class="nav-item" onclick="window.open('https://sidiz-export-qc.vercel.app/','_blank')" title="새 탭에서 열기"><div class="nav-icon">🚢</div><span class="nav-label">수출품 검사서</span></a>
   </div>
 </nav>
 
@@ -1914,7 +1914,7 @@ function showSection(id) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const map={home:0,claim:1,kpi:2,closing:3,lab:4,as:5,inspect:6,cert:7,team:8,okr:9};
+  const map={home:0,claim:1,kpi:2,lab:3,as:4,inspect:5,closing:7,cert:8,team:9,okr:10};
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   window.scrollTo(0,0);
   if (id === 'team' && !_orgLoaded) { loadOrgChart(); _orgLoaded = true; }
@@ -4745,16 +4745,25 @@ function _enhanceSingleKr(el) {
         <button class="okr-add-link-btn" onclick="event.stopPropagation();_openLinkModal('${year}','${o}','${k}')">+ 추가</button>
       </div>
       <div class="okr-links-list" id="okr-links-${year}-${o}-${k}"></div>
+    </div>
+    <div class="okr-note-tbl-wrap" style="margin-top:8px">
+      <table class="okr-note-tbl">
+        <thead><tr><th class="okr-note-th">📝 진행상황</th></tr></thead>
+        <tbody><tr>
+          <td class="okr-note-td"><div class="okr-note-cell" contenteditable="true" data-ph="진행상황을 입력하세요" oninput="setOkrNote('${year}','${o}','${k}','진행상황',this.innerText)" onclick="event.stopPropagation()"></div></td>
+        </tr></tbody>
+      </table>
     </div>`;
   // 순서대로 참조 뽑기 (DOM 이동 전)
   const lblEl = tmp.children[0];
   const tblEl = tmp.children[1];
   const lnkEl = tmp.children[2];
-  noteLbl.replaceWith(lblEl);   // label → labelEl
-  noteArea.replaceWith(tblEl, lnkEl); // textarea → table + links
+  const progEl = tmp.children[3];
+  noteLbl.replaceWith(lblEl);
+  noteArea.replaceWith(tblEl, lnkEl, progEl);
   // 저장된 노트 값 복원
   const cells = el.querySelectorAll('.okr-note-cell');
-  const cols = ['효과','잘한점','아쉬운점'];
+  const cols = ['효과','잘한점','아쉬운점','진행상황'];
   cells.forEach((c, i) => { if (notes[cols[i]]) c.textContent = notes[cols[i]]; });
   _renderLinks(year, o, k);
 }
