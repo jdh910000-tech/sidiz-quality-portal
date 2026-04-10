@@ -264,7 +264,7 @@ function renderCostComboChart(data, year, range) {
       if (range >= 12) return;
       const { ctx: c, chartArea: { right, top, bottom }, scales: { x } } = chart;
       const startX = x.getPixelForValue(range - 0.5);
-      c.save(); c.fillStyle = 'rgba(0,0,0,0.15)';
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.04)';
       c.fillRect(startX, top, right - startX, bottom - top); c.restore();
     }
   };
@@ -278,7 +278,7 @@ function renderCostComboChart(data, year, range) {
       for (let i = 0; i < haza.length; i++) {
         const total = haza[i] + jeH[i] + baros[i];
         if (total === 0) continue;
-        c.fillStyle = i < range ? '#f0f4f8' : 'rgba(160,180,203,0.3)';
+        c.fillStyle = i < range ? '#222233' : 'rgba(0,0,0,0.18)';
         c.fillText(total.toLocaleString(), x.getPixelForValue(i), y.getPixelForValue(total) - 6);
       }
       c.restore();
@@ -290,11 +290,11 @@ function renderCostComboChart(data, year, range) {
     data: {
       labels: COST_MONTHS,
       datasets: [
-        { label: '(판)하자보수비', data: hazaM, backgroundColor: 'rgba(255,107,122,0.7)', borderColor: 'rgba(255,107,122,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '(제)하자보수비', data: jeHazaM, backgroundColor: 'rgba(156,163,175,0.6)', borderColor: 'rgba(156,163,175,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '바로스 AS', data: barosM, backgroundColor: 'rgba(255,179,71,0.7)', borderColor: 'rgba(255,179,71,1)', borderWidth: 1, borderRadius: 4, order: 3, yAxisID: 'y' },
-        { label: '매출 대비 비율(%)', data: ratioArr, type: 'line', borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#a78bfa', pointBorderColor: '#17293f', pointBorderWidth: 2, tension: 0.3, fill: false, order: 1, yAxisID: 'y1', spanGaps: false },
-        { label: '목표 (' + targetRatio.toFixed(2) + '%)', data: Array(12).fill(targetRatio), type: 'line', borderColor: 'rgba(0,196,140,0.7)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
+        { label: '(판)하자보수비', data: hazaM, backgroundColor: 'rgba(255,76,106,0.78)', borderColor: 'transparent', borderWidth: 0, borderRadius: 6, borderSkipped: false, order: 3, yAxisID: 'y' },
+        { label: '(제)하자보수비', data: jeHazaM, backgroundColor: 'rgba(148,163,184,0.70)', borderColor: 'transparent', borderWidth: 0, borderRadius: 6, borderSkipped: false, order: 3, yAxisID: 'y' },
+        { label: '바로스 AS', data: barosM, backgroundColor: 'rgba(230,168,0,0.78)', borderColor: 'transparent', borderWidth: 0, borderRadius: 6, borderSkipped: false, order: 3, yAxisID: 'y' },
+        { label: '매출 대비 비율(%)', data: ratioArr, type: 'line', borderColor: '#7c5fe6', backgroundColor: 'rgba(124,95,230,0.08)', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#ffffff', pointBorderColor: '#7c5fe6', pointBorderWidth: 2, pointHoverRadius: 7, tension: 0.4, fill: false, order: 1, yAxisID: 'y1', spanGaps: false },
+        { label: '목표 (' + targetRatio.toFixed(2) + '%)', data: Array(12).fill(targetRatio), type: 'line', borderColor: 'rgba(0,184,122,0.65)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2, yAxisID: 'y1' }
       ]
     },
     plugins: [rangeOverlay, costTotalLabel],
@@ -302,15 +302,17 @@ function renderCostComboChart(data, year, range) {
       responsive: true, maintainAspectRatio: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', align: 'end', labels: { color: '#a0b4cb', font: { size: 13 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
-        tooltip: { backgroundColor: 'rgba(23,41,63,0.95)', titleColor: '#f0f4f8', bodyColor: '#a0b4cb', borderColor: '#243b5a', borderWidth: 1, cornerRadius: 8, padding: 12,
-          callbacks: { label: c => c.dataset.yAxisID === 'y1' ? c.dataset.label + ': ' + c.parsed.y + '%' : c.dataset.label + ': ' + (c.parsed.y || 0).toLocaleString() + '만원' }
+        legend: { position: 'top', align: 'end', labels: { color: '#555566', font: { size: 12, family: "'Noto Sans KR'", weight: '600' }, usePointStyle: true, pointStyle: 'rectRounded', padding: 18, boxWidth: 14 } },
+        tooltip: { backgroundColor: '#ffffff', titleColor: '#111111', bodyColor: '#444455', borderColor: '#E2E2EA', borderWidth: 1, cornerRadius: 10, padding: 12,
+          titleFont: { family: "'Noto Sans KR'", weight: '700' },
+          bodyFont: { family: "'Noto Sans KR'" },
+          callbacks: { label: c => c.dataset.yAxisID === 'y1' ? ' ' + c.dataset.label + ': ' + c.parsed.y + '%' : ' ' + c.dataset.label + ': ' + (c.parsed.y || 0).toLocaleString() + '만원' }
         }
       },
       scales: {
-        x: { stacked: true, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 13 } } },
-        y: { stacked: true, position: 'left', title: { display: true, text: '비용 (만원)', color: '#6b83a0', font: { size: 13 } }, grid: { color: 'rgba(36,59,90,0.3)' }, ticks: { color: '#6b83a0', font: { size: 12, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 25000 },
-        y1: { position: 'right', title: { display: true, text: '매출 대비 비율 (%)', color: '#6b83a0', font: { size: 13 } }, grid: { drawOnChartArea: false }, ticks: { color: '#a78bfa', font: { size: 12, family: "'JetBrains Mono'" }, callback: v => v + '%' }, min: 0, max: 3.0 }
+        x: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)', drawTicks: false }, ticks: { color: '#666677', font: { size: 12, family: "'Noto Sans KR'" } } },
+        y: { stacked: true, position: 'left', title: { display: true, text: '비용 (만원)', color: '#666677', font: { size: 12 } }, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#666677', font: { size: 11, family: "'JetBrains Mono'" }, callback: v => v.toLocaleString() }, min: 0, max: 25000 },
+        y1: { position: 'right', title: { display: true, text: '매출 대비 비율 (%)', color: '#7c5fe6', font: { size: 12 } }, grid: { drawOnChartArea: false }, ticks: { color: '#7c5fe6', font: { size: 11, family: "'JetBrains Mono'" }, callback: v => v + '%' }, min: 0, max: 3.0 }
       }
     }
   });
