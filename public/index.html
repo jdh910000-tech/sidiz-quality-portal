@@ -646,6 +646,12 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
 
+    <!-- 드릴다운 배지 -->
+    <div id="prodDrillBadge" style="display:none;margin-bottom:12px;padding:9px 14px;background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.25);border-radius:10px;font-size:12px;color:var(--sidiz-blue-bright);align-items:center;gap:10px">
+      <span id="prodDrillBadgeText"></span>
+      <button onclick="_clearProdDrill()" style="background:rgba(74,158,255,0.15);border:1px solid rgba(74,158,255,0.3);color:var(--sidiz-blue-bright);padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;flex-shrink:0">✕ 필터 해제</button>
+    </div>
+
     <!-- 일별 클레임 추이 (라인차트) -->
     <div class="chart-card" style="padding:18px;margin-bottom:16px">
       <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px">
@@ -3357,6 +3363,8 @@ let _prodPieChart = null;
 let _prodTrendChart = null;
 let _prodMonthlyBarChart = null;
 let _prodLoaded = false;
+let _prodDrillCat  = null;   // 바차트 클릭 시 선택된 판정유형
+let _prodDrillItem = null;   // 파이차트 클릭 시 선택된 제품
 
 // 판정유형 다중선택 드롭다운 토글
 function toggleProdCatDD(e) {
@@ -3513,6 +3521,10 @@ function _getProdFiltered() {
 }
 
 async function loadProdDashboard() {
+  _prodDrillCat = null;
+  _prodDrillItem = null;
+  const badge = document.getElementById('prodDrillBadge');
+  if (badge) badge.style.display = 'none';
   const filtered = _getProdFiltered();
   const item = document.getElementById('prodItemSelect')?.value || 'all';
   const brand = document.getElementById('prodBrandSel')?.value || 'all';
@@ -3560,6 +3572,54 @@ async function loadProdDashboard() {
   if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
 }
 
+function _refreshProdBottom() {
+  const item    = document.getElementById('prodItemSelect')?.value || 'all';
+  const brand   = document.getElementById('prodBrandSel')?.value || 'all';
+  const country = document.getElementById('prodCountrySel')?.value || 'all';
+  const cats    = _getProdSelectedCats();
+  const from    = document.getElementById('prodDateFrom')?.value || '';
+  const to      = document.getElementById('prodDateTo')?.value || '';
+
+  let noDateFiltered = _prodAllData.filter(r => {
+    if (item !== 'all' && r.item !== item) return false;
+    if (brand !== 'all' && r.brand !== brand) return false;
+    if (country !== 'all' && r.country !== country) return false;
+    if (cats.length > 0 && !cats.includes(r.category)) return false;
+    return true;
+  });
+  if (_prodDrillCat)  noDateFiltered = noDateFiltered.filter(r => r.category === _prodDrillCat);
+  if (_prodDrillItem) noDateFiltered = noDateFiltered.filter(r => r.item === _prodDrillItem);
+
+  const drillFiltered = noDateFiltered.filter(r => {
+    if (from && r.claim_date < from) return false;
+    if (to   && r.claim_date > to)   return false;
+    return true;
+  });
+
+  const badge     = document.getElementById('prodDrillBadge');
+  const badgeTxt  = document.getElementById('prodDrillBadgeText');
+  if (_prodDrillCat || _prodDrillItem) {
+    const label = _prodDrillCat ? `판정유형: ${_prodDrillCat}` : `제품: ${_prodDrillItem}`;
+    if (badgeTxt) badgeTxt.textContent = `🔍 ${label} 필터 적용 중 · ${drillFiltered.length}건`;
+    if (badge)    badge.style.display = 'flex';
+  } else {
+    if (badge) badge.style.display = 'none';
+  }
+
+  const dispItem = _prodDrillItem || (item !== 'all' ? item : '전체');
+  renderProdTrendChart(drillFiltered, from, to);
+  renderProdMonthlyBarChart(noDateFiltered, dispItem);
+  renderProdMonthlyTable(noDateFiltered, _prodDrillItem || item, country);
+  const el = id => document.getElementById(id);
+  if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${dispItem} · ${from||'전체'}~${to||'현재'})`;
+}
+
+function _clearProdDrill() {
+  _prodDrillCat  = null;
+  _prodDrillItem = null;
+  loadProdDashboard();
+}
+
 function renderProdBarChart(claims) {
   if (_prodBarChart) { _prodBarChart.destroy(); _prodBarChart = null; }
   const ctx = document.getElementById('prodBarChart'); if (!ctx) return;
@@ -3589,10 +3649,18 @@ function renderProdBarChart(claims) {
       scales: {
         x: { grid:{color:'rgba(0,0,0,0.07)'}, ticks:{color:'#555566',font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v:''}, beginAtZero:true },
         y: { grid:{display:false}, ticks:{color:'#333344',font:{size:11,weight:'600'}} }
+      },
+      onClick(e, elements) {
+        if (!elements.length) return;
+        const clickedCat = sorted[elements[0].index][0];
+        _prodDrillCat  = (_prodDrillCat === clickedCat) ? null : clickedCat;
+        _prodDrillItem = null;
+        _refreshProdBottom();
       }
     },
     plugins: [ ChartDataLabels ]
   });
+  if (ctx.canvas) ctx.canvas.style.cursor = 'pointer';
 }
 
 function renderProdPieChart(claims) {
@@ -3617,9 +3685,17 @@ function renderProdPieChart(claims) {
         legend: { position:'right', labels:{color:'#444455',font:{size:10},usePointStyle:true,padding:6,boxWidth:8} },
         tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
           callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } }
+      },
+      onClick(e, elements) {
+        if (!elements.length) return;
+        const clickedItem = labels[elements[0].index];
+        _prodDrillItem = (_prodDrillItem === clickedItem) ? null : clickedItem;
+        _prodDrillCat  = null;
+        _refreshProdBottom();
       }
     }
   });
+  if (ctx.canvas) ctx.canvas.style.cursor = 'pointer';
 }
 
 function renderProdTrendChart(claims, from, to) {
@@ -3894,10 +3970,10 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     <table class="data-table" style="font-size:11px;min-width:800px">
       <thead>
         <tr style="background:rgba(255,255,255,0.97)">
-          <th style="text-align:center;white-space:nowrap;min-width:80px">하자유형</th>
-          <th style="text-align:center;white-space:nowrap;min-width:70px">판정유형</th>
-          <th style="text-align:left;white-space:nowrap">판정내용 (상세)</th>
-          <th style="text-align:center;white-space:nowrap">상태</th>
+          <th style="text-align:center;white-space:nowrap;min-width:50px;max-width:60px">하자유형</th>
+          <th style="text-align:center;white-space:nowrap;min-width:85px">판정유형</th>
+          <th style="text-align:left;white-space:nowrap;min-width:200px">판정내용 (상세)</th>
+          <th style="text-align:center;white-space:nowrap;min-width:60px">상태</th>
           ${mh}
           <th style="text-align:center;white-space:nowrap;font-weight:700">합계</th>
         </tr>
