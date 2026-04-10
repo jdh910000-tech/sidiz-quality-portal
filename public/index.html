@@ -383,9 +383,96 @@ body.share-mode .section > .header .header-left p { display: none; }
 .rct-product-chip .chip-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
 .rct-product-chip .chip-count { font-size: 1.4rem; font-weight: 900; color: var(--sidiz-blue-bright); }
 .rct-product-chip .chip-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* ===== LOGIN OVERLAY ===== */
+#loginOverlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: #F0F2F8;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.login-card {
+  background: #fff; border-radius: 20px;
+  padding: 44px 44px 36px;
+  width: 380px; max-width: 92vw;
+  box-shadow: 0 12px 48px rgba(0,43,210,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  text-align: center;
+}
+.login-logo-wrap { margin-bottom: 28px; }
+.login-logo-main { font-family:'Outfit',sans-serif; font-size: 28px; font-weight: 900; letter-spacing: -1.5px; color: #000; line-height: 1; }
+.login-logo-main span { color: #002BD2; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; margin-left: 7px; }
+.login-logo-sub { font-size: 10px; font-weight: 600; letter-spacing: 3px; color: #b0b0c0; margin-top: 6px; text-transform: uppercase; }
+.login-divider { height: 1px; background: #EDEDED; margin: 0 0 24px; }
+.login-mode-label { font-size: 12px; color: #8a8a9a; margin-bottom: 18px; font-weight: 500; line-height: 1.6; }
+.login-input-wrap { position: relative; margin-bottom: 12px; }
+.login-input-wrap input {
+  width: 100%; box-sizing: border-box;
+  padding: 12px 44px 12px 16px;
+  border: 1.5px solid #E2E2EA; border-radius: 10px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+  background: #F8F8FC; color: #111; outline: none;
+  transition: border-color 0.15s;
+}
+.login-input-wrap input:focus { border-color: #002BD2; background: #fff; }
+.login-input-wrap input.shake { animation: loginShake 0.4s ease; border-color: #FF6C39; }
+.login-eye { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 16px; color: #aaa; user-select: none; }
+.login-eye:hover { color: #555; }
+.login-btn {
+  width: 100%; padding: 13px; margin-top: 4px;
+  background: linear-gradient(135deg, #002BD2, #1A59FF);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; letter-spacing: 0.5px; transition: opacity 0.15s;
+}
+.login-btn:hover { opacity: 0.88; }
+.login-btn:active { opacity: 0.75; }
+.login-err { font-size: 12px; color: #FF6C39; margin-top: 10px; min-height: 18px; font-weight: 500; }
+.login-footer { font-size: 10px; color: #c0c0cc; margin-top: 24px; }
+@keyframes loginShake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+}
 </style>
 </head>
 <body>
+
+<!-- ===== LOGIN OVERLAY ===== -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo-wrap">
+      <div class="login-logo-main">SIDIZ<span>Quality Control</span></div>
+      <div class="login-logo-sub">Quality Portal</div>
+    </div>
+    <div class="login-divider"></div>
+    <div class="login-mode-label" id="loginModeLabel">포털에 접근하려면 비밀번호를 입력해 주세요.</div>
+    <div class="login-input-wrap">
+      <input type="password" id="loginPwInput" placeholder="비밀번호" onkeydown="if(event.key==='Enter')_loginSubmit()" autocomplete="current-password">
+      <span class="login-eye" onclick="_togglePwVis('loginPwInput',this)" title="표시/숨기기">👁</span>
+    </div>
+    <div class="login-input-wrap" id="loginConfirmWrap" style="display:none">
+      <input type="password" id="loginPwConfirm" placeholder="비밀번호 확인" onkeydown="if(event.key==='Enter')_loginSubmit()" autocomplete="new-password">
+      <span class="login-eye" onclick="_togglePwVis('loginPwConfirm',this)" title="표시/숨기기">👁</span>
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="_loginSubmit()">로그인</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-footer">SIDIZ 품질관리팀 내부 포털 · 비인가 접근 금지</div>
+  </div>
+</div>
+<script>
+// ── 즉시 실행: 인증 여부 체크 ─────────────────────────────────────────────
+(function() {
+  if (sessionStorage.getItem('sidiz_auth') === '1') {
+    document.getElementById('loginOverlay').style.display = 'none';
+    return;
+  }
+  // 비밀번호 미설정(첫 방문) 여부
+  if (!localStorage.getItem('sidiz_pw_hash')) {
+    document.getElementById('loginModeLabel').textContent = '처음 방문을 환영합니다. 사용할 비밀번호를 설정해 주세요.';
+    document.getElementById('loginConfirmWrap').style.display = 'block';
+    document.getElementById('loginBtn').textContent = '비밀번호 설정';
+  }
+  document.getElementById('loginPwInput').focus();
+})();
+</script>
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
@@ -5086,6 +5173,83 @@ function _deleteKr(year, o, k) {
 // ── 유틸 ──────────────────────────────────────────────────────────────────
 function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ── 로그인 / 비밀번호 인증 ────────────────────────────────────────────────
+async function _sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function _loginSubmit() {
+  const pw    = document.getElementById('loginPwInput').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+
+  if (!pw) { _loginShake(); errEl.textContent = '비밀번호를 입력해 주세요.'; return; }
+
+  const stored = localStorage.getItem('sidiz_pw_hash');
+
+  if (!stored) {
+    // ── 첫 설정 모드 ──
+    const pw2 = document.getElementById('loginPwConfirm').value;
+    if (pw.length < 4) { _loginShake(); errEl.textContent = '비밀번호는 4자 이상이어야 합니다.'; return; }
+    if (pw !== pw2)    { _loginShake(); errEl.textContent = '비밀번호가 일치하지 않습니다.'; return; }
+    const hash = await _sha256(pw);
+    localStorage.setItem('sidiz_pw_hash', hash);
+    _loginSuccess();
+  } else {
+    // ── 로그인 모드 ──
+    const hash = await _sha256(pw);
+    if (hash === stored) {
+      _loginSuccess();
+    } else {
+      _loginShake();
+      errEl.textContent = '비밀번호가 올바르지 않습니다.';
+      document.getElementById('loginPwInput').value = '';
+      document.getElementById('loginPwInput').focus();
+    }
+  }
+}
+
+function _loginSuccess() {
+  sessionStorage.setItem('sidiz_auth', '1');
+  const ov = document.getElementById('loginOverlay');
+  ov.style.transition = 'opacity 0.35s';
+  ov.style.opacity = '0';
+  setTimeout(() => ov.remove(), 380);
+}
+
+function _loginShake() {
+  const inp = document.getElementById('loginPwInput');
+  inp.classList.remove('shake');
+  void inp.offsetWidth; // reflow
+  inp.classList.add('shake');
+}
+
+function _togglePwVis(id, eye) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  eye.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+// 비밀번호 변경: 콘솔에서 _changePassword() 실행
+async function _changePassword() {
+  const np = prompt('새 비밀번호를 입력하세요 (4자 이상):');
+  if (!np || np.length < 4) { alert('비밀번호가 너무 짧습니다.'); return; }
+  const nc = prompt('새 비밀번호 확인:');
+  if (np !== nc) { alert('비밀번호가 일치하지 않습니다.'); return; }
+  const hash = await _sha256(np);
+  localStorage.setItem('sidiz_pw_hash', hash);
+  alert('✅ 비밀번호가 변경되었습니다. 다음 로그인 시 새 비밀번호를 사용하세요.');
+}
+
+// 비밀번호 초기화: 콘솔에서 _resetPassword() 실행
+function _resetPassword() {
+  if (!confirm('비밀번호를 초기화하면 다음 접속 시 재설정이 필요합니다. 계속할까요?')) return;
+  localStorage.removeItem('sidiz_pw_hash');
+  sessionStorage.removeItem('sidiz_auth');
+  alert('✅ 비밀번호가 초기화되었습니다. 페이지를 새로고침하면 재설정 화면이 나타납니다.');
+}
 
 async function _orgSaveJobDesc() {
   if (!_orgPopupId) return;
