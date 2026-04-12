@@ -3959,7 +3959,7 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     if (!groupMap[key]) groupMap[key] = { defect_type: dt, category: cat, detail, total: 0, months: {}, records: [] };
     groupMap[key].total++;
     groupMap[key].months[m] = (groupMap[key].months[m]||0)+1;
-    groupMap[key].records.push({ receipt_id: c.receipt_id || '-', claim_detail: c.claim_detail || c.inspection_result || '-' });
+    groupMap[key].records.push({ receipt_id: c.claim_id || '-', claim_detail: c.claim_detail || c.inspection_result || '-' });
   });
 
   const rows = Object.values(groupMap).sort((a,b) => b.total - a.total);
@@ -4000,7 +4000,7 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
       tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;color:${catColor};background:${catColor}18;border:1px solid ${catColor}33">${r.category}</span></td>`;
       tableRows += `<td style="text-align:left;font-size:11px;max-width:260px;white-space:normal;line-height:1.5;padding:6px 8px;cursor:pointer;text-decoration:underline dotted;color:var(--sidiz-blue-bright)" title="클릭 시 상세 내역 보기" onclick="showProdDetailModal(${rowIdx})">${r.detail}</td>`;
       tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 6px">
-        <select onchange="saveProdRowStatus('${rowKey}',this.value)" onclick="event.stopPropagation()" style="background:${stColor}18;border:1px solid ${stColor}55;color:${stColor};padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;outline:none">
+        <select onchange="saveProdRowStatus('${rowKey}',this.value)" onclick="event.stopPropagation()" style="background:${stColor}18;border:1px solid ${stColor}55;color:#111111;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;outline:none">
           ${STATUS_OPTS.map(opt => `<option value="${opt}" ${savedStatus===opt?'selected':''}>${opt}</option>`).join('')}
         </select>
       </td>`;
