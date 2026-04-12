@@ -3993,12 +3993,12 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
       const rowIdx = window._prodDetailData ? window._prodDetailData.length : 0;
       if (window._prodDetailData) window._prodDetailData.push({ detail: r.detail, records: r.records || [] });
       tableRows += '<tr>';
-      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);white-space:nowrap;text-align:center;padding:8px 10px">
-        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33">${dt}</span>
+      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);word-break:keep-all;text-align:center;padding:8px 6px;width:60px;max-width:60px">
+        <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33;word-break:keep-all">${dt}</span>
         <div style="font-family:'JetBrains Mono';font-size:12px;color:${dtColor};font-weight:700;margin-top:4px">${group.total}건</div>
       </td>`;
       tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;color:${catColor};background:${catColor}18;border:1px solid ${catColor}33">${r.category}</span></td>`;
-      tableRows += `<td style="text-align:left;font-size:11px;max-width:260px;white-space:normal;line-height:1.5;padding:6px 8px;cursor:pointer;text-decoration:underline dotted;color:var(--sidiz-blue-bright)" title="클릭 시 상세 내역 보기" onclick="showProdDetailModal(${rowIdx})">${r.detail}</td>`;
+      tableRows += `<td style="text-align:left;font-size:11px;min-width:280px;white-space:normal;line-height:1.5;padding:6px 8px;cursor:pointer;text-decoration:underline dotted;color:var(--sidiz-blue-bright)" title="클릭 시 상세 내역 보기" onclick="showProdDetailModal(${rowIdx})">${r.detail}</td>`;
       tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px">
         <select onchange="saveProdRowStatus('${rowKey}',this.value);this.style.color=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#aaaaaa');this.style.borderColor=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#cccccc')+'88'" onclick="event.stopPropagation()" style="background:${savedStatus?stColor+'12':'rgba(255,255,255,0.04)'};border:1.5px solid ${savedStatus?stColor+'88':'#cccccc88'};color:${savedStatus?stColor:'#aaaaaa'};padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;outline:none;min-width:72px;text-align:center">
           <option value="" ${savedStatus===''?'selected':''} style="color:#aaaaaa">—</option>
@@ -4056,9 +4056,9 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     <table class="data-table" style="font-size:11px;min-width:800px">
       <thead>
         <tr style="background:rgba(255,255,255,0.97)">
-          <th style="text-align:center;white-space:nowrap;min-width:12px;max-width:15px">하자유형</th>
+          <th style="text-align:center;width:60px;max-width:60px;word-break:keep-all">하자유형</th>
           <th style="text-align:center;white-space:nowrap;min-width:85px">판정유형</th>
-          <th style="text-align:left;white-space:nowrap;min-width:238px">판정내용 (상세)</th>
+          <th style="text-align:left;min-width:280px">판정내용 (상세)</th>
           <th style="text-align:center;white-space:nowrap;min-width:60px">상태</th>
           ${mh}
           <th style="text-align:center;white-space:nowrap;font-weight:700">합계</th>
