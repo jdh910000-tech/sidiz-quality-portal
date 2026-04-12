@@ -1997,6 +1997,7 @@ body.share-mode .section > .header .header-left p { display: none; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // Light theme: Chart.js global defaults
 if (typeof Chart !== 'undefined') {
@@ -3537,6 +3538,10 @@ function _getProdFiltered() {
 }
 
 function exportProdDataCSV() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
   const filtered = _getProdFiltered();
   if (!filtered || filtered.length === 0) {
     alert('내보낼 데이터가 없습니다. 먼저 조회해주세요.');
@@ -3556,39 +3561,37 @@ function exportProdDataCSV() {
     { key: 'claim_detail',      label: '요구내역' },
   ];
 
-  // CSV 셀 이스케이프 (쉼표·줄바꿈·따옴표 처리)
-  const esc = v => {
-    if (v == null) return '';
-    const s = String(v);
-    return (s.includes(',') || s.includes('\n') || s.includes('"'))
-      ? '"' + s.replace(/"/g, '""') + '"'
-      : s;
-  };
+  // 헤더 + 데이터 2차원 배열 생성
+  const wsData = [
+    cols.map(c => c.label),
+    ...filtered.map(r => cols.map(c => (r[c.key] == null ? '' : String(r[c.key]))))
+  ];
 
-  const header = cols.map(c => c.label).join(',');
-  const rows   = filtered.map(r => cols.map(c => esc(r[c.key])).join(','));
-  const csv    = '\uFEFF' + header + '\n' + rows.join('\n');  // BOM: 엑셀 한글 깨짐 방지
+  // 워크시트 생성
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // 파일명: 제품별클레임_T52_2025-01-01~2025-04-12_20250412.csv
-  const item    = document.getElementById('prodItemSelect')?.value || 'all';
-  const from    = document.getElementById('prodDateFrom')?.value || '';
-  const to      = document.getElementById('prodDateTo')?.value || '';
-  const brand   = document.getElementById('prodBrandSel')?.value || 'all';
-  const itemLbl  = item  === 'all'  ? '전체제품'  : item;
-  const brandLbl = brand === 'all'  ? ''          : `_${brand}`;
+  // 열 너비 자동 조정
+  ws['!cols'] = cols.map((c, ci) => {
+    const maxLen = wsData.reduce((max, row) => Math.max(max, (row[ci] || '').length), 0);
+    return { wch: Math.min(Math.max(maxLen + 2, c.label.length + 2), 60) };
+  });
+
+  // 워크북 생성 및 시트 추가
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '제품별클레임');
+
+  // 파일명 생성: 제품별클레임_시디즈_T52_2025-01-01~2025-04-12_20250412.xlsx
+  const item     = document.getElementById('prodItemSelect')?.value || 'all';
+  const from     = document.getElementById('prodDateFrom')?.value || '';
+  const to       = document.getElementById('prodDateTo')?.value || '';
+  const brand    = document.getElementById('prodBrandSel')?.value || 'all';
+  const itemLbl  = item  === 'all' ? '전체제품' : item;
+  const brandLbl = brand === 'all' ? ''         : `_${brand}`;
   const dateLbl  = from  ? `_${from}~${to || ''}` : '';
   const today    = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const filename = `제품별클레임${brandLbl}_${itemLbl}${dateLbl}_${today}.csv`;
+  const filename = `제품별클레임${brandLbl}_${itemLbl}${dateLbl}_${today}.xlsx`;
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  XLSX.writeFile(wb, filename);
 }
 
 async function loadProdDashboard() {
