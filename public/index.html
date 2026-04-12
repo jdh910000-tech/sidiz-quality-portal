@@ -562,7 +562,12 @@ body.share-mode .section > .header .header-left p { display: none; }
   <div id="claim-product" class="claim-content" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div class="section-title" style="margin-bottom:0">제품별 클레임 현황</div>
-      <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:4px 10px;border-radius:6px;border:1px solid rgba(0,198,215,0.15)">기준 : 회수일 · Supabase 실시간</span>
+        <button onclick="exportProdDataCSV()" id="prodExportBtn" style="font-size:11px;color:#00c8a0;background:rgba(0,200,160,0.08);padding:4px 12px;border-radius:6px;border:1px solid rgba(0,200,160,0.25);cursor:pointer;font-weight:700;display:flex;align-items:center;gap:5px;transition:background 0.15s" onmouseover="this.style.background='rgba(0,200,160,0.18)'" onmouseout="this.style.background='rgba(0,200,160,0.08)'">
+          ⬇ 자료변환
+        </button>
+      </div>
     </div>
 
     <!-- 필터 바 -->
@@ -3529,6 +3534,61 @@ function _getProdFiltered() {
     if (to && r.claim_date > to) return false;
     return true;
   });
+}
+
+function exportProdDataCSV() {
+  const filtered = _getProdFiltered();
+  if (!filtered || filtered.length === 0) {
+    alert('내보낼 데이터가 없습니다. 먼저 조회해주세요.');
+    return;
+  }
+
+  // 내보낼 컬럼 정의
+  const cols = [
+    { key: 'claim_id',          label: '접수번호' },
+    { key: 'claim_date',        label: '회수일' },
+    { key: 'brand',             label: '브랜드' },
+    { key: 'country',           label: '국가' },
+    { key: 'item',              label: '제품' },
+    { key: 'category',          label: '판정유형' },
+    { key: 'defect_type',       label: '하자유형' },
+    { key: 'inspection_result', label: '판정내용' },
+    { key: 'claim_detail',      label: '요구내역' },
+  ];
+
+  // CSV 셀 이스케이프 (쉼표·줄바꿈·따옴표 처리)
+  const esc = v => {
+    if (v == null) return '';
+    const s = String(v);
+    return (s.includes(',') || s.includes('\n') || s.includes('"'))
+      ? '"' + s.replace(/"/g, '""') + '"'
+      : s;
+  };
+
+  const header = cols.map(c => c.label).join(',');
+  const rows   = filtered.map(r => cols.map(c => esc(r[c.key])).join(','));
+  const csv    = '\uFEFF' + header + '\n' + rows.join('\n');  // BOM: 엑셀 한글 깨짐 방지
+
+  // 파일명: 제품별클레임_T52_2025-01-01~2025-04-12_20250412.csv
+  const item    = document.getElementById('prodItemSelect')?.value || 'all';
+  const from    = document.getElementById('prodDateFrom')?.value || '';
+  const to      = document.getElementById('prodDateTo')?.value || '';
+  const brand   = document.getElementById('prodBrandSel')?.value || 'all';
+  const itemLbl  = item  === 'all'  ? '전체제품'  : item;
+  const brandLbl = brand === 'all'  ? ''          : `_${brand}`;
+  const dateLbl  = from  ? `_${from}~${to || ''}` : '';
+  const today    = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const filename = `제품별클레임${brandLbl}_${itemLbl}${dateLbl}_${today}.csv`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 async function loadProdDashboard() {
