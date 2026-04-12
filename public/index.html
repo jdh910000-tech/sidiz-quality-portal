@@ -3993,7 +3993,7 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
       const rowIdx = window._prodDetailData ? window._prodDetailData.length : 0;
       if (window._prodDetailData) window._prodDetailData.push({ detail: r.detail, records: r.records || [] });
       tableRows += '<tr>';
-      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);word-break:keep-all;text-align:center;padding:8px 6px;width:120px;max-width:120px">
+      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);word-break:keep-all;text-align:center;padding:8px 6px;width:150px;min-width:150px;max-width:150px">
         <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33;word-break:keep-all">${dt}</span>
         <div style="font-family:'JetBrains Mono';font-size:12px;color:${dtColor};font-weight:700;margin-top:4px">${group.total}건</div>
       </td>`;
@@ -4056,7 +4056,7 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     <table class="data-table" style="font-size:11px;min-width:800px">
       <thead>
         <tr style="background:rgba(255,255,255,0.97)">
-          <th style="text-align:center;width:120px;max-width:120px;word-break:keep-all">하자유형</th>
+          <th style="text-align:center;width:150px;min-width:150px;word-break:keep-all">하자유형</th>
           <th style="text-align:center;white-space:nowrap;min-width:85px">판정유형</th>
           <th style="text-align:left;min-width:280px">판정내용 (상세)</th>
           <th style="text-align:center;white-space:nowrap;min-width:60px">상태</th>
