@@ -628,6 +628,12 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
 
+    <!-- 드릴다운 배지 -->
+    <div id="prodDrillBadge" style="display:none;margin-bottom:12px;padding:9px 14px;background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.25);border-radius:10px;font-size:12px;color:var(--sidiz-blue-bright);align-items:center;gap:10px">
+      <span id="prodDrillBadgeText"></span>
+      <button onclick="_clearProdDrill()" style="background:rgba(74,158,255,0.15);border:1px solid rgba(74,158,255,0.3);color:var(--sidiz-blue-bright);padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;flex-shrink:0">✕ 필터 해제</button>
+    </div>
+
     <!-- 차트 2개: 막대 + 파이 -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="chart-card" style="padding:20px">
@@ -644,12 +650,6 @@ body.share-mode .section > .header .header-left p { display: none; }
         </h3>
         <div style="position:relative;height:320px"><canvas id="prodPieChart"></canvas></div>
       </div>
-    </div>
-
-    <!-- 드릴다운 배지 -->
-    <div id="prodDrillBadge" style="display:none;margin-bottom:12px;padding:9px 14px;background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.25);border-radius:10px;font-size:12px;color:var(--sidiz-blue-bright);align-items:center;gap:10px">
-      <span id="prodDrillBadgeText"></span>
-      <button onclick="_clearProdDrill()" style="background:rgba(74,158,255,0.15);border:1px solid rgba(74,158,255,0.3);color:var(--sidiz-blue-bright);padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;flex-shrink:0">✕ 필터 해제</button>
     </div>
 
     <!-- 일별 클레임 추이 (라인차트) -->
@@ -3973,9 +3973,9 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
   });
   const dtSorted = Object.entries(dtGroups).sort((a,b) => b[1].total - a[1].total);
 
-  const STATUS_OPTS = ['신규','개선중','개선완료','개선불가'];
-  const STATUS_COLORS = { '신규':'var(--accent-cyan)', '개선중':'var(--accent-amber)', '개선완료':'var(--accent-emerald)', '개선불가':'var(--text-muted)' };
-  function getProdStatus(key) { return localStorage.getItem('sidiz_pstatus_' + key) || '신규'; }
+  const STATUS_OPTS = ['','개선중','개선완료','개선불가'];
+  const STATUS_COLORS = { '':'#aaaaaa', '개선중':'#FF8C00', '개선완료':'#00B87A', '개선불가':'#FF4C6A' };
+  function getProdStatus(key) { return localStorage.getItem('sidiz_pstatus_' + key) || ''; }
 
   const DEFECT_COLORS = { '파손':'var(--accent-rose)','소음':'var(--accent-amber)','유격':'var(--accent-violet)','작동성':'var(--sidiz-blue-bright)','수평':'var(--accent-cyan)','체결':'var(--accent-emerald)','외관':'#f59e0b','미분류':'var(--text-muted)' };
   const CAT_COLOR_MAP = { '설계':'#4a9eff','부품':'#ff6b7a','공정':'#ffb347','재료':'#a78bfa','기타':'#6b83a0','미분류':'#6b83a0' };
@@ -3999,9 +3999,12 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
       </td>`;
       tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;color:${catColor};background:${catColor}18;border:1px solid ${catColor}33">${r.category}</span></td>`;
       tableRows += `<td style="text-align:left;font-size:11px;max-width:260px;white-space:normal;line-height:1.5;padding:6px 8px;cursor:pointer;text-decoration:underline dotted;color:var(--sidiz-blue-bright)" title="클릭 시 상세 내역 보기" onclick="showProdDetailModal(${rowIdx})">${r.detail}</td>`;
-      tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 6px">
-        <select onchange="saveProdRowStatus('${rowKey}',this.value)" onclick="event.stopPropagation()" style="background:${stColor}18;border:1px solid ${stColor}55;color:#111111;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;outline:none">
-          ${STATUS_OPTS.map(opt => `<option value="${opt}" ${savedStatus===opt?'selected':''}>${opt}</option>`).join('')}
+      tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px">
+        <select onchange="saveProdRowStatus('${rowKey}',this.value);this.style.color=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#aaaaaa');this.style.borderColor=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#cccccc')+'88'" onclick="event.stopPropagation()" style="background:${savedStatus?stColor+'12':'rgba(255,255,255,0.04)'};border:1.5px solid ${savedStatus?stColor+'88':'#cccccc88'};color:${savedStatus?stColor:'#aaaaaa'};padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;outline:none;min-width:72px;text-align:center">
+          <option value="" ${savedStatus===''?'selected':''} style="color:#aaaaaa">—</option>
+          <option value="개선중" ${savedStatus==='개선중'?'selected':''} style="color:#FF8C00">개선중</option>
+          <option value="개선완료" ${savedStatus==='개선완료'?'selected':''} style="color:#00B87A">개선완료</option>
+          <option value="개선불가" ${savedStatus==='개선불가'?'selected':''} style="color:#FF4C6A">개선불가</option>
         </select>
       </td>`;
       tableRows += allMonths.map(m => `<td style="text-align:center;font-size:11px">${r.months[m]||'-'}</td>`).join('');
@@ -4053,9 +4056,9 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     <table class="data-table" style="font-size:11px;min-width:800px">
       <thead>
         <tr style="background:rgba(255,255,255,0.97)">
-          <th style="text-align:center;white-space:nowrap;min-width:50px;max-width:60px">하자유형</th>
+          <th style="text-align:center;white-space:nowrap;min-width:25px;max-width:30px">하자유형</th>
           <th style="text-align:center;white-space:nowrap;min-width:85px">판정유형</th>
-          <th style="text-align:left;white-space:nowrap;min-width:200px">판정내용 (상세)</th>
+          <th style="text-align:left;white-space:nowrap;min-width:225px">판정내용 (상세)</th>
           <th style="text-align:center;white-space:nowrap;min-width:60px">상태</th>
           ${mh}
           <th style="text-align:center;white-space:nowrap;font-weight:700">합계</th>
