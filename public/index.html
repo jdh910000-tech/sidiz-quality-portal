@@ -485,7 +485,7 @@ body.share-mode .section > .header .header-left p { display: none; }
     <a class="nav-item" onclick="showSection('lab')"><div class="nav-icon">🔬</div><span class="nav-label">시디즈 시험소</span></a>
     <a class="nav-item" onclick="showSection('as')"><div class="nav-icon">🔧</div><span class="nav-label">AS판정 현황</span></a>
     <a class="nav-item" onclick="showSection('inspect')"><div class="nav-icon">✅</div><span class="nav-label">인수검사 현황</span></a>
-    <a class="nav-item" onclick="showSection('export-qc')"><div class="nav-icon">🚢</div><span class="nav-label">수출품 검사서</span></a>
+    <a class="nav-item" onclick="window.open('https://sidiz-export-qc.vercel.app/','_blank')" title="새 탭에서 열기"><div class="nav-icon">🚢</div><span class="nav-label">수출품 검사서</span></a>
     <a class="nav-item" onclick="showSection('closing')"><div class="nav-icon">💰</div><span class="nav-label">월 마감</span></a>
     <a class="nav-item" onclick="showSection('cert')"><div class="nav-icon">📜</div><span class="nav-label">인증현황</span></a>
     <a class="nav-item" onclick="showSection('team')"><div class="nav-icon">👥</div><span class="nav-label">인원현황</span></a>
@@ -529,12 +529,13 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div class="portal-card" onclick="showSection('cert')"><div class="card-icon cyan">📜</div><div class="card-title">인증현황</div><div class="card-desc">제품 인증 및 규격 관리 현황</div><div class="card-status dev">개발 예정</div></div>
     <div class="portal-card" onclick="showSection('team')"><div class="card-icon blue">👥</div><div class="card-title">인원현황</div><div class="card-desc">품질관리팀 조직 구조도 및 인원별 담당 역할</div><div class="card-status live">운영 중</div></div>
     <div class="portal-card" onclick="showSection('okr')"><div class="card-icon emerald">🎯</div><div class="card-title">팀 목표</div><div class="card-desc">연도별 OKR 기반 팀 목표 관리 — 계획 및 결과 매칭</div><div class="card-status live">운영 중</div></div>
-    <div class="portal-card" onclick="showSection('export-qc')" style="cursor:pointer">
+    <div class="portal-card" onclick="window.open('https://sidiz-export-qc.vercel.app/','_blank')" style="cursor:pointer">
       <div class="card-icon cyan">🚢</div>
       <div class="card-title">수출품 검사서 관리</div>
       <div class="card-desc">수출 제품 품질 검사서 발행 및 이력 관리</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:14px">
         <div class="card-status live">운영 중</div>
+        <span style="font-size:10px;color:var(--text-muted)">↗ 새 탭</span>
       </div>
     </div>
   </div>
@@ -1125,18 +1126,6 @@ body.share-mode .section > .header .header-left p { display: none; }
 <!-- ===== AS / INSPECT / CERT ===== -->
 <div id="section-as" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,107,122,0.1)">🔧</div><h2>AS판정 현황</h2><p>AS 판정 결과 및 유형별 분류 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
 <div id="section-inspect" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,179,71,0.1)">✅</div><h2>인수검사 현황</h2><p>자재 및 제품 인수검사 결과를 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
-
-<!-- ===== 수출품 검사서 ===== -->
-<div id="section-export-qc" class="section" style="padding:0;display:flex;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--sidiz-dark2);border-bottom:1px solid var(--border);flex-shrink:0">
-    <div style="display:flex;align-items:center;gap:10px">
-      <button class="back-btn" onclick="showSection('home')" style="position:static;margin:0">← 메인으로</button>
-      <span style="font-size:14px;font-weight:700;color:var(--text-primary)">🚢 수출품 검사서 관리</span>
-      <span style="font-size:11px;color:var(--accent-cyan);background:rgba(0,198,215,0.08);padding:3px 8px;border-radius:5px;border:1px solid rgba(0,198,215,0.15)">v13 · Supabase 실시간</span>
-    </div>
-  </div>
-  <iframe id="exportQcFrame" src="/export-qc.html" style="flex:1;width:100%;border:none;min-height:calc(100vh - 100px)" title="수출품 검사서 관리" loading="lazy"></iframe>
-</div>
 <div id="section-cert" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(0,198,215,0.1)">📜</div><h2>인증현황</h2><p>제품 인증 및 규격 관리 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
 
 <!-- ===== TEAM ===== -->
@@ -2029,7 +2018,7 @@ function showSection(id) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const map={home:0,claim:1,kpi:2,lab:3,as:4,inspect:5,'export-qc':6,closing:7,cert:8,team:9,okr:10};
+  const map={home:0,claim:1,kpi:2,lab:3,as:4,inspect:5,closing:7,cert:8,team:9,okr:10};
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   window.scrollTo(0,0);
   if (id === 'team' && !_orgLoaded) { loadOrgChart(); _orgLoaded = true; }
