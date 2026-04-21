@@ -148,10 +148,10 @@ async function updateKpiFromSupabase(year) {
         if (dVn[t][i] > 0) data.detail_vn[t][i] = dVn[t][i];
       });
     }
-    // 매출량 업데이트 (product_sales_monthly에서 국가별 SUM)
+    // 매출량 업데이트 (product_sales_monthly에서 국가별 SUM, 시디즈 브랜드만)
     try {
       const sales = await SupabaseClient.supabaseFetch('product_sales_monthly',
-        `select=year_month,country,sales_count&year_month=gte.${year}-01&year_month=lte.${year}-12`);
+        `select=year_month,country,sales_count&brand=eq.시디즈&year_month=gte.${year}-01&year_month=lte.${year}-12`);
       if (sales) {
         // 국가+월 기준으로 합산
         const sumMap = {};
