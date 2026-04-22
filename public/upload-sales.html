@@ -99,7 +99,6 @@ tr:hover td{background:rgba(74,158,255,0.04);}
       ✅ <strong>기간 구분</strong>: 매출일자에서 년-월(YYYY-MM) 자동 추출<br>
       ✅ <strong>제품 매핑</strong>: 단품코드 → 제품구분(item) 자동 변환 (맵 미등록 코드는 단품코드 그대로 저장, 동일 item 합산)<br>
       ✅ <strong>브랜드</strong>: 브랜드구분 컬럼 값(시디즈/퍼시스/일룸/데스커 등)을 그대로 저장 — KPI는 시디즈만, 제품별 클레임은 전 브랜드 합산<br>
-      ✅ <strong>중복 제거</strong>: 수주번호+라인번호 기준으로 파일 간 중복 행 자동 제거<br>
       ✅ <strong>다중 파일</strong>: 여러 파일을 동시에 선택하면 합산 처리됩니다<br>
       ✅ <strong>재업로드</strong>: 동일 제품+년월+국가가 이미 있으면 <strong>덮어씁니다</strong>
     </div>
@@ -1299,7 +1298,6 @@ async function handleFiles(files) {
   try {
     let totalRawRows = 0;
     let totalFilteredRows = 0;
-    const seenKeys = new Set();   // 수주번호+라인번호 기준 중복 제거
     const groupMap = {};
 
     for (let fi = 0; fi < fileArr.length; fi++) {
@@ -1332,13 +1330,6 @@ async function handleFiles(files) {
       }
 
       for (const r of raw) {
-        // ─── 수주번호+라인번호 중복 제거 ───
-        const orderNo = String(r[COL_ORDER] || '').trim();
-        const lineNo  = String(r[COL_LINE]  || '').trim();
-        const dupKey  = orderNo + '_' + lineNo;
-        if (orderNo && lineNo && seenKeys.has(dupKey)) continue;
-        if (orderNo && lineNo) seenKeys.add(dupKey);
-
         // ─── 필터 ───
         const biz   = String(r[COL_BIZ]   || '').trim();
         const brand = String(r[COL_BRAND] || '').trim();
@@ -1411,8 +1402,7 @@ async function handleFiles(files) {
     document.getElementById('actionBtns').style.display = 'flex';
     document.getElementById('actionHint').textContent = `${_parsedRows.length}개 항목을 Supabase에 저장할 준비가 완료됐습니다.`;
 
-    const dupNote = seenKeys.size > 0 ? ` · 중복제거 ${(totalRawRows - seenKeys.size - (totalRawRows - totalFilteredRows - (totalRawRows - seenKeys.size))).toLocaleString()}건` : '';
-    const unmappedNote = unmappedItems > 0 ? ` · 미매핑 ${unmappedItems}개는 제품구분 값으로 저장` : '';
+    const unmappedNote = unmappedItems > 0 ? ` · 미매핑 ${unmappedItems}개는 단품코드로 저장` : '';
     const brandTotals = {};
     _parsedRows.forEach(r => { brandTotals[r.brand] = (brandTotals[r.brand]||0) + r.sales_count; });
     const brandStr = Object.entries(brandTotals).sort((a,b)=>b[1]-a[1]).map(([b,c])=>`${b} ${c.toLocaleString()}`).join(' · ');
