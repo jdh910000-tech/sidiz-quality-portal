@@ -97,7 +97,7 @@ tr:hover td{background:rgba(74,158,255,0.04);}
     <div class="desc">
       ✅ <strong>국가 구분</strong>: 제품구분 컬럼의 '베트남상품' → 베트남 / 그 외 → 국내<br>
       ✅ <strong>기간 구분</strong>: 매출일자에서 년-월(YYYY-MM) 자동 추출<br>
-      ✅ <strong>제품 매핑</strong>: 단품코드 → 제품구분(item) 자동 변환 (맵 미등록 코드는 제품구분 값 그대로 저장, 동일 item 합산)<br>
+      ✅ <strong>제품 매핑</strong>: 단품코드 → 제품구분(item) 자동 변환 (맵 미등록 코드는 단품코드 그대로 저장, 동일 item 합산)<br>
       ✅ <strong>브랜드</strong>: 브랜드구분 컬럼 값(시디즈/퍼시스/일룸/데스커 등)을 그대로 저장 — KPI는 시디즈만, 제품별 클레임은 전 브랜드 합산<br>
       ✅ <strong>중복 제거</strong>: 수주번호+라인번호 기준으로 파일 간 중복 행 자동 제거<br>
       ✅ <strong>다중 파일</strong>: 여러 파일을 동시에 선택하면 합산 처리됩니다<br>
@@ -1358,7 +1358,7 @@ async function handleFiles(files) {
         // ─── 코드 매핑 & 날짜 파싱 ───
         const code   = String(r[COL_CODE] || '').trim().toUpperCase();
         const mapped = PRODUCT_CODE_MAP[code] || null;
-        const item   = mapped || prod || '기타';
+        const item   = mapped || code || prod || '기타';
         const country = prod === '베트남상품' ? '베트남' : '국내';
 
         const dateCell = r[COL_DATE];
