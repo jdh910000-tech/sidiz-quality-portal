@@ -2175,7 +2175,7 @@ async function saveKpiNoteUI(type) {
     const from = `${y}-${m}-01`;
     const lastDay = new Date(+y, +m, 0).getDate();
     const to = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
-    const url = `${SUPABASE_URL}/rest/v1/claims?select=category,item,defective_part,country,cost`
+    const url = `${SUPABASE_URL}/rest/v1/claims?select=claim_id,claim_date,brand,country,item,category,defect_type,inspection_result,claim_detail,defective_part,cost`
       + `&claim_date=gte.${from}&claim_date=lte.${to}&brand=eq.시디즈`
       + `&category=in.(설계,제조,서비스,사양재검토,고객불만)&limit=5000`;
     const res = await fetch(url, { headers: HDR });
@@ -3685,14 +3685,17 @@ function exportKpiAnalysisToExcel() {
   ws4['!cols'] = [{wch:6},{wch:18},{wch:10},{wch:10},{wch:10},{wch:30}];
   XLSX.utils.book_append_sheet(wb, ws4, '4_증감 Top5');
 
-  // Sheet 5: 당월 원본 데이터
+  // Sheet 5: 당월 원본 데이터 (클레임 현황 자료변환과 동일 컬럼 구성)
   const rawCols = [
-    {key:'claim_date',label:'회수일'},
-    {key:'country',label:'국가'},
-    {key:'item',label:'제품'},
-    {key:'category',label:'판정유형'},
-    {key:'defective_part',label:'불량부위'},
-    {key:'cost',label:'비용'},
+    {key:'claim_id',         label:'접수번호'},
+    {key:'claim_date',       label:'회수일'},
+    {key:'brand',            label:'브랜드'},
+    {key:'country',          label:'국가'},
+    {key:'item',             label:'제품'},
+    {key:'category',         label:'판정유형'},
+    {key:'defect_type',      label:'하자유형'},
+    {key:'inspection_result',label:'판정내용'},
+    {key:'claim_detail',     label:'요구내역'},
   ];
   const buildSheet = (data)=>{
     const rows = [rawCols.map(c=>c.label), ...data.map(r=>rawCols.map(c=>r[c.key]==null?'':String(r[c.key])))];
