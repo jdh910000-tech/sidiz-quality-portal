@@ -714,6 +714,9 @@ body.share-mode .section > .header .header-left p { display: none; }
         <span id="pendingBadge" style="display:none;background:rgba(255,179,71,0.12);border:1px solid rgba(255,179,71,0.3);color:var(--accent-amber);padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer" onclick="window.open('admin-claims.html','_blank')">⏳ 미분류 <strong id="pendingCount">0</strong>건 검토 필요</span>
         <a href="admin-claims.html" target="_blank" style="font-size:11px;color:var(--text-muted);text-decoration:none;background:var(--sidiz-dark2);border:1px solid var(--border);padding:4px 10px;border-radius:6px">⚙ 증상 사전 관리</a>
         <a href="upload.html" style="font-size:11px;color:var(--accent-cyan);text-decoration:none;background:rgba(0,198,215,0.08);border:1px solid rgba(0,198,215,0.2);padding:4px 10px;border-radius:6px">📤 데이터 업로드</a>
+        <button onclick="exportReceiptDataToExcel()" id="rctExportBtn" style="font-size:11px;color:#00c8a0;background:rgba(0,200,160,0.08);padding:4px 12px;border-radius:6px;border:1px solid rgba(0,200,160,0.25);cursor:pointer;font-weight:700;display:flex;align-items:center;gap:5px;transition:background 0.15s" onmouseover="this.style.background='rgba(0,200,160,0.18)'" onmouseout="this.style.background='rgba(0,200,160,0.08)'">
+          ⬇ 자료변환
+        </button>
       </div>
     </div>
 
@@ -963,6 +966,9 @@ body.share-mode .section > .header .header-left p { display: none; }
           <label style="font-size:11px;color:var(--text-muted)">당월</label>
           <select id="analysisCurMonth" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--sidiz-dark2);color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace"></select>
           <button onclick="runKpiAutoAnalysis()" style="padding:6px 16px;background:var(--sidiz-blue);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔄 분석 생성</button>
+          <button onclick="exportKpiAnalysisToExcel()" id="kpiAnExportBtn" style="font-size:11px;color:#00c8a0;background:rgba(0,200,160,0.08);padding:4px 12px;border-radius:6px;border:1px solid rgba(0,200,160,0.25);cursor:pointer;font-weight:700;display:flex;align-items:center;gap:5px;transition:background 0.15s" onmouseover="this.style.background='rgba(0,200,160,0.18)'" onmouseout="this.style.background='rgba(0,200,160,0.08)'">
+            ⬇ 자료변환
+          </button>
         </div>
       </div>
 
@@ -2451,6 +2457,9 @@ async function saveKpiNoteUI(type) {
 
     const [curData, prevData] = await Promise.all([fetchMonthClaims(curYm), fetchMonthClaims(prevYm)]);
 
+    // 엑셀 export용 캐시
+    window._kpiAnLastData = { curData, prevData, curYm, prevYm };
+
     document.getElementById('kpiAnalysisLoading').style.display = 'none';
     document.getElementById('kpiAnalysisResult').style.display = 'block';
 
@@ -3591,6 +3600,179 @@ function exportProdDataCSV() {
   const today    = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const filename = `제품별클레임${brandLbl}_${itemLbl}${dateLbl}_${today}.xlsx`;
 
+  XLSX.writeFile(wb, filename);
+}
+
+// ─────────────────────────────────────────────
+// KPI 전월 대비 자동 분석 → 엑셀 내보내기
+// ─────────────────────────────────────────────
+function exportKpiAnalysisToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  const cache = window._kpiAnLastData;
+  if (!cache || !cache.curData) {
+    alert('먼저 "🔄 분석 생성" 버튼으로 분석을 실행해주세요.');
+    return;
+  }
+  const { curData, prevData, curYm, prevYm } = cache;
+
+  // ── 공통 유틸 ──
+  const CATS = ['제조','설계','서비스','사양재검토','고객불만'];
+  const countBy = (arr, key) => arr.reduce((m,r)=>{const v=r[key]||'미분류';m[v]=(m[v]||0)+1;return m;},{});
+  const topN = (obj, n) => Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
+  const validItem = r => r.item && r.item.trim() && r.item !== '미분류' && r.item !== 'null';
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 요약
+  const cc=curData.length, pc=prevData.length;
+  const ccKr=curData.filter(r=>r.country==='국내').length, ccVn=curData.filter(r=>r.country==='베트남').length;
+  const pcKr=prevData.filter(r=>r.country==='국내').length, pcVn=prevData.filter(r=>r.country==='베트남').length;
+  const fmtChg = (c,p)=>{const d=c-p,pct=p>0?((d/p)*100).toFixed(1)+'%':'-';return (d>0?'+':'')+d+'건 ('+(d>0?'+':'')+pct+')';};
+  const summaryData = [
+    ['항목', `전월 (${prevYm})`, `당월 (${curYm})`, '증감'],
+    ['전체 클레임', pc, cc, fmtChg(cc,pc)],
+    ['🇰🇷 국내', pcKr, ccKr, fmtChg(ccKr,pcKr)],
+    ['🇻🇳 베트남', pcVn, ccVn, fmtChg(ccVn,pcVn)],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws1['!cols'] = [{wch:16},{wch:14},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, '1_요약');
+
+  // Sheet 2: 판정유형별 변화
+  const ccCat=countBy(curData,'category'), pcCat=countBy(prevData,'category');
+  const catData = [['판정유형', `전월 (${prevYm})`, `당월 (${curYm})`, '증감']];
+  CATS.forEach(cat=>{
+    const c=ccCat[cat]||0, p=pcCat[cat]||0;
+    catData.push([cat, p, c, fmtChg(c,p)]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(catData);
+  ws2['!cols'] = [{wch:14},{wch:14},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws2, '2_판정유형별 변화');
+
+  // Sheet 3: 제품별 Top 5 (당월 · 판정유형 분포 포함)
+  const curValid = curData.filter(validItem);
+  const prevValid = prevData.filter(validItem);
+  const curItems = countBy(curValid,'item');
+  const prevItems = countBy(prevValid,'item');
+  const top5Item = topN(curItems, 5);
+  const itemData = [['순위','제품','당월 건수','전월 건수','증감','제조','설계','서비스','사양재검토','고객불만']];
+  top5Item.forEach(([name,cnt],idx)=>{
+    const pcnt = prevItems[name]||0;
+    const itemRows = curData.filter(r=>r.item===name);
+    const catMap = countBy(itemRows,'category');
+    itemData.push([idx+1, name, cnt, pcnt, fmtChg(cnt,pcnt),
+      catMap['제조']||0, catMap['설계']||0, catMap['서비스']||0, catMap['사양재검토']||0, catMap['고객불만']||0]);
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(itemData);
+  ws3['!cols'] = [{wch:6},{wch:18},{wch:10},{wch:10},{wch:18},{wch:8},{wch:8},{wch:8},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws3, '3_제품별 Top5');
+
+  // Sheet 4: 전월대비 증감 Top 5
+  const allItems = new Set([...Object.keys(curItems),...Object.keys(prevItems)]);
+  const diffRanked = Array.from(allItems).map(item=>({
+    item, cur:curItems[item]||0, prev:prevItems[item]||0, diff:(curItems[item]||0)-(prevItems[item]||0)
+  })).filter(d=>d.diff>0).sort((a,b)=>b.diff-a.diff).slice(0,5);
+  const diffData = [['순위','제품','전월','당월','증가폭','당월 주요 판정유형 Top2']];
+  diffRanked.forEach(({item,cur,prev,diff},idx)=>{
+    const itemRows = curData.filter(r=>r.item===item);
+    const top2 = topN(countBy(itemRows,'category'),2).map(([c,n])=>`${c} ${n}`).join(' / ');
+    diffData.push([idx+1, item, prev, cur, '▲'+diff, top2]);
+  });
+  const ws4 = XLSX.utils.aoa_to_sheet(diffData);
+  ws4['!cols'] = [{wch:6},{wch:18},{wch:10},{wch:10},{wch:10},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws4, '4_증감 Top5');
+
+  // Sheet 5: 당월 원본 데이터
+  const rawCols = [
+    {key:'claim_date',label:'회수일'},
+    {key:'country',label:'국가'},
+    {key:'item',label:'제품'},
+    {key:'category',label:'판정유형'},
+    {key:'defective_part',label:'불량부위'},
+    {key:'cost',label:'비용'},
+  ];
+  const buildSheet = (data)=>{
+    const rows = [rawCols.map(c=>c.label), ...data.map(r=>rawCols.map(c=>r[c.key]==null?'':String(r[c.key])))];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = rawCols.map((c,i)=>{
+      const maxLen = rows.reduce((m,row)=>Math.max(m,(row[i]||'').toString().length),0);
+      return {wch: Math.min(Math.max(maxLen+2, c.label.length+2), 40)};
+    });
+    return ws;
+  };
+  XLSX.utils.book_append_sheet(wb, buildSheet(curData), `5_당월 원본(${curYm})`);
+  XLSX.utils.book_append_sheet(wb, buildSheet(prevData), `6_전월 원본(${prevYm})`);
+
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const filename = `KPI전월대비분석_${prevYm}vs${curYm}_${today}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+// ─────────────────────────────────────────────
+// 클레임 현황 (접수일/업로드일 기준) → 엑셀 내보내기
+// ─────────────────────────────────────────────
+function exportReceiptDataToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  const data = (typeof _rctFilteredData !== 'undefined' && _rctFilteredData && _rctFilteredData.length)
+    ? _rctFilteredData
+    : (typeof _rctAllData !== 'undefined' ? _rctAllData : []);
+  if (!data || data.length === 0) {
+    alert('내보낼 데이터가 없습니다. 먼저 조회해주세요.');
+    return;
+  }
+
+  // claims_receipt의 대표 컬럼 정의 (실제 키가 없으면 빈 값 처리됨)
+  const cols = [
+    { key:'receipt_no',        label:'접수번호' },
+    { key:'receipt_date',      label:'접수일' },
+    { key:'uploaded_at',       label:'업로드일' },
+    { key:'brand',             label:'브랜드' },
+    { key:'country',           label:'국가' },
+    { key:'item',              label:'제품' },
+    { key:'defect_type',       label:'하자유형(원본)' },
+    { key:'defect_normalized', label:'하자유형(표준화)' },
+    { key:'category',          label:'판정유형' },
+    { key:'inspection_result', label:'판정내용' },
+    { key:'claim_detail',      label:'요구내역' },
+    { key:'customer_name',     label:'고객명' },
+    { key:'region',            label:'지역' },
+    { key:'memo',              label:'비고' },
+  ];
+
+  // 실제 존재하는 key만 필터 (없는 컬럼은 제외)
+  const sample = data[0] || {};
+  const sampleKeys = new Set(Object.keys(sample));
+  const activeCols = cols.filter(c => sampleKeys.has(c.key));
+  // 그래도 남은 sample key (미정의 컬럼) 추가
+  Object.keys(sample).forEach(k=>{
+    if (!activeCols.find(c=>c.key===k) && k !== 'id') activeCols.push({key:k, label:k});
+  });
+
+  const wsData = [
+    activeCols.map(c=>c.label),
+    ...data.map(r => activeCols.map(c => (r[c.key]==null ? '' : String(r[c.key]))))
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = activeCols.map((c,ci)=>{
+    const maxLen = wsData.reduce((m,row)=>Math.max(m,(row[ci]||'').length),0);
+    return { wch: Math.min(Math.max(maxLen+2, c.label.length+2), 50) };
+  });
+  const wb = XLSX.utils.book_new();
+  const modeLabel = (typeof _rctDateMode !== 'undefined' && _rctDateMode === 'uploaded') ? '업로드일' : '접수일';
+  XLSX.utils.book_append_sheet(wb, ws, `클레임_${modeLabel}기준`);
+
+  const from = document.getElementById('rctDateFrom')?.value || '';
+  const to   = document.getElementById('rctDateTo')?.value || '';
+  const prod = document.getElementById('rctProductFilter')?.value || 'all';
+  const prodLbl = prod === 'all' ? '전체제품' : prod;
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const filename = `클레임현황_${modeLabel}_${prodLbl}_${from}~${to}_${today}.xlsx`;
   XLSX.writeFile(wb, filename);
 }
 
