@@ -55,7 +55,7 @@ function sc(rf,s,st){return'<c r="'+rf+'"'+(st?' s="'+st+'"':'')+' t="s"><v>'+gi
 function ec(rf,st){return'<c r="'+rf+'" s="'+st+'"/>';}
 function rw(r,ht,s,ov){var o='<row r="'+r+'" spans="2:16" ht="'+ht+'" customHeight="1">';var L="BCDEFGHIJKLMNOP";for(var i=0;i<15;i++){var ref=L[i]+r;o+=(ov&&ov[ref])?ov[ref]:ec(ref,s);}return o+'</row>';}
 var na=item.naSlots||{},ph=item.photos||{};
-var PL=[["헤드레스트","등판","럼버"],["좌판 / 등좌판","틸트","팔걸이"],["중심봉","베이스","후레임"],["캐스터","포장철물","제품사진"],["자기학습노트","박스사진",""]];
+var PL=[["헤드레스트","등판","럼버"],["좌판 / 등좌판","틸트","팔걸이"],["중심봉","베이스","후레임"],["캐스터","포장철물","제품사진"],["자기학습노트","박스사진","특이사항"]];
 var PID=[["headrest","backrest","lumbar"],["seat","tilt","armrest"],["cylinder","base","frame"],["caster","packHW","productPhoto"],["learningNote","boxPhoto",""]];
 var GS=[10,18,26,34,42];
 var imgs=[];
@@ -75,7 +75,7 @@ v7.forEach(function(p){var c=p[0],nx=String.fromCharCode(p[0].charCodeAt(0)+1);s
 sd+=sc("P7",String(item.quantity||""),15)+'</row>';
 sd+=rw(8,"34.5",28,{P8:ec("P8",15)});
 sd+='<row r="9" ht="9.95" customHeight="1"/>';
-for(var g=0;g<5;g++){var gs=GS[g];var ov={};for(var ci=0;ci<3;ci++){var lc=["B","G","L"][ci],pid=PID[g][ci],lbl=PL[g][ci];if(!lbl){continue;}if(na[pid])lbl+=" (해당없음)";ov[lc+gs]=sc(lc+gs,lbl,9);}sd+=rw(gs,"29.25",9,ov);for(var pr=gs+1;pr<=gs+7;pr++){var ov2={};if(pr===gs+1){for(var ci=0;ci<3;ci++){var pid=PID[g][ci];if(!pid)continue;if(na[pid]){var mc=["D","I","N"][ci];ov2[mc+pr]=sc(mc+pr,"해당없음",8);}}}sd+=rw(pr,"29.25",8,ov2);}}
+for(var g=0;g<5;g++){var gs=GS[g];var ov={};for(var ci=0;ci<3;ci++){var lc=["B","G","L"][ci],pid=PID[g][ci],lbl=PL[g][ci];if(!lbl){continue;}if(na[pid])lbl+=" (해당없음)";ov[lc+gs]=sc(lc+gs,lbl,9);}sd+=rw(gs,"29.25",9,ov);for(var pr=gs+1;pr<=gs+7;pr++){var ov2={};if(pr===gs+1){for(var ci=0;ci<3;ci++){var pid=PID[g][ci];if(!pid)continue;if(na[pid]){var mc=["D","I","N"][ci];ov2[mc+pr]=sc(mc+pr,"해당없음",8);}}/* 5번째 그룹의 3번째 열(L43:P48 병합)에 특이사항 본문 출력 */if(g===4){ov2["L"+pr]=sc("L"+pr,item.notes||"",8);}}sd+=rw(pr,"29.25",8,ov2);}}
 sd+='</sheetData>';
 var mg='<mergeCells>';
 mg+='<mergeCell ref="B2:C4"/><mergeCell ref="D2:L4"/><mergeCell ref="M2:N2"/><mergeCell ref="O2:P2"/><mergeCell ref="M3:N4"/><mergeCell ref="O3:P4"/>';
@@ -165,7 +165,7 @@ function save(next){setItems(next);}
 function addAll(arr){var ni=arr.map(function(x){return Object.assign({},x,{downloads:[]});});sbInsert(ni).then(function(ins){setItems(items.concat(ins));flash(ins.length+"건 등록");setPg("list");}).catch(function(){flash("등록 실패");});}
 function upd(id,p){setItems(items.map(function(x){return x.id===id?Object.assign({},x,p):x;}));sbUpdate(id,p);}
 function bulkDel(ids){setItems(items.filter(function(x){return ids.indexOf(x.id)===-1;}));sbDelete(ids);flash(ids.length+"건 삭제");}
-function bulkDl(ids){var targets=items.filter(function(x){return ids.indexOf(x.id)!==-1;});var now=new Date().toLocaleString("ko-KR");if(targets.length===1){dlOne(targets[0]).then(function(){var nd0=(targets[0].downloads||[]).concat([now]);setItems(items.map(function(x){return x.id===targets[0].id?Object.assign({},x,{downloads:nd0}):x;}));sbUpdate(targets[0].id,{downloads:nd0});flash("1건 다운로드");});return;}var proms=targets.map(function(it){return buildXlsxWithImages(it).then(function(data){return{name:(it.itemCode||"")+"_"+(it.color||"")+"_"+(it.packDate||"")+"_"+(it.buildName||"")+".xlsx",data:data};});});Promise.all(proms).then(function(files){var zf={};files.forEach(function(f){zf[f.name]=f.data;});var zipData=buildZipMixed(zf);dlBlob(zipData,"application/zip","수출품검사서_"+targets.length+"건_"+todayStr()+".zip");setItems(items.map(function(x){return ids.indexOf(x.id)!==-1?Object.assign({},x,{downloads:(x.downloads||[]).concat([now])}):x;}));targets.forEach(function(t){sbUpdate(t.id,{downloads:(t.downloads||[]).concat([now])});});flash(targets.length+"건 다운로드");}).catch(function(e){console.error("Bulk DL error:",e);flash("다운로드 실패");});}
+function bulkDl(ids){var targets=items.filter(function(x){return ids.indexOf(x.id)!==-1;});var now=new Date().toLocaleString("ko-KR");if(targets.length===1){dlOne(targets[0]).then(function(){var nd0=(targets[0].downloads||[]).concat([now]);setItems(items.map(function(x){return x.id===targets[0].id?Object.assign({},x,{downloads:nd0}):x;}));sbUpdate(targets[0].id,{downloads:nd0});flash("1건 다운로드");});return;}flash(targets.length+"건 다운로드 시작…");var i=0;function step(){if(i>=targets.length){setItems(items.map(function(x){return ids.indexOf(x.id)!==-1?Object.assign({},x,{downloads:(x.downloads||[]).concat([now])}):x;}));targets.forEach(function(t){sbUpdate(t.id,{downloads:(t.downloads||[]).concat([now])});});flash(targets.length+"건 다운로드 완료");return;}var it=targets[i++];dlOne(it).then(function(){setTimeout(step,400);}).catch(function(e){console.error("DL error:",e);setTimeout(step,400);});}step();}
 if(ld)return(<div style={{minHeight:"100vh",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",color:"#1a56db"}}>로딩…</div>);
 return(
 <div style={{minHeight:"100vh",background:"#f0f2f5",color:"#222",fontFamily:"'Malgun Gothic','맑은 고딕',sans-serif",fontSize:13}}>
