@@ -431,6 +431,11 @@ body.share-mode .section > .header .header-left p { display: none; }
 @keyframes loginShake {
   0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
 }
+/* contenteditable placeholder */
+[contenteditable].is-empty:before { content: attr(data-placeholder); color: #b0b3bb; pointer-events: none; }
+.kpi-edit-toolbar button:hover { background: #eef2ff !important; }
+.kpi-note-entry:hover .kpi-note-del { opacity: 1; }
+.kpi-note-del { opacity: 0.3; transition: opacity 0.15s; }
 </style>
 </head>
 <body>
@@ -1003,19 +1008,25 @@ body.share-mode .section > .header .header-left p { display: none; }
           </div>
         </div>
 
-        <!-- 5. 특이사항 메모 -->
+        <!-- 5. 특이사항 메모 (항목별 선택 삭제 가능) -->
         <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(수동 입력 · 저장됨)</span></div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(항목별 저장 · 선택 삭제 가능)</span></div>
             <div style="display:flex;align-items:center;gap:8px">
               <span id="kpiClaimNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
-              <button id="kpiClaimNoteSaveBtn" onclick="saveKpiNoteUI('claim')" style="padding:5px 14px;background:var(--sidiz-blue);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+              <button id="kpiClaimNoteDelBtn" onclick="deleteSelectedKpiNotes('claim')" style="padding:5px 12px;background:#fff;color:#e74c3c;border:1px solid #e74c3c;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 선택 삭제</button>
             </div>
           </div>
-          <textarea id="kpiClaimNoteArea"
-            placeholder="• 특이사항 직접 입력 (예: T50 틸트 불량 집중 발생 → 생산팀 공유 완료)"
-            style="width:100%;min-height:100px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:12px;font-size:12px;line-height:1.8;resize:vertical;font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;outline:none"
-            onfocus="this.style.borderColor='var(--sidiz-blue-bright)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+          <!-- 신규 입력 -->
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input id="kpiClaimNoteInput" type="text" placeholder="새 특이사항 입력 후 추가 (Enter 가능)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addKpiNoteEntry('claim');}"
+              style="flex:1;background:var(--sidiz-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);padding:8px 12px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none"
+              onfocus="this.style.borderColor='var(--sidiz-blue-bright)'" onblur="this.style.borderColor='var(--border)'">
+            <button onclick="addKpiNoteEntry('claim')" style="padding:6px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ 추가</button>
+          </div>
+          <!-- 항목 리스트 -->
+          <div id="kpiClaimNoteList" style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:60px"></div>
           <!-- 전월 메모 -->
           <div id="kpiClaimPrevNoteWrap" style="display:none;margin-top:10px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">◀ <span id="kpiClaimPrevNoteLabel">전월</span> 기록</div>
@@ -1096,19 +1107,23 @@ body.share-mode .section > .header .header-left p { display: none; }
           <div id="costAnDetailTable" style="overflow-x:auto"></div>
         </div>
 
-        <!-- 특이사항 메모 -->
+        <!-- 특이사항 메모 (항목별 선택 삭제 가능) -->
         <div style="border-top:1px solid var(--border);padding-top:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(수동 입력 · 저장됨)</span></div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-secondary)">📝 특이사항 메모 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(항목별 저장 · 선택 삭제 가능)</span></div>
             <div style="display:flex;align-items:center;gap:8px">
               <span id="kpiCostNoteSaveStatus" style="font-size:11px;color:var(--accent-emerald)"></span>
-              <button id="kpiCostNoteSaveBtn" onclick="saveKpiNoteUI('cost')" style="padding:5px 14px;background:#c0392b;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+              <button id="kpiCostNoteDelBtn" onclick="deleteSelectedKpiNotes('cost')" style="padding:5px 12px;background:#fff;color:#e74c3c;border:1px solid #e74c3c;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 선택 삭제</button>
             </div>
           </div>
-          <textarea id="kpiCostNoteArea"
-            placeholder="• 특이사항 직접 입력 (예: T50 초기불량 수리비 집중 → 420만원)"
-            style="width:100%;min-height:100px;background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:12px;font-size:12px;line-height:1.8;resize:vertical;font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;outline:none"
-            onfocus="this.style.borderColor='#e74c3c'" onblur="this.style.borderColor='var(--border)'"></textarea>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input id="kpiCostNoteInput" type="text" placeholder="새 특이사항 입력 후 추가 (Enter 가능)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addKpiNoteEntry('cost');}"
+              style="flex:1;background:var(--sidiz-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);padding:8px 12px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none"
+              onfocus="this.style.borderColor='#e74c3c'" onblur="this.style.borderColor='var(--border)'">
+            <button onclick="addKpiNoteEntry('cost')" style="padding:6px 14px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ 추가</button>
+          </div>
+          <div id="kpiCostNoteList" style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:60px"></div>
           <div id="kpiCostPrevNoteWrap" style="display:none;margin-top:10px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">◀ <span id="kpiCostPrevNoteLabel">전월</span> 기록</div>
             <div id="kpiCostPrevNote" style="background:rgba(0,43,210,0.03);border:1px dashed rgba(0,43,210,0.15);border-radius:8px;padding:12px;font-size:11px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap"></div>
@@ -2079,13 +2094,93 @@ function _prevYearMonth(ym) {
   return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
 }
 
+// ── 특이사항 메모: 항목 리스트 모델 ──
+// content는 줄단위 entry로 보관 (기존 textarea 데이터와 호환). 각 줄 = 1개 entry.
+window._kpiNoteEntries = window._kpiNoteEntries || { claim: [], cost: [] };
+
+function _renderKpiNoteList(type) {
+  const pfx  = type === 'claim' ? 'Claim' : 'Cost';
+  const wrap = document.getElementById(`kpi${pfx}NoteList`);
+  if (!wrap) return;
+  const arr = window._kpiNoteEntries[type] || [];
+  if (!arr.length) {
+    wrap.innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:12px;text-align:center">등록된 특이사항이 없습니다.</div>';
+    return;
+  }
+  wrap.innerHTML = arr.map((entry, i) => `
+    <div class="kpi-note-entry" style="display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-bottom:1px solid rgba(0,0,0,0.05)">
+      <input type="checkbox" data-idx="${i}" class="kpi-note-chk-${type}" style="margin-top:3px;cursor:pointer">
+      <div style="flex:1;font-size:12px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap;word-break:break-word">${_escapeHtml(entry)}</div>
+      <button class="kpi-note-del" onclick="removeKpiNoteEntry('${type}',${i})" style="background:none;border:none;color:#e74c3c;font-size:14px;cursor:pointer;padding:0 4px" title="삭제">×</button>
+    </div>
+  `).join('');
+}
+
+function _escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function _persistKpiNoteEntries(type) {
+  const ym = _kpiNoteYearMonth(type);
+  const arr = window._kpiNoteEntries[type] || [];
+  const content = arr.join('\n');
+  const pfx = type === 'claim' ? 'Claim' : 'Cost';
+  const statusEl = document.getElementById(`kpi${pfx}NoteSaveStatus`);
+  if (statusEl) { statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = '저장 중...'; }
+  try {
+    await SupabaseClient.saveKpiNote(type, ym, content);
+    if (statusEl) {
+      statusEl.style.color = 'var(--accent-emerald)';
+      statusEl.textContent = '✅ 저장됨';
+      setTimeout(() => { statusEl.textContent = ''; }, 2000);
+    }
+  } catch(e) {
+    console.error('persist note error', e);
+    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '❌ 저장 실패'; }
+  }
+}
+
+window.addKpiNoteEntry = async function(type) {
+  const pfx = type === 'claim' ? 'Claim' : 'Cost';
+  const input = document.getElementById(`kpi${pfx}NoteInput`);
+  if (!input) return;
+  const v = input.value.trim();
+  if (!v) return;
+  window._kpiNoteEntries[type] = window._kpiNoteEntries[type] || [];
+  window._kpiNoteEntries[type].push(v);
+  input.value = '';
+  _renderKpiNoteList(type);
+  await _persistKpiNoteEntries(type);
+};
+
+window.removeKpiNoteEntry = async function(type, idx) {
+  const arr = window._kpiNoteEntries[type] || [];
+  arr.splice(idx, 1);
+  _renderKpiNoteList(type);
+  await _persistKpiNoteEntries(type);
+};
+
+window.deleteSelectedKpiNotes = async function(type) {
+  const checks = Array.from(document.querySelectorAll(`.kpi-note-chk-${type}:checked`));
+  if (!checks.length) {
+    const pfx = type === 'claim' ? 'Claim' : 'Cost';
+    const statusEl = document.getElementById(`kpi${pfx}NoteSaveStatus`);
+    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '⚠ 항목을 선택하세요'; setTimeout(()=>{statusEl.textContent='';},2000); }
+    return;
+  }
+  if (!confirm(`선택한 ${checks.length}건을 삭제할까요?`)) return;
+  const idxs = checks.map(c => parseInt(c.dataset.idx)).sort((a,b)=>b-a);
+  const arr = window._kpiNoteEntries[type] || [];
+  idxs.forEach(i => arr.splice(i, 1));
+  _renderKpiNoteList(type);
+  await _persistKpiNoteEntries(type);
+};
+
 async function loadKpiNote(type) {
   const ym   = _kpiNoteYearMonth(type);
   const prev = _prevYearMonth(ym);
   const pfx  = type === 'claim' ? 'Claim' : 'Cost';
-
   const monthBadge = document.getElementById(`kpi${pfx}NoteMonth`);
-  const textarea   = document.getElementById(`kpi${pfx}NoteArea`);
   const prevWrap   = document.getElementById(`kpi${pfx}PrevNoteWrap`);
   const prevEl     = document.getElementById(`kpi${pfx}PrevNote`);
   const prevLabel  = document.getElementById(`kpi${pfx}PrevNoteLabel`);
@@ -2097,7 +2192,11 @@ async function loadKpiNote(type) {
     const cur  = rows.find(r => r.year_month === ym);
     const prevRow = rows.find(r => r.year_month === prev);
 
-    if (textarea) textarea.value = cur?.content || '';
+    // 줄단위 entry로 분해 (빈줄 제외)
+    const lines = (cur?.content || '').split('\n').map(s => s).filter(s => s.trim() !== '');
+    window._kpiNoteEntries[type] = lines;
+    _renderKpiNoteList(type);
+
     if (prevRow && prevEl && prevWrap) {
       if (prevLabel) prevLabel.textContent = `${prev} 기록`;
       prevEl.textContent = prevRow.content || '(기록 없음)';
@@ -2110,38 +2209,9 @@ async function loadKpiNote(type) {
   }
 }
 
+// 호환용: 이전 코드에서 saveKpiNoteUI 호출하는 경로 유지
 async function saveKpiNoteUI(type) {
-  const ym   = _kpiNoteYearMonth(type);
-  const pfx  = type === 'claim' ? 'Claim' : 'Cost';
-  const textarea = document.getElementById(`kpi${pfx}NoteArea`);
-  const statusEl = document.getElementById(`kpi${pfx}NoteSaveStatus`);
-  const btn      = document.getElementById(`kpi${pfx}NoteSaveBtn`);
-
-  if (!textarea) return;
-  const content = textarea.value.trim();
-  if (!content) {
-    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '⚠ 내용을 입력해주세요.'; }
-    return;
-  }
-
-  if (btn) btn.disabled = true;
-  if (statusEl) { statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = '저장 중...'; }
-
-  try {
-    await SupabaseClient.saveKpiNote(type, ym, content);
-    if (statusEl) {
-      statusEl.style.color = 'var(--accent-emerald)';
-      statusEl.textContent = `✅ ${ym} 저장 완료`;
-      setTimeout(() => { statusEl.textContent = ''; }, 3000);
-    }
-    // 저장 후 전월 기록 갱신
-    await loadKpiNote(type);
-  } catch(e) {
-    console.error('saveKpiNoteUI 오류:', e);
-    if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '❌ 저장 실패: ' + (e.message||''); }
-  } finally {
-    if (btn) btn.disabled = false;
-  }
+  await _persistKpiNoteEntries(type);
 }
 
 // ── KPI 자동 분석 ──
@@ -2251,74 +2321,227 @@ async function saveKpiNoteUI(type) {
       </table>`;
   }
 
-  // ── 제품별 Top 5 (당월 건수 + 하자유형 세부 포함) ──
+  // ── 제품별 분석 상세 패널 (클릭 시 펼쳐짐, 편집 가능 메모 포함) ──
+  const KPI_CATS = ['제조','설계','서비스','사양재검토','고객불만'];
+  const KW_STOP = new Set(['파손','누락','문의','확인','교체','발송','요청','진행','문제','조치','부품','상품','제품','발주','이력','안내','이슈','결과','동일','부분','내부','발생','정상','고객']);
+
+  // 제품별 자동 분석 텍스트 생성 (HTML)
+  function buildProductDetailHtml(prod, curData, prevData) {
+    const cur = curData.filter(r => r.item === prod);
+    const prev = prevData.filter(r => r.item === prod);
+    // 판정유형 × 하자유형 증감
+    const pcd = {}, ccd = {};
+    prev.forEach(r => { const k = (r.category||'?')+'/'+(r.defect_type||'?'); pcd[k] = (pcd[k]||0)+1; });
+    cur.forEach(r =>  { const k = (r.category||'?')+'/'+(r.defect_type||'?'); ccd[k] = (ccd[k]||0)+1; });
+    const keys = new Set([...Object.keys(pcd), ...Object.keys(ccd)]);
+    const diffs = Array.from(keys).map(k => ({k, pv:pcd[k]||0, cv:ccd[k]||0, d:(ccd[k]||0)-(pcd[k]||0)}))
+      .sort((a,b) => Math.abs(b.d) - Math.abs(a.d));
+    const upRows = diffs.filter(x => x.d > 0).slice(0,5);
+    const dnRows = diffs.filter(x => x.d < 0).slice(0,5);
+    // 빈출 키워드 (당월 판정내용)
+    const kw = {};
+    cur.forEach(r => {
+      const t = (r.inspection_result || r.claim_detail || '');
+      const m = String(t).match(/[가-힣]{2,}/g) || [];
+      m.forEach(w => { if (!KW_STOP.has(w)) kw[w] = (kw[w]||0)+1; });
+    });
+    const topKw = Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const fmtRow = (x, sign) =>
+      `<div style="font-size:11px;line-height:1.7;color:var(--text-secondary)">${sign} <b>${x.k}</b>: ${x.pv}→${x.cv} (${x.d>0?'+':''}${x.d})</div>`;
+    return `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.18);border-radius:6px;padding:8px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent-rose);margin-bottom:4px">▲ 증가 Top5</div>
+          ${upRows.length ? upRows.map(x => fmtRow(x,'▲')).join('') : '<div style="font-size:11px;color:var(--text-muted)">없음</div>'}
+        </div>
+        <div style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.18);border-radius:6px;padding:8px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent-emerald);margin-bottom:4px">▼ 감소 Top5</div>
+          ${dnRows.length ? dnRows.map(x => fmtRow(x,'▼')).join('') : '<div style="font-size:11px;color:var(--text-muted)">없음</div>'}
+        </div>
+      </div>
+      ${topKw.length ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px"><b style="color:var(--text-secondary)">🔑 빈출 키워드:</b> ${topKw.map(([w,c])=>`${w}(${c})`).join(', ')}</div>`:''}
+    `;
+  }
+
+  // 편집 가능 메모 영역 HTML (포맷 툴바 + contenteditable)
+  function buildEditorHtml(panelId) {
+    const colors = [
+      ['#fff59d','노랑'],['#ffcdd2','핑크'],['#c8e6c9','초록'],['#bbdefb','파랑']
+    ];
+    const fonts = [
+      ['#e74c3c','빨강'],['#1a56db','파랑'],['#2ecc71','초록'],['#222','검정']
+    ];
+    const tb = `
+      <div class="kpi-edit-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px;background:#f8f9fa;border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0">
+        <button type="button" data-cmd="bold" style="padding:3px 8px;font-weight:900;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px">B</button>
+        <button type="button" data-cmd="italic" style="padding:3px 8px;font-style:italic;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px">I</button>
+        <button type="button" data-cmd="underline" style="padding:3px 8px;text-decoration:underline;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px">U</button>
+        <span style="color:#ccc;margin:0 2px">|</span>
+        <span style="font-size:10px;color:var(--text-muted)">하이라이트:</span>
+        ${colors.map(([c,n]) => `<button type="button" data-bg="${c}" title="${n}" style="width:18px;height:18px;background:${c};border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>`).join('')}
+        <button type="button" data-bg="transparent" title="제거" style="padding:1px 6px;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:10px">✕</button>
+        <span style="color:#ccc;margin:0 2px">|</span>
+        <span style="font-size:10px;color:var(--text-muted)">글자색:</span>
+        ${fonts.map(([c,n]) => `<button type="button" data-fc="${c}" title="${n}" style="width:18px;height:18px;background:${c};border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>`).join('')}
+      </div>`;
+    return `${tb}
+      <div id="${panelId}-edit" contenteditable="true" data-placeholder="• 분석 메모를 입력하세요 (예: 좌판/헤드 사양 문의 집중. 영업 가이드 보강 필요)" style="min-height:90px;background:#fff;border:1px solid var(--border);border-radius:0 0 6px 6px;padding:10px;font-size:12px;line-height:1.7;color:#222;outline:none;font-family:'Noto Sans KR',sans-serif"></div>
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px">
+        <span id="${panelId}-status" style="font-size:11px;color:var(--accent-emerald);align-self:center"></span>
+        <button type="button" data-action="save" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+      </div>`;
+  }
+
+  // 패널 내부 이벤트 바인딩 (툴바 + 저장 버튼)
+  function bindEditorPanel(panelEl, noteKey) {
+    const editEl = panelEl.querySelector('[contenteditable]');
+    if (!editEl) return;
+
+    // placeholder 처리
+    function syncPh() {
+      if (editEl.innerHTML === '' || editEl.innerHTML === '<br>') {
+        editEl.classList.add('is-empty');
+      } else {
+        editEl.classList.remove('is-empty');
+      }
+    }
+    syncPh();
+    editEl.addEventListener('input', syncPh);
+
+    // 툴바 버튼
+    panelEl.querySelectorAll('.kpi-edit-toolbar button').forEach(btn => {
+      btn.addEventListener('mousedown', e => e.preventDefault()); // 선택영역 유지
+      btn.addEventListener('click', e => {
+        editEl.focus();
+        const cmd = btn.dataset.cmd, bg = btn.dataset.bg, fc = btn.dataset.fc;
+        try {
+          if (cmd) document.execCommand(cmd, false, null);
+          else if (bg) document.execCommand('hiliteColor', false, bg) || document.execCommand('backColor', false, bg);
+          else if (fc) document.execCommand('foreColor', false, fc);
+        } catch(_){}
+      });
+    });
+
+    // 저장
+    const saveBtn = panelEl.querySelector('[data-action="save"]');
+    const statusEl = panelEl.querySelector('[id$="-status"]');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const html = editEl.innerHTML.trim();
+        saveBtn.disabled = true;
+        statusEl.style.color = 'var(--text-muted)';
+        statusEl.textContent = '저장 중...';
+        try {
+          await SupabaseClient.saveKpiNote(noteKey.type, noteKey.ym, html);
+          statusEl.style.color = 'var(--accent-emerald)';
+          statusEl.textContent = '✅ 저장됨';
+          setTimeout(() => { statusEl.textContent = ''; }, 2500);
+        } catch(e) {
+          console.error('item note save', e);
+          statusEl.style.color = '#e74c3c';
+          statusEl.textContent = '❌ 저장 실패';
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    // 기존 메모 로드
+    SupabaseClient.fetchKpiNotes(noteKey.type, noteKey.ym).then(rows => {
+      const r = rows.find(x => x.year_month === noteKey.ym);
+      if (r && r.content) {
+        editEl.innerHTML = r.content;
+        syncPh();
+      }
+    }).catch(()=>{});
+  }
+
+  // 토글: 패널 펼치기/접기 (지연 바인딩)
+  window._kpiBindMap = window._kpiBindMap || {};
+  window.toggleKpiItemDetail = function(panelId, prod, ctx) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    const visible = panel.style.display === 'block';
+    if (visible) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    if (window._kpiBindMap[panelId]) return; // 이미 바인딩됨
+    const cache = window._kpiAnLastData;
+    if (!cache) return;
+    const noteType = `claim_item:${ctx}:${prod}`;
+    const ym = cache.curYm;
+    panel.querySelector('[data-role="auto"]').innerHTML = buildProductDetailHtml(prod, cache.curData, cache.prevData);
+    panel.querySelector('[data-role="editor"]').innerHTML = buildEditorHtml(panelId);
+    bindEditorPanel(panel, { type: noteType, ym });
+    window._kpiBindMap[panelId] = true;
+  };
+
+  // 공용: 클릭 가능한 행 + 5개 카테고리 모두 표시
+  function buildItemRowHtml(idx, name, cnt, prev, diff, curData, panelId, ctx, opts) {
+    const itemRows = curData.filter(r => r.item === name);
+    const catMap   = countBy(itemRows, 'category');
+    const catBars  = KPI_CATS
+      .map(cat => `<span>${cat} <b style="color:var(--text-primary)">${catMap[cat]||0}</b></span>`)
+      .join('<span style="color:var(--border);margin:0 3px">|</span>');
+    let rightHtml;
+    if (opts && opts.type === 'diff') {
+      rightHtml = `<span style="color:var(--accent-rose);font-family:'JetBrains Mono',monospace;font-weight:700">▲${diff}건</span>`;
+    } else {
+      const diffStr = diff > 0
+        ? `<span style="color:var(--accent-rose);font-size:11px">▲${diff}</span>`
+        : diff < 0
+        ? `<span style="color:var(--accent-emerald);font-size:11px">▼${Math.abs(diff)}</span>`
+        : `<span style="color:var(--text-muted);font-size:11px">━</span>`;
+      rightHtml = `<span style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${cnt}건 ${diffStr}</span>`;
+    }
+    const subLine = (opts && opts.type === 'diff')
+      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">전월 ${prev}건 → 당월 ${cnt}건</div>`
+      : '';
+    return `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.07)">
+      <div onclick="toggleKpiItemDetail('${panelId}','${name.replace(/'/g, "\\'")}','${ctx}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;user-select:none" title="클릭하여 상세 분석 보기">
+        <span style="color:var(--text-primary);font-weight:600">▸ ${idx+1}. ${name}</span>
+        ${rightHtml}
+      </div>
+      ${subLine}
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${catBars}</div>
+      <div id="${panelId}" style="display:none;margin-top:10px;padding:10px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px">
+        <div data-role="auto"></div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin:6px 0 4px">📝 분석 메모 (편집 가능)</div>
+        <div data-role="editor"></div>
+      </div>
+    </div>`;
+  }
+
+  // ── 제품별 Top 5 (당월 건수 + 5개 카테고리 모두 표시) ──
   function renderItemTop5WithCategory(elId, curData, prevData) {
-    const CATS = ['제조','설계','서비스','사양재검토','고객불만'];
-    // item이 null/빈값/'미분류'/'null'인 레코드 사전 제거
     const validItem = r => r.item && r.item.trim() && r.item !== '미분류' && r.item !== 'null';
     const curFiltered  = curData.filter(validItem);
     const prevFiltered = prevData.filter(validItem);
     const curCounts  = countBy(curFiltered,  'item');
     const prevCounts = countBy(prevFiltered, 'item');
     const top5 = topN(curCounts, 5);
-
+    window._kpiBindMap = {}; // 이전 패널 바인딩 초기화
     document.getElementById(elId).innerHTML = top5.map(([name, cnt], idx) => {
       const pc   = prevCounts[name] || 0;
       const diff = cnt - pc;
-      const diffStr = diff > 0
-        ? `<span style="color:var(--accent-rose);font-size:11px">▲${diff}</span>`
-        : diff < 0
-        ? `<span style="color:var(--accent-emerald);font-size:11px">▼${Math.abs(diff)}</span>`
-        : `<span style="color:var(--text-muted);font-size:11px">━</span>`;
-
-      // 이 제품의 카테고리별 분포
-      const itemRows = curData.filter(r => r.item === name);
-      const catMap   = countBy(itemRows, 'category');
-      const catBars  = CATS
-        .map(cat => catMap[cat] ? `<span>${cat} <b style="color:var(--text-primary)">${catMap[cat]}</b></span>` : '')
-        .filter(Boolean).join('<span style="color:var(--border);margin:0 3px">|</span>');
-
-      return `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.07)">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
-          <span style="color:var(--text-primary);font-weight:600">${idx+1}. ${name}</span>
-          <span style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${cnt}건 ${diffStr}</span>
-        </div>
-        ${catBars ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${catBars}</div>` : ''}
-      </div>`;
+      const panelId = `kpiItemDetail-top5-${idx}`;
+      return buildItemRowHtml(idx, name, cnt, pc, diff, curData, panelId, 'top5', {type:'top5'});
     }).join('') || '<div style="color:var(--text-muted);font-size:12px">데이터 없음</div>';
   }
 
-  // ── 전월대비 증감이 큰 제품 Top 5 (+ 주요 하자유형) ──
+  // ── 전월대비 증감이 큰 제품 Top 5 (5개 카테고리 모두 표시) ──
   function renderItemDiffTop5(elId, curData, prevData) {
-    // item이 null/빈값/'미분류'/'null'인 레코드 사전 제거
     const validItem = r => r.item && r.item.trim() && r.item !== '미분류' && r.item !== 'null';
     const curCounts  = countBy(curData.filter(validItem),  'item');
     const prevCounts = countBy(prevData.filter(validItem), 'item');
-
     const allItems = new Set([...Object.keys(curCounts), ...Object.keys(prevCounts)]);
     const ranked = Array.from(allItems)
       .map(item => ({ item, cur: curCounts[item]||0, prev: prevCounts[item]||0, diff: (curCounts[item]||0)-(prevCounts[item]||0) }))
       .filter(d => d.diff > 0)
       .sort((a, b) => b.diff - a.diff)
       .slice(0, 5);
-
     document.getElementById(elId).innerHTML = ranked.map(({item, cur, prev, diff}, idx) => {
-      // 당월 이 제품에서 가장 많은 하자유형 2개
-      const itemRows = curData.filter(r => r.item === item);
-      const topCats  = topN(countBy(itemRows, 'category'), 2)
-        .map(([cat, c]) => `<span>${cat} <b style="color:var(--text-primary)">${c}</b></span>`)
-        .join('<span style="color:var(--border);margin:0 3px">|</span>');
-
-      return `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.07)">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
-          <span style="color:var(--text-primary);font-weight:600">${idx+1}. ${item}</span>
-          <span style="color:var(--accent-rose);font-family:'JetBrains Mono',monospace;font-weight:700">▲${diff}건</span>
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">
-          전월 ${prev}건 → 당월 ${cur}건
-          ${topCats ? `<span style="margin-left:6px">${topCats}</span>` : ''}
-        </div>
-      </div>`;
+      const panelId = `kpiItemDetail-diff-${idx}`;
+      return buildItemRowHtml(idx, item, cur, prev, diff, curData, panelId, 'diff', {type:'diff'});
     }).join('') || '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">전월 대비 증가 제품 없음</div>';
   }
 
@@ -4742,7 +4965,7 @@ async function confluenceUpload() {
   }
 
   const reportMonth  = `${year}-${String(monthRange).padStart(2,'0')}`;
-  const analysisNote = document.getElementById('kpiClaimNoteArea')?.value || '';
+  const analysisNote = ((window._kpiNoteEntries && window._kpiNoteEntries.claim) || []).join('\n');
 
   // ── API 호출 ──
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 업로드 중...'; }
