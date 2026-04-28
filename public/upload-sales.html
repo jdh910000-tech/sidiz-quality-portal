@@ -1472,9 +1472,10 @@ function resetPage() {
 async function loadHistory() {
   const wrap = document.getElementById('historyList');
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly?select=year_month,country,sum:sales_count.sum()&order=year_month.desc`, { headers: HEADERS });
-    // 간단하게 distinct year_month + count 조회
-    const res2 = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly?select=year_month,country,brand,item,sales_count&order=year_month.desc,item.asc`, { headers: HEADERS });
+    // PostgREST 기본 1,000행 제한 회피: 명시적으로 큰 limit + Range 헤더
+    // (월별 290종 × 다중 브랜드 = 월당 1천 행 이상 → 1월 등 과거 월이 잘리는 현상 방지)
+    const HISTORY_HEADERS = { ...HEADERS, Range: '0-199999', 'Range-Unit': 'items' };
+    const res2 = await fetch(`${SUPA_URL}/rest/v1/product_sales_monthly?select=year_month,country,brand,item,sales_count&order=year_month.desc,item.asc&limit=200000`, { headers: HISTORY_HEADERS });
     if (!res2.ok) throw new Error('조회 실패');
     const data = await res2.json();
     if (!data || data.length === 0) { wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">저장된 데이터가 없습니다.</div>'; return; }
