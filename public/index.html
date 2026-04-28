@@ -465,7 +465,15 @@ body.share-mode .section > .header .header-left p { display: none; }
 <script>
 // ── 즉시 실행: 인증 여부 체크 ─────────────────────────────────────────────
 (function() {
-  if (sessionStorage.getItem('sidiz_auth') === '1') {
+  // iframe 임베드 또는 ?section=kpi / ?embed=1 쿼리스트링이면 비밀번호 입력 화면을 우회
+  // (Confluence 등 외부 페이지에서 KPI 섹션만 임베드 시 암호창 안 뜨게 함)
+  let _embed = false;
+  try { _embed = (window.self !== window.top); } catch(e) { _embed = true; }
+  const _qs = new URLSearchParams(window.location.search);
+  const _bypass = _embed || _qs.get('section') === 'kpi' || _qs.get('embed') === '1';
+
+  if (_bypass || sessionStorage.getItem('sidiz_auth') === '1') {
+    if (_bypass) sessionStorage.setItem('sidiz_auth', '1');
     document.getElementById('loginOverlay').style.display = 'none';
     return;
   }
@@ -2100,6 +2108,15 @@ function _prevYearMonth(ym) {
   return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
 }
 
+// 기본 분석 기간: 오늘 기준 전전월(prev) / 전월(cur)
+// 예: 오늘이 2026-04 이면 prev=2026-02, cur=2026-03
+function _defaultAnalysisRange() {
+  const now = new Date();
+  const cur  = _prevYearMonth(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+  const prev = _prevYearMonth(cur);
+  return { prev, cur };
+}
+
 // ── 특이사항 메모: 항목 리스트 모델 ──
 // content는 줄단위 entry로 보관 (기존 textarea 데이터와 호환). 각 줄 = 1개 entry.
 window._kpiNoteEntries = window._kpiNoteEntries || { claim: [], cost: [] };
@@ -2232,9 +2249,10 @@ async function saveKpiNoteUI(type) {
     months.reverse();
     sel1.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
     sel2.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
-    // 기본값: 2026-01(전월) / 2026-02(당월)
-    sel1.value = '2026-01';
-    sel2.value = '2026-02';
+    // 기본값: 오늘 기준 전전월(prev) / 전월(cur)
+    const _df = _defaultAnalysisRange();
+    sel1.value = _df.prev;
+    sel2.value = _df.cur;
   }
 
   async function fetchMonthClaims(ym) {
@@ -2635,9 +2653,10 @@ async function saveKpiNoteUI(type) {
     months.reverse();
     sel1.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
     sel2.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
-    // 기본값: 2026-01(전월) / 2026-02(당월)
-    sel1.value = '2026-01';
-    sel2.value = '2026-02';
+    // 기본값: 오늘 기준 전전월(prev) / 전월(cur)
+    const _df = _defaultAnalysisRange();
+    sel1.value = _df.prev;
+    sel2.value = _df.cur;
   }
 
   window.runCostAutoAnalysis = function() {
@@ -4865,10 +4884,11 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300
         const analysisCur      = document.getElementById('analysisCurMonth');
         const costAnalysisPrev = document.getElementById('costAnalysisPrevMonth');
         const costAnalysisCur  = document.getElementById('costAnalysisCurMonth');
-        if (analysisPrev)     analysisPrev.value     = '2026-01';
-        if (analysisCur)      analysisCur.value      = '2026-02';
-        if (costAnalysisPrev) costAnalysisPrev.value = '2026-01';
-        if (costAnalysisCur)  costAnalysisCur.value  = '2026-02';
+        const _df = _defaultAnalysisRange();
+        if (analysisPrev)     analysisPrev.value     = _df.prev;
+        if (analysisCur)      analysisCur.value      = _df.cur;
+        if (costAnalysisPrev) costAnalysisPrev.value = _df.prev;
+        if (costAnalysisCur)  costAnalysisCur.value  = _df.cur;
         // 자동 분석 생성
         setTimeout(() => {
           if (typeof runKpiAutoAnalysis === 'function') runKpiAutoAnalysis();
