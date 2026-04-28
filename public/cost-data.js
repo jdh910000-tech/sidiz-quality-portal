@@ -362,10 +362,7 @@ function renderCostTable(data, year, range, pd, py) {
   // 하자보수비 세부
   const hazaRows = [
     { key: 'haza_product', label: '제품' },
-    { key: 'haza_lig', label: 'LIG 제품보상' },
     { key: 'haza_material', label: '자재' },
-    { key: 'haza_t50re', label: 'T50RE 헤드 자재' },
-    { key: 'haza_t50re_labor', label: 'T50RE 헤드 인건비' },
     { key: 'haza_claim', label: '클레임 보상' },
   ];
 

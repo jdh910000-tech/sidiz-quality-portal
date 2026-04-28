@@ -2080,7 +2080,13 @@ function showKpiTab(tab,btn) {
 // KPI 월별 종합 분석 메모
 // ─────────────────────────────────────────────────────────────
 function _kpiNoteYearMonth(type) {
-  // KPI 연도 selector + 현재 월 조합
+  // 우선: 자동분석 셀렉터(당월) 값 사용 → 사용자가 분석 시 지정한 기간과 메모 기간을 일치시킴
+  const anEl = type === 'cost'
+    ? document.getElementById('costAnalysisCurMonth')
+    : document.getElementById('analysisCurMonth');
+  if (anEl && anEl.value) return anEl.value;
+
+  // 폴백: KPI 연도 selector + 현재 월 조합
   const yearEl = type === 'cost'
     ? document.getElementById('costYearSelect')
     : document.getElementById('kpiYearSelect');
@@ -2176,34 +2182,25 @@ window.deleteSelectedKpiNotes = async function(type) {
   await _persistKpiNoteEntries(type);
 };
 
-async function loadKpiNote(type) {
-  const ym   = _kpiNoteYearMonth(type);
-  const prev = _prevYearMonth(ym);
+async function loadKpiNote(type, ymArg) {
+  // 우선순위: 인자로 명시된 ym → 자동분석 셀렉터(당월) → 폴백
+  const ym   = ymArg || _kpiNoteYearMonth(type);
   const pfx  = type === 'claim' ? 'Claim' : 'Cost';
   const monthBadge = document.getElementById(`kpi${pfx}NoteMonth`);
   const prevWrap   = document.getElementById(`kpi${pfx}PrevNoteWrap`);
-  const prevEl     = document.getElementById(`kpi${pfx}PrevNote`);
-  const prevLabel  = document.getElementById(`kpi${pfx}PrevNoteLabel`);
 
   if (monthBadge) monthBadge.textContent = ym;
+  // 사용자 요청: 전월 readonly 영역은 표시하지 않음 → 분석 지정 당월(ym) 항목만 표시
+  if (prevWrap) prevWrap.style.display = 'none';
 
   try {
     const rows = await SupabaseClient.fetchKpiNotes(type, ym);
     const cur  = rows.find(r => r.year_month === ym);
-    const prevRow = rows.find(r => r.year_month === prev);
 
-    // 줄단위 entry로 분해 (빈줄 제외)
+    // 줄단위 entry로 분해 (빈줄 제외) — 당월(ym)에 등록된 항목만 보관/표시
     const lines = (cur?.content || '').split('\n').map(s => s).filter(s => s.trim() !== '');
     window._kpiNoteEntries[type] = lines;
     _renderKpiNoteList(type);
-
-    if (prevRow && prevEl && prevWrap) {
-      if (prevLabel) prevLabel.textContent = `${prev} 기록`;
-      prevEl.textContent = prevRow.content || '(기록 없음)';
-      prevWrap.style.display = 'block';
-    } else if (prevWrap) {
-      prevWrap.style.display = 'none';
-    }
   } catch(e) {
     console.warn('loadKpiNote error', e);
   }
