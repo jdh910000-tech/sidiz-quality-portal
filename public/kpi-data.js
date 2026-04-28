@@ -382,8 +382,24 @@ function renderKpiJudgementTables(data, year, range) {
 }
 
 // ─── 핸들러 ───
+// 기본 표시 범위: 현재(또는 미래) 연도면 '전월까지'(= 오늘 월 - 1), 과거 연도는 1~12월 전체
+function _defaultMonthRangeFor(year) {
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth() + 1; // 1~12
+  if (parseInt(year) >= cy) return Math.max(1, cm - 1);
+  return 12;
+}
+function _applyDefaultMonthRange(year) {
+  const def = _defaultMonthRangeFor(year);
+  _kpiMonthRange = def;
+  const sel = document.getElementById('kpiMonthRange');
+  if (sel) sel.value = String(def);
+}
+
 async function onKpiYearChange(year) {
   document.getElementById('kpiYearSelect').value = year;
+  _applyDefaultMonthRange(year);
   await updateKpiFromSupabase(year);
   renderKpiClaimSection(year);
 }
@@ -405,6 +421,7 @@ async function initKpiSection() {
   if (brandSel && brandSel.value && brandSel.value !== 'all') {
     _kpiBrandFilter = brandSel.value;
   }
+  _applyDefaultMonthRange(year);
   await updateKpiFromSupabase(year);
   renderKpiClaimSection(year);
 }
