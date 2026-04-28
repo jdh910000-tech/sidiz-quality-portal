@@ -2325,138 +2325,178 @@ async function saveKpiNoteUI(type) {
   const KPI_CATS = ['제조','설계','서비스','사양재검토','고객불만'];
   const KW_STOP = new Set(['파손','누락','문의','확인','교체','발송','요청','진행','문제','조치','부품','상품','제품','발주','이력','안내','이슈','결과','동일','부분','내부','발생','정상','고객']);
 
-  // 제품별 자동 분석 텍스트 생성 (HTML)
-  function buildProductDetailHtml(prod, curData, prevData) {
-    const cur = curData.filter(r => r.item === prod);
+  // 자동 요약 텍스트 (캡쳐 이미지 형식)
+  function buildAutoSummaryHtml(prod, curData, prevData) {
+    const cur  = curData.filter(r => r.item === prod);
     const prev = prevData.filter(r => r.item === prod);
-    // 판정유형 × 하자유형 증감
+    const cn = cur.length, pn = prev.length;
+    const diff = cn - pn;
+    const pct = pn > 0 ? Math.round((diff/pn)*1000)/10 : 0;
+    // 판정유형/하자유형 증감
     const pcd = {}, ccd = {};
     prev.forEach(r => { const k = (r.category||'?')+'/'+(r.defect_type||'?'); pcd[k] = (pcd[k]||0)+1; });
     cur.forEach(r =>  { const k = (r.category||'?')+'/'+(r.defect_type||'?'); ccd[k] = (ccd[k]||0)+1; });
-    const keys = new Set([...Object.keys(pcd), ...Object.keys(ccd)]);
-    const diffs = Array.from(keys).map(k => ({k, pv:pcd[k]||0, cv:ccd[k]||0, d:(ccd[k]||0)-(pcd[k]||0)}))
-      .sort((a,b) => Math.abs(b.d) - Math.abs(a.d));
-    const upRows = diffs.filter(x => x.d > 0).slice(0,5);
-    const dnRows = diffs.filter(x => x.d < 0).slice(0,5);
-    // 빈출 키워드 (당월 판정내용)
+    const allKeys = new Set([...Object.keys(pcd), ...Object.keys(ccd)]);
+    const sortedDiffs = Array.from(allKeys)
+      .map(k => ({k, pv:pcd[k]||0, cv:ccd[k]||0, d:(ccd[k]||0)-(pcd[k]||0)}))
+      .filter(x => x.d !== 0)
+      .sort((a,b) => Math.abs(b.d) - Math.abs(a.d))
+      .slice(0, 5);
+    // 빈출 키워드
     const kw = {};
     cur.forEach(r => {
       const t = (r.inspection_result || r.claim_detail || '');
       const m = String(t).match(/[가-힣]{2,}/g) || [];
       m.forEach(w => { if (!KW_STOP.has(w)) kw[w] = (kw[w]||0)+1; });
     });
-    const topKw = Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,10);
-    const fmtRow = (x, sign) =>
-      `<div style="font-size:11px;line-height:1.7;color:var(--text-secondary)">${sign} <b>${x.k}</b>: ${x.pv}→${x.cv} (${x.d>0?'+':''}${x.d})</div>`;
+    const topKw = Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    // 헤드라인
+    const dSign = diff > 0 ? '+' : '';
+    const pctStr = pn > 0 ? `, ${dSign}${pct}%` : '';
+    let headline = `🪑 ${prod} (${dSign}${diff}건, ${pn}→${cn}${pctStr})`;
+    if (sortedDiffs.length > 0) {
+      const t0 = sortedDiffs[0];
+      const ratio = Math.abs(diff) > 0 ? Math.abs(t0.d) / Math.abs(diff) : 0;
+      if (Math.abs(t0.d) >= 5 && ratio >= 0.4) {
+        headline += ` — ${t0.k} 단일 ${t0.d>0?'이슈':'감소'} 집중`;
+      }
+    }
+    // HTML 조립
+    const lines = [`<div style="font-size:13px;font-weight:700;color:#222;margin-bottom:8px">${headline}</div>`];
+    sortedDiffs.forEach((t, i) => {
+      const s = t.d > 0 ? '+' : '';
+      const tail = (i === 0 && Math.abs(t.d) >= Math.max(5, Math.abs(diff) * 0.4))
+        ? ` <span style="color:#888">← 한 카테고리에 ${s}${t.d} 집중</span>` : '';
+      lines.push(`<div style="font-size:12px;line-height:1.85;color:#222">• <b>${t.k}</b> ${s}${t.d} (${t.pv}→${t.cv})${tail}</div>`);
+    });
+    if (topKw.length) {
+      lines.push(`<div style="font-size:12px;line-height:1.85;color:#222">• <b>빈출 키워드:</b> ${topKw.map(([w,c])=>`${w}(${c})`).join(', ')}</div>`);
+    }
+    return lines.join('');
+  }
+
+  // 편집 가능 패널 HTML (View ↔ Edit 전환)
+  function buildEditorPanelHtml() {
     return `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div style="background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.18);border-radius:6px;padding:8px">
-          <div style="font-size:11px;font-weight:600;color:var(--accent-rose);margin-bottom:4px">▲ 증가 Top5</div>
-          ${upRows.length ? upRows.map(x => fmtRow(x,'▲')).join('') : '<div style="font-size:11px;color:var(--text-muted)">없음</div>'}
-        </div>
-        <div style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.18);border-radius:6px;padding:8px">
-          <div style="font-size:11px;font-weight:600;color:var(--accent-emerald);margin-bottom:4px">▼ 감소 Top5</div>
-          ${dnRows.length ? dnRows.map(x => fmtRow(x,'▼')).join('') : '<div style="font-size:11px;color:var(--text-muted)">없음</div>'}
-        </div>
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-bottom:8px">
+        <span data-role="status" style="font-size:11px;color:var(--accent-emerald)"></span>
+        <button type="button" data-action="reset" style="display:none;padding:4px 10px;background:#fff;border:1px solid #ccc;color:#666;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer" title="자동 요약으로 초기화">↻ 자동요약</button>
+        <button type="button" data-action="edit" style="padding:4px 12px;background:#fff;border:1px solid var(--sidiz-blue);color:var(--sidiz-blue);border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">✏️ 편집</button>
+        <button type="button" data-action="save" style="display:none;padding:4px 12px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
+        <button type="button" data-action="cancel" style="display:none;padding:4px 10px;background:#fff;border:1px solid #ccc;color:#666;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">✕ 취소</button>
       </div>
-      ${topKw.length ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px"><b style="color:var(--text-secondary)">🔑 빈출 키워드:</b> ${topKw.map(([w,c])=>`${w}(${c})`).join(', ')}</div>`:''}
+      <div data-role="toolbar" class="kpi-edit-toolbar" style="display:none;align-items:center;gap:6px;padding:6px 8px;background:#f8f9fa;border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0">
+        <button type="button" data-cmd="bold" style="padding:3px 10px;font-weight:900;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px" title="굵게">B</button>
+        <span style="color:#ccc;margin:0 2px">|</span>
+        <span style="font-size:10px;color:var(--text-muted)">글자색:</span>
+        <button type="button" data-fc="#e74c3c" title="빨강" style="width:20px;height:20px;background:#e74c3c;border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>
+        <button type="button" data-fc="#1a56db" title="파랑" style="width:20px;height:20px;background:#1a56db;border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>
+        <button type="button" data-fc="#2ecc71" title="초록" style="width:20px;height:20px;background:#2ecc71;border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>
+        <button type="button" data-fc="#f39c12" title="주황" style="width:20px;height:20px;background:#f39c12;border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>
+        <button type="button" data-fc="#222" title="검정" style="width:20px;height:20px;background:#222;border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>
+      </div>
+      <div data-role="content" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;line-height:1.7;color:#222;min-height:80px;outline:none;font-family:'Noto Sans KR',sans-serif"></div>
     `;
   }
 
-  // 편집 가능 메모 영역 HTML (포맷 툴바 + contenteditable)
-  function buildEditorHtml(panelId) {
-    const colors = [
-      ['#fff59d','노랑'],['#ffcdd2','핑크'],['#c8e6c9','초록'],['#bbdefb','파랑']
-    ];
-    const fonts = [
-      ['#e74c3c','빨강'],['#1a56db','파랑'],['#2ecc71','초록'],['#222','검정']
-    ];
-    const tb = `
-      <div class="kpi-edit-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px;background:#f8f9fa;border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0">
-        <button type="button" data-cmd="bold" style="padding:3px 8px;font-weight:900;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px">B</button>
-        <button type="button" data-cmd="italic" style="padding:3px 8px;font-style:italic;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px">I</button>
-        <button type="button" data-cmd="underline" style="padding:3px 8px;text-decoration:underline;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:12px">U</button>
-        <span style="color:#ccc;margin:0 2px">|</span>
-        <span style="font-size:10px;color:var(--text-muted)">하이라이트:</span>
-        ${colors.map(([c,n]) => `<button type="button" data-bg="${c}" title="${n}" style="width:18px;height:18px;background:${c};border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>`).join('')}
-        <button type="button" data-bg="transparent" title="제거" style="padding:1px 6px;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:10px">✕</button>
-        <span style="color:#ccc;margin:0 2px">|</span>
-        <span style="font-size:10px;color:var(--text-muted)">글자색:</span>
-        ${fonts.map(([c,n]) => `<button type="button" data-fc="${c}" title="${n}" style="width:18px;height:18px;background:${c};border:1px solid #ccc;border-radius:3px;cursor:pointer"></button>`).join('')}
-      </div>`;
-    return `${tb}
-      <div id="${panelId}-edit" contenteditable="true" data-placeholder="• 분석 메모를 입력하세요 (예: 좌판/헤드 사양 문의 집중. 영업 가이드 보강 필요)" style="min-height:90px;background:#fff;border:1px solid var(--border);border-radius:0 0 6px 6px;padding:10px;font-size:12px;line-height:1.7;color:#222;outline:none;font-family:'Noto Sans KR',sans-serif"></div>
-      <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px">
-        <span id="${panelId}-status" style="font-size:11px;color:var(--accent-emerald);align-self:center"></span>
-        <button type="button" data-action="save" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">💾 저장</button>
-      </div>`;
-  }
+  // 패널 바인딩
+  function bindEditorPanel(panelEl, noteKey, prod, curData, prevData) {
+    const contentEl  = panelEl.querySelector('[data-role="content"]');
+    const toolbarEl  = panelEl.querySelector('[data-role="toolbar"]');
+    const statusEl   = panelEl.querySelector('[data-role="status"]');
+    const editBtn    = panelEl.querySelector('[data-action="edit"]');
+    const saveBtn    = panelEl.querySelector('[data-action="save"]');
+    const cancelBtn  = panelEl.querySelector('[data-action="cancel"]');
+    const resetBtn   = panelEl.querySelector('[data-action="reset"]');
+    if (!contentEl) return;
 
-  // 패널 내부 이벤트 바인딩 (툴바 + 저장 버튼)
-  function bindEditorPanel(panelEl, noteKey) {
-    const editEl = panelEl.querySelector('[contenteditable]');
-    if (!editEl) return;
+    let snapshotHtml = '';
 
-    // placeholder 처리
-    function syncPh() {
-      if (editEl.innerHTML === '' || editEl.innerHTML === '<br>') {
-        editEl.classList.add('is-empty');
-      } else {
-        editEl.classList.remove('is-empty');
-      }
+    function applyHtml(html) {
+      contentEl.innerHTML = html || buildAutoSummaryHtml(prod, curData, prevData);
     }
-    syncPh();
-    editEl.addEventListener('input', syncPh);
 
-    // 툴바 버튼
-    panelEl.querySelectorAll('.kpi-edit-toolbar button').forEach(btn => {
-      btn.addEventListener('mousedown', e => e.preventDefault()); // 선택영역 유지
+    function flashStatus(msg, color, hold) {
+      if (!statusEl) return;
+      statusEl.style.color = color || 'var(--accent-emerald)';
+      statusEl.textContent = msg;
+      if (!hold) setTimeout(() => { statusEl.textContent = ''; }, 2500);
+    }
+
+    function enterEdit() {
+      snapshotHtml = contentEl.innerHTML;
+      contentEl.contentEditable = 'true';
+      contentEl.style.background = '#fffef0';
+      contentEl.style.borderColor = 'var(--sidiz-blue-bright)';
+      toolbarEl.style.display = 'flex';
+      editBtn.style.display = 'none';
+      saveBtn.style.display = 'inline-block';
+      cancelBtn.style.display = 'inline-block';
+      resetBtn.style.display = 'inline-block';
+      contentEl.focus();
+    }
+
+    function exitEdit() {
+      contentEl.contentEditable = 'false';
+      contentEl.style.background = '#fff';
+      contentEl.style.borderColor = 'var(--border)';
+      toolbarEl.style.display = 'none';
+      editBtn.style.display = 'inline-block';
+      saveBtn.style.display = 'none';
+      cancelBtn.style.display = 'none';
+      resetBtn.style.display = 'none';
+    }
+
+    editBtn.addEventListener('click', e => { e.stopPropagation(); enterEdit(); });
+    cancelBtn.addEventListener('click', e => { e.stopPropagation(); contentEl.innerHTML = snapshotHtml; exitEdit(); });
+    resetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm('자동 요약 내용으로 되돌릴까요? (편집 중인 내용은 사라집니다)')) return;
+      contentEl.innerHTML = buildAutoSummaryHtml(prod, curData, prevData);
+    });
+    saveBtn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const html = contentEl.innerHTML.trim();
+      saveBtn.disabled = true;
+      flashStatus('저장 중...', 'var(--text-muted)', true);
+      try {
+        await SupabaseClient.saveKpiNote(noteKey.type, noteKey.ym, html);
+        flashStatus('✅ 저장됨', 'var(--accent-emerald)');
+        exitEdit();
+      } catch(err) {
+        console.error('item note save', err);
+        flashStatus('❌ 저장 실패', '#e74c3c');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    // 툴바
+    toolbarEl.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('mousedown', e => e.preventDefault());
       btn.addEventListener('click', e => {
-        editEl.focus();
-        const cmd = btn.dataset.cmd, bg = btn.dataset.bg, fc = btn.dataset.fc;
+        e.stopPropagation();
+        contentEl.focus();
+        const cmd = btn.dataset.cmd, fc = btn.dataset.fc;
         try {
-          if (cmd) document.execCommand(cmd, false, null);
-          else if (bg) document.execCommand('hiliteColor', false, bg) || document.execCommand('backColor', false, bg);
+          if (cmd === 'bold') document.execCommand('bold', false, null);
           else if (fc) document.execCommand('foreColor', false, fc);
         } catch(_){}
       });
     });
 
-    // 저장
-    const saveBtn = panelEl.querySelector('[data-action="save"]');
-    const statusEl = panelEl.querySelector('[id$="-status"]');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async () => {
-        const html = editEl.innerHTML.trim();
-        saveBtn.disabled = true;
-        statusEl.style.color = 'var(--text-muted)';
-        statusEl.textContent = '저장 중...';
-        try {
-          await SupabaseClient.saveKpiNote(noteKey.type, noteKey.ym, html);
-          statusEl.style.color = 'var(--accent-emerald)';
-          statusEl.textContent = '✅ 저장됨';
-          setTimeout(() => { statusEl.textContent = ''; }, 2500);
-        } catch(e) {
-          console.error('item note save', e);
-          statusEl.style.color = '#e74c3c';
-          statusEl.textContent = '❌ 저장 실패';
-        } finally {
-          saveBtn.disabled = false;
-        }
-      });
-    }
+    // 콘텐츠 영역 클릭 시 박스 토글 막기
+    contentEl.addEventListener('click', e => e.stopPropagation());
 
-    // 기존 메모 로드
+    // 초기 콘텐츠: 저장된 게 있으면 그것, 없으면 자동 요약
     SupabaseClient.fetchKpiNotes(noteKey.type, noteKey.ym).then(rows => {
       const r = rows.find(x => x.year_month === noteKey.ym);
-      if (r && r.content) {
-        editEl.innerHTML = r.content;
-        syncPh();
-      }
-    }).catch(()=>{});
+      if (r && r.content && r.content.trim()) applyHtml(r.content);
+      else applyHtml('');
+    }).catch(() => applyHtml(''));
   }
 
-  // 토글: 패널 펼치기/접기 (지연 바인딩)
+  // 토글: 박스 전체 클릭으로 펼치기/접기 (지연 바인딩)
   window._kpiBindMap = window._kpiBindMap || {};
   window.toggleKpiItemDetail = function(panelId, prod, ctx) {
     const panel = document.getElementById(panelId);
@@ -2464,18 +2504,16 @@ async function saveKpiNoteUI(type) {
     const visible = panel.style.display === 'block';
     if (visible) { panel.style.display = 'none'; return; }
     panel.style.display = 'block';
-    if (window._kpiBindMap[panelId]) return; // 이미 바인딩됨
+    if (window._kpiBindMap[panelId]) return;
     const cache = window._kpiAnLastData;
     if (!cache) return;
+    panel.innerHTML = buildEditorPanelHtml();
     const noteType = `claim_item:${ctx}:${prod}`;
-    const ym = cache.curYm;
-    panel.querySelector('[data-role="auto"]').innerHTML = buildProductDetailHtml(prod, cache.curData, cache.prevData);
-    panel.querySelector('[data-role="editor"]').innerHTML = buildEditorHtml(panelId);
-    bindEditorPanel(panel, { type: noteType, ym });
+    bindEditorPanel(panel, { type: noteType, ym: cache.curYm }, prod, cache.curData, cache.prevData);
     window._kpiBindMap[panelId] = true;
   };
 
-  // 공용: 클릭 가능한 행 + 5개 카테고리 모두 표시
+  // 공용: 박스 전체 클릭 가능 행 (제품명+전월→당월+카테고리 5종)
   function buildItemRowHtml(idx, name, cnt, prev, diff, curData, panelId, ctx, opts) {
     const itemRows = curData.filter(r => r.item === name);
     const catMap   = countBy(itemRows, 'category');
@@ -2493,21 +2531,19 @@ async function saveKpiNoteUI(type) {
         : `<span style="color:var(--text-muted);font-size:11px">━</span>`;
       rightHtml = `<span style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${cnt}건 ${diffStr}</span>`;
     }
-    const subLine = (opts && opts.type === 'diff')
-      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">전월 ${prev}건 → 당월 ${cnt}건</div>`
-      : '';
-    return `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.07)">
-      <div onclick="toggleKpiItemDetail('${panelId}','${name.replace(/'/g, "\\'")}','${ctx}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;user-select:none" title="클릭하여 상세 분석 보기">
-        <span style="color:var(--text-primary);font-weight:600">▸ ${idx+1}. ${name}</span>
-        ${rightHtml}
+    return `<div>
+      <div class="kpi-prod-row" onclick="toggleKpiItemDetail('${panelId}','${name.replace(/'/g, "\\'")}','${ctx}')"
+           style="cursor:pointer;padding:9px 8px;border-bottom:1px solid rgba(0,0,0,0.07);border-radius:4px;transition:background 0.15s;user-select:none"
+           onmouseover="this.style.background='rgba(0,40,210,0.04)'" onmouseout="this.style.background=''"
+           title="클릭하여 상세 분석 펼치기">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+          <span style="color:var(--text-primary);font-weight:600">▸ ${idx+1}. ${name}</span>
+          ${rightHtml}
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">전월 ${prev}건 → 당월 ${cnt}건</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${catBars}</div>
       </div>
-      ${subLine}
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${catBars}</div>
-      <div id="${panelId}" style="display:none;margin-top:10px;padding:10px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px">
-        <div data-role="auto"></div>
-        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin:6px 0 4px">📝 분석 메모 (편집 가능)</div>
-        <div data-role="editor"></div>
-      </div>
+      <div id="${panelId}" style="display:none;margin:8px 4px 12px 4px;padding:12px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px"></div>
     </div>`;
   }
 
