@@ -2331,22 +2331,31 @@ async function saveKpiNoteUI(type) {
     return String(s).replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
   }
 
-  // 요구내역에서 실제 한글 설명 라인만 추출 (메타데이터/SKU/날짜 제외)
-  function _cleanClaimDetail(cd) {
-    if (!cd) return '';
-    const lines = String(cd).split(/[\r\n]+/).map(l => l.trim());
-    const meaningful = lines.filter(l => {
-      if (l.length < 5) return false;
-      const kc = (l.match(/[가-힣]/g) || []).length;
-      // 한글 5자 이상 + 영문/숫자 위주의 메타라인 배제
-      if (kc < 5) return false;
-      if (/^[\d\W]+$/.test(l)) return false;
-      return true;
-    });
-    return meaningful.join(' / ').replace(/\s+/g, ' ').replace(/[>～~]+/g, ' ').trim();
+  // ── 동의어 그룹 (학습된 클레임 분류) ──
+  // 같은 본질의 클레임이 다른 표현으로 작성된 경우 한 그룹으로 묶음.
+  // 새로운 동의어를 학습하려면 keywords 배열에 추가하면 됨.
+  const ISSUE_SYNONYMS = [
+    {
+      canon: '어댑터 사선조립으로 인서트 헛돔',
+      keywords: ['인서트 헛돔','헛돔','사선조립','사선 조립','어댑터 사선','사선으로','사선조립으로']
+    },
+    {
+      canon: '좌판 유격',
+      keywords: ['조절형 좌판 유격','좌판 상하 유격','좌판 유격 소음','좌판 유격','좌판유격']
+    }
+  ];
+
+  function _matchSynonym(text) {
+    if (!text) return null;
+    for (const grp of ISSUE_SYNONYMS) {
+      for (const kw of grp.keywords) {
+        if (text.indexOf(kw) !== -1) return grp.canon;
+      }
+    }
+    return null;
   }
 
-  // 자동 요약: 판정내용/요구내역 기반 클러스터링으로 실제 문제 내용 분석
+  // 자동 요약: 판정내용 기반 클러스터링 (TOP 3, 동의어 그룹 학습 적용)
   function buildAutoSummaryHtml(prod, curData, prevData) {
     const cur  = curData.filter(r => r.item === prod);
     const prev = prevData.filter(r => r.item === prod);
@@ -2354,41 +2363,26 @@ async function saveKpiNoteUI(type) {
     const diff = cn - pn;
     const pct = pn > 0 ? Math.round((diff/pn)*1000)/10 : 0;
 
-    // 판정내용 prefix(15자) 기반 클러스터링
+    // 클러스터링: 동의어 매칭 우선, 없으면 prefix(15자) 기반
     const groups = new Map();
     cur.forEach(r => {
       const ir = _normalizeIR(r.inspection_result);
       if (!ir || ir.length < 3) return;
-      const sig = ir.substring(0, 15);
+      const matched = _matchSynonym(ir);
+      const sig = matched || ir.substring(0, 15);
       if (!groups.has(sig)) {
-        groups.set(sig, { count: 0, label: ir, cats: new Map(), defs: new Map(), examples: [] });
+        groups.set(sig, { count: 0, label: matched || ir, cats: new Map(), defs: new Map(), forced: !!matched });
       }
       const g = groups.get(sig);
       g.count++;
       g.cats.set(r.category||'?', (g.cats.get(r.category||'?')||0)+1);
       g.defs.set(r.defect_type||'?', (g.defs.get(r.defect_type||'?')||0)+1);
-      // 가장 풍부한 라벨로 갱신
-      if (ir.length > g.label.length && ir.length <= 50) g.label = ir;
-      // 대표 사례 (요구내역에서 한글 설명 추출)
-      if (g.examples.length < 2) {
-        const cd = _cleanClaimDetail(r.claim_detail);
-        const src = cd && cd.length > 5 ? cd : ir;
-        const snip = src.length > 90 ? src.substring(0, 90) + '…' : src;
-        if (snip && !g.examples.includes(snip)) g.examples.push(snip);
-      }
+      // 동의어 그룹은 라벨 고정. 그 외는 가장 풍부한 표현으로 갱신
+      if (!g.forced && ir.length > g.label.length && ir.length <= 50) g.label = ir;
     });
     const topIssues = Array.from(groups.values())
       .sort((a, b) => b.count - a.count)
-      .slice(0, 7);
-
-    // 빈출 키워드 (판정내용 + 요구내역)
-    const kw = {};
-    cur.forEach(r => {
-      const t = (r.inspection_result || '') + ' ' + (r.claim_detail || '');
-      const m = String(t).match(/[가-힣]{2,}/g) || [];
-      m.forEach(w => { if (!KW_STOP.has(w)) kw[w] = (kw[w]||0)+1; });
-    });
-    const topKw = Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,8);
+      .slice(0, 3);
 
     // 헤드라인
     const dSign = diff > 0 ? '+' : '';
@@ -2409,25 +2403,16 @@ async function saveKpiNoteUI(type) {
     if (topIssues.length === 0) {
       out.push(`<div style="font-size:12px;color:#888;padding:10px">분석할 판정내용이 없습니다.</div>`);
     } else {
-      out.push(`<div style="font-size:12px;font-weight:700;color:#222;margin:6px 0 8px">📌 주요 문제 내용 Top ${topIssues.length}</div>`);
+      out.push(`<div style="font-size:12px;font-weight:700;color:#222;margin:6px 0 8px">📌 주요 클레임 TOP ${topIssues.length}</div>`);
       topIssues.forEach((g) => {
         const topCat = Array.from(g.cats.entries()).sort((a,b)=>b[1]-a[1])[0];
         const topDef = Array.from(g.defs.entries()).sort((a,b)=>b[1]-a[1])[0];
         const tag = `${topCat?topCat[0]:'?'} / ${topDef?topDef[0]:'?'}`;
-        out.push(`<div style="font-size:12px;line-height:1.7;color:#222;margin-top:8px;margin-bottom:4px">
+        out.push(`<div style="font-size:12px;line-height:1.85;color:#222;margin-bottom:4px">
           <b style="color:#1a56db">[${g.count}건]</b> <b>${esc(g.label)}</b>
           <span style="color:#888;font-size:11px;margin-left:4px">(${esc(tag)})</span>
         </div>`);
-        g.examples.forEach(ex => {
-          out.push(`<div style="font-size:11px;line-height:1.6;color:#666;padding-left:18px;margin-bottom:3px">↳ ${esc(ex)}</div>`);
-        });
       });
-    }
-
-    if (topKw.length) {
-      out.push(`<div style="font-size:12px;line-height:1.7;color:#222;margin-top:12px;padding-top:8px;border-top:1px dashed #e0e0e0">
-        <b>🔑 빈출 키워드:</b> ${topKw.map(([w,c])=>esc(w)+'('+c+')').join(', ')}
-      </div>`);
     }
 
     return out.join('');
