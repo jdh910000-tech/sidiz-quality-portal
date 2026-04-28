@@ -2325,54 +2325,112 @@ async function saveKpiNoteUI(type) {
   const KPI_CATS = ['제조','설계','서비스','사양재검토','고객불만'];
   const KW_STOP = new Set(['파손','누락','문의','확인','교체','발송','요청','진행','문제','조치','부품','상품','제품','발주','이력','안내','이슈','결과','동일','부분','내부','발생','정상','고객']);
 
-  // 자동 요약 텍스트 (캡쳐 이미지 형식)
+  // 판정내용 정규화 (괄호 안 보조 문구 제거 + 공백 정리)
+  function _normalizeIR(s) {
+    if (!s) return '';
+    return String(s).replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  // 요구내역에서 실제 한글 설명 라인만 추출 (메타데이터/SKU/날짜 제외)
+  function _cleanClaimDetail(cd) {
+    if (!cd) return '';
+    const lines = String(cd).split(/[\r\n]+/).map(l => l.trim());
+    const meaningful = lines.filter(l => {
+      if (l.length < 5) return false;
+      const kc = (l.match(/[가-힣]/g) || []).length;
+      // 한글 5자 이상 + 영문/숫자 위주의 메타라인 배제
+      if (kc < 5) return false;
+      if (/^[\d\W]+$/.test(l)) return false;
+      return true;
+    });
+    return meaningful.join(' / ').replace(/\s+/g, ' ').replace(/[>～~]+/g, ' ').trim();
+  }
+
+  // 자동 요약: 판정내용/요구내역 기반 클러스터링으로 실제 문제 내용 분석
   function buildAutoSummaryHtml(prod, curData, prevData) {
     const cur  = curData.filter(r => r.item === prod);
     const prev = prevData.filter(r => r.item === prod);
     const cn = cur.length, pn = prev.length;
     const diff = cn - pn;
     const pct = pn > 0 ? Math.round((diff/pn)*1000)/10 : 0;
-    // 판정유형/하자유형 증감
-    const pcd = {}, ccd = {};
-    prev.forEach(r => { const k = (r.category||'?')+'/'+(r.defect_type||'?'); pcd[k] = (pcd[k]||0)+1; });
-    cur.forEach(r =>  { const k = (r.category||'?')+'/'+(r.defect_type||'?'); ccd[k] = (ccd[k]||0)+1; });
-    const allKeys = new Set([...Object.keys(pcd), ...Object.keys(ccd)]);
-    const sortedDiffs = Array.from(allKeys)
-      .map(k => ({k, pv:pcd[k]||0, cv:ccd[k]||0, d:(ccd[k]||0)-(pcd[k]||0)}))
-      .filter(x => x.d !== 0)
-      .sort((a,b) => Math.abs(b.d) - Math.abs(a.d))
-      .slice(0, 5);
-    // 빈출 키워드
+
+    // 판정내용 prefix(15자) 기반 클러스터링
+    const groups = new Map();
+    cur.forEach(r => {
+      const ir = _normalizeIR(r.inspection_result);
+      if (!ir || ir.length < 3) return;
+      const sig = ir.substring(0, 15);
+      if (!groups.has(sig)) {
+        groups.set(sig, { count: 0, label: ir, cats: new Map(), defs: new Map(), examples: [] });
+      }
+      const g = groups.get(sig);
+      g.count++;
+      g.cats.set(r.category||'?', (g.cats.get(r.category||'?')||0)+1);
+      g.defs.set(r.defect_type||'?', (g.defs.get(r.defect_type||'?')||0)+1);
+      // 가장 풍부한 라벨로 갱신
+      if (ir.length > g.label.length && ir.length <= 50) g.label = ir;
+      // 대표 사례 (요구내역에서 한글 설명 추출)
+      if (g.examples.length < 2) {
+        const cd = _cleanClaimDetail(r.claim_detail);
+        const src = cd && cd.length > 5 ? cd : ir;
+        const snip = src.length > 90 ? src.substring(0, 90) + '…' : src;
+        if (snip && !g.examples.includes(snip)) g.examples.push(snip);
+      }
+    });
+    const topIssues = Array.from(groups.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 7);
+
+    // 빈출 키워드 (판정내용 + 요구내역)
     const kw = {};
     cur.forEach(r => {
-      const t = (r.inspection_result || r.claim_detail || '');
+      const t = (r.inspection_result || '') + ' ' + (r.claim_detail || '');
       const m = String(t).match(/[가-힣]{2,}/g) || [];
       m.forEach(w => { if (!KW_STOP.has(w)) kw[w] = (kw[w]||0)+1; });
     });
-    const topKw = Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topKw = Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
     // 헤드라인
     const dSign = diff > 0 ? '+' : '';
     const pctStr = pn > 0 ? `, ${dSign}${pct}%` : '';
     let headline = `🪑 ${prod} (${dSign}${diff}건, ${pn}→${cn}${pctStr})`;
-    if (sortedDiffs.length > 0) {
-      const t0 = sortedDiffs[0];
-      const ratio = Math.abs(diff) > 0 ? Math.abs(t0.d) / Math.abs(diff) : 0;
-      if (Math.abs(t0.d) >= 5 && ratio >= 0.4) {
-        headline += ` — ${t0.k} 단일 ${t0.d>0?'이슈':'감소'} 집중`;
+    if (topIssues.length > 0) {
+      const t0 = topIssues[0];
+      if (t0.count >= 3 && (t0.count / Math.max(cn,1)) >= 0.15) {
+        const ttl = t0.label.length > 20 ? t0.label.substring(0,20)+'…' : t0.label;
+        headline += ` — "${ttl}" 다발`;
       }
     }
+
     // HTML 조립
-    const lines = [`<div style="font-size:13px;font-weight:700;color:#222;margin-bottom:8px">${headline}</div>`];
-    sortedDiffs.forEach((t, i) => {
-      const s = t.d > 0 ? '+' : '';
-      const tail = (i === 0 && Math.abs(t.d) >= Math.max(5, Math.abs(diff) * 0.4))
-        ? ` <span style="color:#888">← 한 카테고리에 ${s}${t.d} 집중</span>` : '';
-      lines.push(`<div style="font-size:12px;line-height:1.85;color:#222">• <b>${t.k}</b> ${s}${t.d} (${t.pv}→${t.cv})${tail}</div>`);
-    });
-    if (topKw.length) {
-      lines.push(`<div style="font-size:12px;line-height:1.85;color:#222">• <b>빈출 키워드:</b> ${topKw.map(([w,c])=>`${w}(${c})`).join(', ')}</div>`);
+    const esc = (typeof _escapeHtml === 'function') ? _escapeHtml : (x => String(x));
+    const out = [`<div style="font-size:13px;font-weight:700;color:#222;margin-bottom:10px">${esc(headline)}</div>`];
+
+    if (topIssues.length === 0) {
+      out.push(`<div style="font-size:12px;color:#888;padding:10px">분석할 판정내용이 없습니다.</div>`);
+    } else {
+      out.push(`<div style="font-size:12px;font-weight:700;color:#222;margin:6px 0 8px">📌 주요 문제 내용 Top ${topIssues.length}</div>`);
+      topIssues.forEach((g) => {
+        const topCat = Array.from(g.cats.entries()).sort((a,b)=>b[1]-a[1])[0];
+        const topDef = Array.from(g.defs.entries()).sort((a,b)=>b[1]-a[1])[0];
+        const tag = `${topCat?topCat[0]:'?'} / ${topDef?topDef[0]:'?'}`;
+        out.push(`<div style="font-size:12px;line-height:1.7;color:#222;margin-top:8px;margin-bottom:4px">
+          <b style="color:#1a56db">[${g.count}건]</b> <b>${esc(g.label)}</b>
+          <span style="color:#888;font-size:11px;margin-left:4px">(${esc(tag)})</span>
+        </div>`);
+        g.examples.forEach(ex => {
+          out.push(`<div style="font-size:11px;line-height:1.6;color:#666;padding-left:18px;margin-bottom:3px">↳ ${esc(ex)}</div>`);
+        });
+      });
     }
-    return lines.join('');
+
+    if (topKw.length) {
+      out.push(`<div style="font-size:12px;line-height:1.7;color:#222;margin-top:12px;padding-top:8px;border-top:1px dashed #e0e0e0">
+        <b>🔑 빈출 키워드:</b> ${topKw.map(([w,c])=>esc(w)+'('+c+')').join(', ')}
+      </div>`);
+    }
+
+    return out.join('');
   }
 
   // 편집 가능 패널 HTML (View ↔ Edit 전환)
