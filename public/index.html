@@ -2659,7 +2659,7 @@ async function saveKpiNoteUI(type) {
     sel2.value = _df.cur;
   }
 
-  window.runCostAutoAnalysis = function() {
+  window.runCostAutoAnalysis = async function() {
     const curYm  = document.getElementById('costAnalysisCurMonth').value;
     const prevYm = document.getElementById('costAnalysisPrevMonth').value;
     if (!curYm || !prevYm) return;
@@ -2668,8 +2668,16 @@ async function saveKpiNoteUI(type) {
     document.getElementById('costAnalysisResult').style.display  = 'none';
     document.getElementById('costAnalysisLoading').style.display = 'block';
 
-    const costData = window.CostModule && window.CostModule.COST_DATA;
     const year = curYm.slice(0,4);
+    // Supabase failure_costs 가 아직 로드 안 되었을 수 있어 대기
+    // (정적 COST_DATA에는 1~2월만 들어있어 3월 이후는 Supabase 응답 후에야 채워짐)
+    try {
+      if (window.CostModule && window.CostModule.loadFailureCostsFromSupabase) {
+        await window.CostModule.loadFailureCostsFromSupabase(year);
+      }
+    } catch(e) { console.warn('[cost-analysis] failure_costs 로드 실패', e); }
+
+    const costData = window.CostModule && window.CostModule.COST_DATA;
     const cd = costData && costData[year];
 
     document.getElementById('costAnalysisLoading').style.display = 'none';
