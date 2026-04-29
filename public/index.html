@@ -2893,8 +2893,14 @@ async function loadReceiptDashboard() {
     const products = [...new Set(_rctAllData.map(d => d.item).filter(Boolean))].sort();
     const sel = document.getElementById('rctProductFilter');
     const curVal = sel.value;
-    sel.innerHTML = '<option value="all">전체 제품구분</option>' + products.map(p => `<option value="${_hOpt(p)}">${_hOpt(p)}</option>`).join('');
-    if (products.includes(curVal)) sel.value = curVal;
+    let opts = '<option value="all">전체 제품구분</option>' + products.map(p => `<option value="${_hOpt(p)}">${_hOpt(p)}</option>`).join('');
+    // 사용자가 선택한 제품이 새 결과에 없으면 — 묵시적으로 '전체'로 리셋되지 않도록 그대로 보존
+    // (이 기간엔 데이터 없음을 명시)
+    if (curVal && curVal !== 'all' && !products.includes(curVal)) {
+      opts += `<option value="${_hOpt(curVal)}">${_hOpt(curVal)} (이 기간 데이터 없음)</option>`;
+    }
+    sel.innerHTML = opts;
+    sel.value = curVal || 'all';
     _rctSelectedProduct = sel.value;
 
     // 미분류 배지 — symptom_pending 실제 검토 큐 기준 (claims_receipt null 건수 아님)
@@ -2914,6 +2920,31 @@ async function loadReceiptDashboard() {
   }
 }
 
+// 차트·칩·상세 패널 모두 비워서 이전 조회 결과 잔상이 남지 않게 함
+function _clearRctVisuals() {
+  // Chart.js 인스턴스 destroy
+  if (_rctChartTrend)       { _rctChartTrend.destroy();       _rctChartTrend = null; }
+  if (_rctChartCat)         { _rctChartCat.destroy();         _rctChartCat = null; }
+  if (_rctChartProd)        { _rctChartProd.destroy();        _rctChartProd = null; }
+  if (_rctDefectTrendChart) { _rctDefectTrendChart.destroy(); _rctDefectTrendChart = null; }
+  // 칩 / 상세 패널 비우기
+  const chips = document.getElementById('rctDefectChips');
+  if (chips) chips.innerHTML = '';
+  const chipTotal = document.getElementById('rctDefectChipTotal');
+  if (chipTotal) chipTotal.textContent = '';
+  const detail = document.getElementById('rctDefectDetail');
+  if (detail) detail.style.display = 'none';
+  const tbody = document.getElementById('rctDetailTableBody');
+  if (tbody) tbody.innerHTML = '';
+  const tfoot = document.getElementById('rctDetailTableFoot');
+  if (tfoot) tfoot.innerHTML = '';
+  // 드릴 필터 상태 초기화
+  _rctSelectedDefect     = null;
+  _rctSelectedCatGroup   = null;
+  _rctChartProductFilter = null;
+  _rctDetailSorted       = [];
+}
+
 function _applyRctFilter() {
   // 1단계: 제품 필터 (요약 카드용 — 미분류 포함 전체)
   const productFiltered = _rctSelectedProduct === 'all'
@@ -2930,9 +2961,16 @@ function _applyRctFilter() {
 
   const empty = document.getElementById('rctEmptyState');
   const cards = document.getElementById('rctSummaryCards');
-  if (_rctAllData.length === 0) {
+
+  // 0건일 때(전체 데이터든 제품 필터 결과든) — 잔상 남지 않게 차트/칩 모두 정리
+  if (_rctAllData.length === 0 || productFiltered.length === 0) {
+    _clearRctVisuals();
     if (empty) empty.style.display = '';
     if (cards) cards.style.display = 'none';
+    // 4개 카드도 0으로 초기화 (혹시 셀 텍스트가 남아있다면)
+    ['rctCardTotal','rctCardMonth','rctCardClassified','rctCardPending'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = '0';
+    });
     return;
   }
   if (empty) empty.style.display = 'none';
