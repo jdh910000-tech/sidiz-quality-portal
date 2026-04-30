@@ -709,7 +709,7 @@ async function handleClaimFile(file) {
         defect_normalized: parseResult.normalized || null,
         defect_category:  parseResult.category || null,
         raw_symptom:      parseResult.rawSymptom || null,
-        uploaded_at:      new Date().toISOString().split('T')[0],  // 업로드일 (오늘 날짜)
+        uploaded_at:      (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),  // 업로드일 (오늘 날짜, 로컬 KST 기준)
       };
       claimParsedData.push(dbRow);
 
