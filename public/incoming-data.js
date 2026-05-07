@@ -412,10 +412,9 @@ function renderRod() {
 
 // ============ 스폰지 탭 ============
 function getSpongeFiltered() {
-  const spec = $('inq-sponge-spec').value, judge = $('inq-sponge-judge').value;
+  const judge = $('inq-sponge-judge').value;
   const code = $('inq-sponge-code').value, from = $('inq-sponge-from').value, to = $('inq-sponge-to').value;
   return STATE.sponges.filter(r =>
-    (!spec || String(r.spec_target) === spec) &&
     (!judge || spongeJudge(r) === judge) &&
     (!code || r.code === code) &&
     inDateRange(r.measure_date, from, to)
@@ -495,9 +494,6 @@ function renderSpongeTable(rows) {
   }).join('');
 }
 function initSpongeDropdowns() {
-  fillSelect($('inq-sponge-spec'),
-    uniq(STATE.sponges.map(r => r.spec_target).filter(v => v !== null && v !== undefined))
-      .sort((a, b) => a - b).map(s => ({ value: s, label: `${s} ± 5` })));
   const map = {};
   STATE.sponges.forEach(r => { if (r.code && !map[r.code]) map[r.code] = r.name; });
   fillSelect($('inq-sponge-code'), Object.keys(map).sort().map(c => ({ value: c, label: `${c} — ${map[c]}` })), '전체 자재');
@@ -737,7 +733,7 @@ window.resetInspectFilter = function (kind) {
     ['inq-rod-supplier', 'inq-rod-color', 'inq-rod-judge', 'inq-rod-code', 'inq-rod-from', 'inq-rod-to'].forEach(id => $(id).value = '');
     renderRod();
   } else if (kind === 'sponge') {
-    ['inq-sponge-spec', 'inq-sponge-judge', 'inq-sponge-code', 'inq-sponge-from', 'inq-sponge-to'].forEach(id => $(id).value = '');
+    ['inq-sponge-judge', 'inq-sponge-code', 'inq-sponge-from', 'inq-sponge-to'].forEach(id => $(id).value = '');
     renderSponge();
   }
 };
@@ -756,7 +752,7 @@ window.initInspectSection = async function () {
       $(id).addEventListener('input', renderBolt));
     ['inq-rod-supplier', 'inq-rod-color', 'inq-rod-judge', 'inq-rod-code', 'inq-rod-from', 'inq-rod-to'].forEach(id =>
       $(id).addEventListener('input', renderRod));
-    ['inq-sponge-spec', 'inq-sponge-judge', 'inq-sponge-code', 'inq-sponge-from', 'inq-sponge-to'].forEach(id =>
+    ['inq-sponge-judge', 'inq-sponge-code', 'inq-sponge-from', 'inq-sponge-to'].forEach(id =>
       $(id).addEventListener('input', renderSponge));
     STATE.bound = true;
   }

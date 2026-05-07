@@ -1184,8 +1184,8 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div class="data-table-wrapper" style="padding:14px 18px">
       <div class="date-filter" style="margin:0;flex-wrap:wrap">
         <div><label style="display:block;margin-bottom:4px">공급업체</label><select id="inq-bolt-supplier" class="date-input" style="min-width:120px"></select></div>
-        <div><label style="display:block;margin-bottom:4px">색상</label><select id="inq-bolt-color" class="date-input" style="min-width:100px"></select></div>
         <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-bolt-code" class="date-input" style="min-width:280px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">색상</label><select id="inq-bolt-color" class="date-input" style="min-width:100px"></select></div>
         <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="inq-bolt-from" class="date-input"></div>
         <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="inq-bolt-to" class="date-input"></div>
         <button class="date-btn" onclick="resetInspectFilter('bolt')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
@@ -1239,9 +1239,9 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div class="data-table-wrapper" style="padding:14px 18px">
       <div class="date-filter" style="margin:0;flex-wrap:wrap">
         <div><label style="display:block;margin-bottom:4px">공급업체</label><select id="inq-rod-supplier" class="date-input" style="min-width:120px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-rod-code" class="date-input" style="min-width:280px"></select></div>
         <div><label style="display:block;margin-bottom:4px">색상</label><select id="inq-rod-color" class="date-input" style="min-width:100px"></select></div>
         <div><label style="display:block;margin-bottom:4px">판정</label><select id="inq-rod-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
-        <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-rod-code" class="date-input" style="min-width:280px"></select></div>
         <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="inq-rod-from" class="date-input"></div>
         <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="inq-rod-to" class="date-input"></div>
         <button class="date-btn" onclick="resetInspectFilter('rod')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
@@ -1290,9 +1290,8 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div id="inq-sponge-kpi" class="kpi-grid"></div>
     <div class="data-table-wrapper" style="padding:14px 18px">
       <div class="date-filter" style="margin:0;flex-wrap:wrap">
-        <div><label style="display:block;margin-bottom:4px">규격 (목표값)</label><select id="inq-sponge-spec" class="date-input" style="min-width:120px"></select></div>
-        <div><label style="display:block;margin-bottom:4px">판정</label><select id="inq-sponge-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
         <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-sponge-code" class="date-input" style="min-width:340px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">판정</label><select id="inq-sponge-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
         <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="inq-sponge-from" class="date-input"></div>
         <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="inq-sponge-to" class="date-input"></div>
         <button class="date-btn" onclick="resetInspectFilter('sponge')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
