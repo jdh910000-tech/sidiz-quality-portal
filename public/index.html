@@ -538,7 +538,7 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div class="portal-card" onclick="showSection('lab')"><div class="card-icon violet">🔬</div><div class="card-title">시디즈 시험소</div><div class="card-desc">시험소 업무 현황 및 시험 진행 상태 모니터링</div><div class="card-status live">운영 중</div></div>
     <div class="portal-card" onclick="showSection('closing')"><div class="card-icon amber">💰</div><div class="card-title">월 마감</div><div class="card-desc">클레임 비용 정산 및 월별 마감 현황 관리</div><div class="card-status dev">개발 예정</div></div>
     <div class="portal-card" onclick="showSection('as')"><div class="card-icon rose">🔧</div><div class="card-title">AS판정 현황</div><div class="card-desc">AS 판정 결과 및 유형별 분류 현황</div><div class="card-status dev">개발 예정</div></div>
-    <div class="portal-card" onclick="showSection('inspect')"><div class="card-icon amber">✅</div><div class="card-title">인수검사 현황</div><div class="card-desc">자재 및 제품 인수검사 결과 현황</div><div class="card-status dev">개발 예정</div></div>
+    <div class="portal-card" onclick="showSection('inspect')"><div class="card-icon amber">✅</div><div class="card-title">인수검사 현황</div><div class="card-desc">볼트 · 중심봉 · 스폰지 인수검사 데이터 / 실시간 입력 / 불량 분석 리포트</div><div class="card-status live">운영 중</div></div>
     <div class="portal-card" onclick="showSection('cert')"><div class="card-icon cyan">📜</div><div class="card-title">인증현황</div><div class="card-desc">제품 인증 및 규격 관리 현황</div><div class="card-status dev">개발 예정</div></div>
     <div class="portal-card" onclick="showSection('team')"><div class="card-icon blue">👥</div><div class="card-title">인원현황</div><div class="card-desc">품질관리팀 조직 구조도 및 인원별 담당 역할</div><div class="card-status live">운영 중</div></div>
     <div class="portal-card" onclick="showSection('okr')"><div class="card-icon emerald">🎯</div><div class="card-title">팀 목표</div><div class="card-desc">연도별 OKR 기반 팀 목표 관리 — 계획 및 결과 매칭</div><div class="card-status live">운영 중</div></div>
@@ -1154,7 +1154,219 @@ body.share-mode .section > .header .header-left p { display: none; }
 
 <!-- ===== AS / INSPECT / CERT ===== -->
 <div id="section-as" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,107,122,0.1)">🔧</div><h2>AS판정 현황</h2><p>AS 판정 결과 및 유형별 분류 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
-<div id="section-inspect" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,179,71,0.1)">✅</div><h2>인수검사 현황</h2><p>자재 및 제품 인수검사 결과를 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
+<div id="section-inspect" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header">
+    <div class="header-left">
+      <h1><span>인수검사 현황</span></h1>
+      <p>볼트 · 중심봉 · 스폰지 자재 인수검사 데이터 통합 관리</p>
+    </div>
+    <div class="header-right">
+      <span class="header-badge">Supabase 실시간</span>
+    </div>
+  </div>
+
+  <!-- 서브탭 -->
+  <div class="sub-tabs">
+    <button class="sub-tab inspect-subtab active" data-tab="bolt" onclick="switchInspectTab('bolt')">🔩 볼트 (경도)</button>
+    <button class="sub-tab inspect-subtab" data-tab="rod" onclick="switchInspectTab('rod')">⚙ 중심봉 (테이퍼/와블)</button>
+    <button class="sub-tab inspect-subtab" data-tab="sponge" onclick="switchInspectTab('sponge')">🧊 스폰지 (경도)</button>
+    <button class="sub-tab inspect-subtab" data-tab="report" onclick="switchInspectTab('report')">📊 불량 분석 리포트</button>
+  </div>
+
+  <div id="inq-loading" style="display:none;align-items:center;justify-content:center;padding:60px;color:var(--text-muted);font-size:13px">
+    <div>⏳ 데이터 로드 중...</div>
+  </div>
+
+  <!-- ===== 볼트 탭 ===== -->
+  <div id="inspect-pane-bolt" class="inspect-pane" style="display:block">
+    <div id="inq-bolt-kpi" class="kpi-grid"></div>
+    <div class="data-table-wrapper" style="padding:14px 18px">
+      <div class="date-filter" style="margin:0;flex-wrap:wrap">
+        <div><label style="display:block;margin-bottom:4px">공급업체</label><select id="inq-bolt-supplier" class="date-input" style="min-width:120px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">색상</label><select id="inq-bolt-color" class="date-input" style="min-width:100px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-bolt-code" class="date-input" style="min-width:280px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="inq-bolt-from" class="date-input"></div>
+        <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="inq-bolt-to" class="date-input"></div>
+        <button class="date-btn" onclick="resetInspectFilter('bolt')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
+        <button class="date-btn" onclick="exportInspect('bolt')" style="align-self:flex-end">⬇ 자료변환</button>
+        <button class="date-btn" onclick="toggleInspectForm('bolt')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+      </div>
+    </div>
+
+    <!-- 입력 폼 -->
+    <div id="inq-form-bolt" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 볼트 인수검사 데이터 입력</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-bolt-date" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">공급업체 *</label><input type="text" id="form-bolt-supplier" class="date-input" placeholder="영보/혜성/에스" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input type="text" id="form-bolt-code" class="date-input" placeholder="ETFS000XXX" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input type="text" id="form-bolt-color" class="date-input" placeholder="NI/BK/CR/WH" style="width:100%"></div>
+        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input type="text" id="form-bolt-name" class="date-input" placeholder="예: 육각렌치볼트M6*35NI" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HV1</label><input type="number" step="0.1" id="form-bolt-hv1" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HV2</label><input type="number" step="0.1" id="form-bolt-hv2" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HRC1</label><input type="number" step="0.1" id="form-bolt-hrc1" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HRC2</label><input type="number" step="0.1" id="form-bolt-hrc2" class="date-input" style="width:100%"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="date-btn" onclick="toggleInspectForm('bolt')" style="background:var(--text-muted)">취소</button>
+        <button class="date-btn" onclick="submitInspectBolt()" style="background:var(--accent-emerald)">저장</button>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card"><h3>일별 평균 경도 추이 (HV / HRC)</h3><div style="position:relative;height:260px"><canvas id="inq-bolt-trend"></canvas></div></div>
+      <div class="chart-card"><h3>공급업체별 측정 비율</h3><div style="position:relative;height:260px"><canvas id="inq-bolt-supplier-pie"></canvas></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>공급업체별 평균 HV</h3><div style="position:relative;height:240px"><canvas id="inq-bolt-supplier-bar"></canvas></div></div>
+      <div class="chart-card"><h3>색상별 측정 분포</h3><div style="position:relative;height:240px"><canvas id="inq-bolt-color-bar"></canvas></div></div>
+    </div>
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>측정 이력 (<span id="inq-bolt-count">0</span>건)</h3></div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table class="data-table">
+          <thead><tr><th>측정일</th><th>공급업체</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>HV1</th><th>HV2</th><th>HV평균</th><th>HRC1</th><th>HRC2</th><th>HRC평균</th></tr></thead>
+          <tbody id="inq-bolt-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 중심봉 탭 ===== -->
+  <div id="inspect-pane-rod" class="inspect-pane" style="display:none">
+    <div id="inq-rod-kpi" class="kpi-grid"></div>
+    <div class="data-table-wrapper" style="padding:14px 18px">
+      <div class="date-filter" style="margin:0;flex-wrap:wrap">
+        <div><label style="display:block;margin-bottom:4px">공급업체</label><select id="inq-rod-supplier" class="date-input" style="min-width:120px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">색상</label><select id="inq-rod-color" class="date-input" style="min-width:100px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">판정</label><select id="inq-rod-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
+        <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-rod-code" class="date-input" style="min-width:280px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="inq-rod-from" class="date-input"></div>
+        <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="inq-rod-to" class="date-input"></div>
+        <button class="date-btn" onclick="resetInspectFilter('rod')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
+        <button class="date-btn" onclick="exportInspect('rod')" style="align-self:flex-end">⬇ 자료변환</button>
+        <button class="date-btn" onclick="toggleInspectForm('rod')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+      </div>
+    </div>
+    <div id="inq-form-rod" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 중심봉 인수검사 데이터 입력 (기준: 테이퍼 5~7, 와블 ≤1.0)</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-rod-date" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">공급업체 *</label><input type="text" id="form-rod-supplier" class="date-input" placeholder="삼홍사/K.G.S" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input type="text" id="form-rod-code" class="date-input" placeholder="ETHW000XXX-R000" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input type="text" id="form-rod-color" class="date-input" placeholder="BK/CR/WW/MM/SG" style="width:100%"></div>
+        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input type="text" id="form-rod-name" class="date-input" placeholder="예: 중심봉,100G_EX BK" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">높이1</label><input type="number" step="0.01" id="form-rod-h1" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">높이2</label><input type="number" step="0.01" id="form-rod-h2" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">와블</label><input type="number" step="0.01" id="form-rod-wobble" class="date-input" style="width:100%"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="date-btn" onclick="toggleInspectForm('rod')" style="background:var(--text-muted)">취소</button>
+        <button class="date-btn" onclick="submitInspectRod()" style="background:var(--accent-emerald)">저장</button>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>일별 평균 테이퍼 높이/와블 추이</h3><div style="position:relative;height:280px"><canvas id="inq-rod-trend"></canvas></div></div>
+      <div class="chart-card"><h3>공급업체별 측정 비율</h3><div style="position:relative;height:280px"><canvas id="inq-rod-supplier-pie"></canvas></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>공급업체별 평균 와블 (기준 ≤1.0)</h3><div style="position:relative;height:240px"><canvas id="inq-rod-wobble"></canvas></div></div>
+      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:240px"><canvas id="inq-rod-judge-pie"></canvas></div></div>
+    </div>
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>측정 이력 (<span id="inq-rod-count">0</span>건)</h3></div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table class="data-table">
+          <thead><tr><th>측정일</th><th>공급업체</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>높이1</th><th>높이2</th><th>높이평균</th><th>와블</th><th>판정</th></tr></thead>
+          <tbody id="inq-rod-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 스폰지 탭 ===== -->
+  <div id="inspect-pane-sponge" class="inspect-pane" style="display:none">
+    <div id="inq-sponge-kpi" class="kpi-grid"></div>
+    <div class="data-table-wrapper" style="padding:14px 18px">
+      <div class="date-filter" style="margin:0;flex-wrap:wrap">
+        <div><label style="display:block;margin-bottom:4px">규격 (목표값)</label><select id="inq-sponge-spec" class="date-input" style="min-width:120px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">판정</label><select id="inq-sponge-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
+        <div><label style="display:block;margin-bottom:4px">자재 (드롭다운 선택)</label><select id="inq-sponge-code" class="date-input" style="min-width:340px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="inq-sponge-from" class="date-input"></div>
+        <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="inq-sponge-to" class="date-input"></div>
+        <button class="date-btn" onclick="resetInspectFilter('sponge')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
+        <button class="date-btn" onclick="exportInspect('sponge')" style="align-self:flex-end">⬇ 자료변환</button>
+        <button class="date-btn" onclick="toggleInspectForm('sponge')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+      </div>
+    </div>
+    <div id="inq-form-sponge" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 스폰지 인수검사 데이터 입력 (기준: 자재 규격 ± 5)</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-sponge-date" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input type="text" id="form-sponge-code" class="date-input" placeholder="OPFW00XXXX-R000" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input type="text" id="form-sponge-color" class="date-input" placeholder="XX" style="width:100%"></div>
+        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input type="text" id="form-sponge-name" class="date-input" placeholder="예: TC11_좌판 스폰지(35 ± 5)" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">규격 목표</label><input type="number" id="form-sponge-spec" class="date-input" placeholder="35/45/55" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">규격 허용오차</label><input type="number" id="form-sponge-tol" class="date-input" placeholder="5" value="5" style="width:100%"></div>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:var(--text-muted)">측정값 (1차/2차 × 중앙·좌·우)</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px">
+        <div><label style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px">1차 중앙</label><input type="number" step="0.1" id="form-sponge-m1c" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px">1차 좌</label><input type="number" step="0.1" id="form-sponge-m1l" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px">1차 우</label><input type="number" step="0.1" id="form-sponge-m1r" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px">2차 중앙</label><input type="number" step="0.1" id="form-sponge-m2c" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px">2차 좌</label><input type="number" step="0.1" id="form-sponge-m2l" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:3px">2차 우</label><input type="number" step="0.1" id="form-sponge-m2r" class="date-input" style="width:100%"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="date-btn" onclick="toggleInspectForm('sponge')" style="background:var(--text-muted)">취소</button>
+        <button class="date-btn" onclick="submitInspectSponge()" style="background:var(--accent-emerald)">저장</button>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>규격별 일별 평균 경도 추이</h3><div style="position:relative;height:300px"><canvas id="inq-sponge-trend"></canvas></div></div>
+      <div class="chart-card"><h3>규격별 측정 비율</h3><div style="position:relative;height:300px"><canvas id="inq-sponge-spec-pie"></canvas></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>위치별 평균 경도 (중앙/좌/우)</h3><div style="position:relative;height:240px"><canvas id="inq-sponge-position"></canvas></div></div>
+      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:240px"><canvas id="inq-sponge-judge-pie"></canvas></div></div>
+    </div>
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>측정 이력 (<span id="inq-sponge-count">0</span>건)</h3></div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table class="data-table">
+          <thead><tr><th>측정일</th><th>자재코드</th><th style="text-align:left">자재명</th><th>규격</th><th>중앙(1)</th><th>좌(1)</th><th>우(1)</th><th>중앙(2)</th><th>좌(2)</th><th>우(2)</th><th>평균</th><th>판정</th></tr></thead>
+          <tbody id="inq-sponge-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 불량 분석 리포트 탭 ===== -->
+  <div id="inspect-pane-report" class="inspect-pane" style="display:none">
+    <div id="inq-report-kpi" class="kpi-grid"></div>
+
+    <div class="analysis-box">
+      <h4>📋 권장 조치사항 (자동 분석)</h4>
+      <div id="inq-report-recommendations"></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card"><h3>월별 부적합 추이 (NG 건수)</h3><div style="position:relative;height:280px"><canvas id="inq-report-trend"></canvas></div></div>
+      <div class="chart-card"><h3>공급업체별 NG율 (중심봉)</h3><div style="position:relative;height:280px"><canvas id="inq-report-supplier"></canvas></div></div>
+    </div>
+
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>📊 부적합 자재 TOP 10</h3></div>
+      <table class="data-table">
+        <thead><tr><th>순위</th><th>분류</th><th>자재코드</th><th style="text-align:left">자재명</th><th>NG 건수</th><th>전체 측정</th><th>NG율</th></tr></thead>
+        <tbody id="inq-report-top10"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
 <div id="section-cert" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(0,198,215,0.1)">📜</div><h2>인증현황</h2><p>제품 인증 및 규격 관리 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
 
 <!-- ===== TEAM ===== -->
@@ -2036,6 +2248,7 @@ if (typeof Chart !== 'undefined') {
 }
 </script>
 <script src="supabase-client.js"></script>
+<script src="incoming-data.js"></script>
 <script src="symptom-data.js"></script>
 <script src="kpi-data.js"></script>
 <script src="cost-data.js"></script>
@@ -2051,6 +2264,7 @@ function showSection(id) {
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   window.scrollTo(0,0);
   if (id === 'team' && !_orgLoaded) { loadOrgChart(); _orgLoaded = true; }
+  if (id === 'inspect' && typeof initInspectSection === 'function') { initInspectSection(); }
 }
 
 function showClaimTab(tab,btn) {
