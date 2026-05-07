@@ -481,6 +481,42 @@ function extractProductCode(name) {
   return m ? m[1].toUpperCase() : '기타';
 }
 
+// 자재명 차별화 키워드 (제품코드/공통어/규격 제거 후 남은 의미있는 부분)
+function spongeDiffPart(name) {
+  if (!name) return '';
+  return String(name)
+    .replace(/^[A-Za-z0-9]+/, '')                    // 시작 제품코드 제거
+    .replace(/\([^)]*[±][^)]*\)/g, '')               // (35 ± 5) 등 규격 제거
+    .replace(/[_,]/g, ' ')                           // _, 콤마 → 공백
+    .replace(/좌판\s*스[펀폰]지|스[펀폰]지|좌판/g, '') // 공통어 제거
+    .replace(/\([^)]*\)/g, '')                       // 남은 괄호(천)(가죽) 제거
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// 차트 라벨 결정: 같은 제품코드끼리만 차별화 키워드 부착
+function spongeChartLabels(rowsForCode) {
+  const codeNameMap = {};
+  rowsForCode.forEach(r => { if (!codeNameMap[r.code]) codeNameMap[r.code] = r.name; });
+  const productGroups = {};
+  Object.entries(codeNameMap).forEach(([code, name]) => {
+    const p = extractProductCode(name);
+    (productGroups[p] = productGroups[p] || []).push({ code, name });
+  });
+  const labels = {};
+  Object.entries(productGroups).forEach(([p, items]) => {
+    if (items.length === 1) {
+      labels[items[0].code] = p;
+    } else {
+      items.forEach(it => {
+        const diff = spongeDiffPart(it.name);
+        labels[it.code] = diff ? `${p} ${diff}` : p;
+      });
+    }
+  });
+  return labels;
+}
+
 function renderSpongeKPI(rows) {
   const allAvg = avg(rows.map(spongeAvg));
   const ng = rows.filter(r => spongeJudge(r) === 'NG').length;
@@ -526,25 +562,18 @@ function renderSpongeCharts(rows) {
     const codeCount = {};
     rows.forEach(r => { codeCount[r.code] = (codeCount[r.code] || 0) + 1; });
     const topCodes = Object.entries(codeCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
-    const codeNameMap = {};
-    rows.forEach(r => { if (!codeNameMap[r.code]) codeNameMap[r.code] = r.name; });
-    // 같은 제품코드가 중복되면 (1)/(2)로 구분
-    const labelCount = {};
-    trendDatasets = topCodes.map((code, i) => {
-      const p = extractProductCode(codeNameMap[code]);
-      labelCount[p] = (labelCount[p] || 0) + 1;
-      const label = labelCount[p] === 1 ? p : `${p} (${labelCount[p]})`;
-      return {
-        label,
-        data: allDates.map(d => {
-          const ms = rows.filter(r => r.measure_date === d && r.code === code).map(spongeAvg).filter(v => v !== null);
-          return ms.length ? avg(ms) : null;
-        }),
-        borderColor: PALETTE[i % PALETTE.length],
-        backgroundColor: PALETTE[i % PALETTE.length] + '20',
-        tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
-      };
-    });
+    // 같은 제품코드 중복 시 자재명 차별화 키워드 (TC11 → "TC11 살빼기 O" / "TC11 살빼기 X")
+    const labels = spongeChartLabels(rows.filter(r => topCodes.includes(r.code)));
+    trendDatasets = topCodes.map((code, i) => ({
+      label: labels[code] || code,
+      data: allDates.map(d => {
+        const ms = rows.filter(r => r.measure_date === d && r.code === code).map(spongeAvg).filter(v => v !== null);
+        return ms.length ? avg(ms) : null;
+      }),
+      borderColor: PALETTE[i % PALETTE.length],
+      backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
+    }));
   }
   makeLine('spongeTrend', $('inq-sponge-trend').getContext('2d'), allDates, trendDatasets, {
     scales: {
@@ -999,59 +1028,52 @@ function bindFormAutocomplete() {
   if (_formAutoBound) return;
   _formAutoBound = true;
 
-  // 볼트: 자재코드 변경 → 자재명/색상/공급업체/재질 자동 채움
-  $('form-bolt-code')?.addEventListener('change', () => {
-    const code = $('form-bolt-code').value.trim();
-    const m = STATE.bolts.find(r => r.code === code);
-    if (!m) return;
-    if (!$('form-bolt-name').value) $('form-bolt-name').value = m.name;
-    if (!$('form-bolt-color').value) $('form-bolt-color').value = m.color || '';
-    if (!$('form-bolt-supplier').value) $('form-bolt-supplier').value = m.supplier || '';
-    if (!$('form-bolt-material').value && m.material) $('form-bolt-material').value = m.material;
-  });
-  $('form-bolt-name')?.addEventListener('change', () => {
-    const name = $('form-bolt-name').value.trim();
-    const m = STATE.bolts.find(r => r.name === name);
-    if (!m) return;
-    if (!$('form-bolt-code').value) $('form-bolt-code').value = m.code;
-    if (!$('form-bolt-color').value) $('form-bolt-color').value = m.color || '';
-    if (!$('form-bolt-supplier').value) $('form-bolt-supplier').value = m.supplier || '';
-    if (!$('form-bolt-material').value && m.material) $('form-bolt-material').value = m.material;
-  });
+  // 자재코드 ↔ 자재명: 1:1 관계이므로 항상 덮어쓰기
+  // 다른 필드(색상/공급업체/재질): 비어있을 때만 채움 (사용자 입력 보호)
+  // input + change 둘 다 처리: datalist 클릭 즉시 반응 + 키보드 입력 후 포커스 아웃 모두 커버
 
-  // 중심봉
-  $('form-rod-code')?.addEventListener('change', () => {
-    const code = $('form-rod-code').value.trim();
-    const m = STATE.rods.find(r => r.code === code);
-    if (!m) return;
-    if (!$('form-rod-name').value) $('form-rod-name').value = m.name;
-    if (!$('form-rod-color').value) $('form-rod-color').value = m.color || '';
-    if (!$('form-rod-supplier').value) $('form-rod-supplier').value = m.supplier || '';
-  });
-  $('form-rod-name')?.addEventListener('change', () => {
-    const name = $('form-rod-name').value.trim();
-    const m = STATE.rods.find(r => r.name === name);
-    if (!m) return;
-    if (!$('form-rod-code').value) $('form-rod-code').value = m.code;
-    if (!$('form-rod-color').value) $('form-rod-color').value = m.color || '';
-    if (!$('form-rod-supplier').value) $('form-rod-supplier').value = m.supplier || '';
-  });
+  function setupAutoFill(prefix, dataset) {
+    const codeEl = $(`form-${prefix}-code`);
+    const nameEl = $(`form-${prefix}-name`);
 
-  // 스폰지
-  $('form-sponge-code')?.addEventListener('change', () => {
-    const code = $('form-sponge-code').value.trim();
-    const m = STATE.sponges.find(r => r.code === code);
-    if (!m) return;
-    if (!$('form-sponge-name').value) $('form-sponge-name').value = m.name;
-    if (!$('form-sponge-color').value) $('form-sponge-color').value = m.color || '';
-  });
-  $('form-sponge-name')?.addEventListener('change', () => {
-    const name = $('form-sponge-name').value.trim();
-    const m = STATE.sponges.find(r => r.name === name);
-    if (!m) return;
-    if (!$('form-sponge-code').value) $('form-sponge-code').value = m.code;
-    if (!$('form-sponge-color').value) $('form-sponge-color').value = m.color || '';
-  });
+    const fromCode = () => {
+      const code = codeEl.value.trim();
+      if (!code) return;
+      const m = dataset().find(r => r.code === code);
+      if (!m) return;
+      nameEl.value = m.name; // 항상 덮어씀
+      const colorEl = $(`form-${prefix}-color`);
+      const supplierEl = $(`form-${prefix}-supplier`);
+      const materialEl = $(`form-${prefix}-material`);
+      if (colorEl && !colorEl.value) colorEl.value = m.color || '';
+      if (supplierEl && !supplierEl.value) supplierEl.value = m.supplier || '';
+      if (materialEl && !materialEl.value && m.material) materialEl.value = m.material;
+    };
+    const fromName = () => {
+      const name = nameEl.value.trim();
+      if (!name) return;
+      const m = dataset().find(r => r.name === name);
+      if (!m) return;
+      codeEl.value = m.code; // 항상 덮어씀
+      const colorEl = $(`form-${prefix}-color`);
+      const supplierEl = $(`form-${prefix}-supplier`);
+      const materialEl = $(`form-${prefix}-material`);
+      if (colorEl && !colorEl.value) colorEl.value = m.color || '';
+      if (supplierEl && !supplierEl.value) supplierEl.value = m.supplier || '';
+      if (materialEl && !materialEl.value && m.material) materialEl.value = m.material;
+    };
+
+    // input 이벤트: datalist 선택 즉시 반응 (클릭만으로 자동완성)
+    codeEl?.addEventListener('input', fromCode);
+    nameEl?.addEventListener('input', fromName);
+    // change 이벤트: 직접 타이핑 후 포커스 아웃에도 작동
+    codeEl?.addEventListener('change', fromCode);
+    nameEl?.addEventListener('change', fromName);
+  }
+
+  setupAutoFill('bolt', () => STATE.bolts);
+  setupAutoFill('rod', () => STATE.rods);
+  setupAutoFill('sponge', () => STATE.sponges);
 }
 
 function refreshDatalists() {
