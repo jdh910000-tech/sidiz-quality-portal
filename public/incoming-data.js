@@ -254,39 +254,67 @@ function renderBoltKPI(rows) {
   `;
 }
 function renderBoltCharts(rows) {
-  // 일별 평균 추이
-  const byDate = {};
-  rows.forEach(r => {
-    if (!r.measure_date) return;
-    if (!byDate[r.measure_date]) byDate[r.measure_date] = { hv: [], hrc: [] };
-    const hv = boltHV(r), hrc = boltHRC(r);
-    if (hv !== null) byDate[r.measure_date].hv.push(hv);
-    if (hrc !== null) byDate[r.measure_date].hrc.push(hrc);
-  });
-  const dates = Object.keys(byDate).sort();
-  makeLine('boltTrend', $('inq-bolt-trend').getContext('2d'), dates, [
-    { label: 'HV (비커스)', data: dates.map(d => avg(byDate[d].hv)), borderColor: SIDIZ_COLORS.blue, backgroundColor: SIDIZ_COLORS.blue + '20', yAxisID: 'y', tension: 0.3, pointRadius: 2, borderWidth: 2 },
-    { label: 'HRC (로크웰)', data: dates.map(d => avg(byDate[d].hrc)), borderColor: SIDIZ_COLORS.rose, backgroundColor: SIDIZ_COLORS.rose + '20', yAxisID: 'y1', tension: 0.3, pointRadius: 2, borderWidth: 2 },
-  ], {
+  // ===== 자재별 경도 추이 =====
+  // 선택된 자재가 있으면 그 자재의 시점별 측정값(HV1/HV2 평균), 없으면 측정횟수 TOP 5 자재
+  const selCode = $('inq-bolt-code').value;
+  const dates = uniq(rows.map(r => r.measure_date)).sort();
+  let datasets;
+  if (selCode) {
+    const codeName = (STATE.bolts.find(r => r.code === selCode)?.name) || selCode;
+    datasets = [{
+      label: `${selCode} (HV)`,
+      data: dates.map(d => {
+        const ms = rows.filter(r => r.measure_date === d && r.code === selCode).map(boltHV).filter(v => v !== null);
+        return ms.length ? avg(ms) : null;
+      }),
+      borderColor: SIDIZ_COLORS.blue, backgroundColor: SIDIZ_COLORS.blue + '20',
+      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true,
+    }];
+  } else {
+    // 전체: 측정횟수 TOP 5 자재
+    const codeCount = {};
+    rows.forEach(r => { codeCount[r.code] = (codeCount[r.code] || 0) + 1; });
+    const topCodes = Object.entries(codeCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+    datasets = topCodes.map((code, i) => ({
+      label: code,
+      data: dates.map(d => {
+        const ms = rows.filter(r => r.measure_date === d && r.code === code).map(boltHV).filter(v => v !== null);
+        return ms.length ? avg(ms) : null;
+      }),
+      borderColor: PALETTE[i % PALETTE.length],
+      backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, pointRadius: 2, borderWidth: 2, spanGaps: true,
+    }));
+  }
+  makeLine('boltTrend', $('inq-bolt-trend').getContext('2d'), dates, datasets, {
     scales: {
       x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
-      y: { type: 'linear', position: 'left', title: { display: true, text: 'HV', font: { size: 10 } }, grid: { color: SIDIZ_COLORS.border } },
-      y1: { type: 'linear', position: 'right', title: { display: true, text: 'HRC', font: { size: 10 } }, grid: { display: false } },
+      y: { beginAtZero: false, title: { display: true, text: 'HV (비커스)', font: { size: 10 } }, grid: { color: SIDIZ_COLORS.border } }
     }
   });
 
-  // 공급업체별 도넛
+  // ===== 공급업체별 도넛 (유지) =====
   const sups = uniq(rows.map(r => r.supplier)).sort();
   const supCounts = sups.map(s => rows.filter(r => r.supplier === s).length);
   makeDoughnut('boltSup', $('inq-bolt-supplier-pie').getContext('2d'), sups, supCounts, PALETTE);
 
-  // 공급업체별 평균 HV
-  const supAvgs = sups.map(s => avg(rows.filter(r => r.supplier === s).map(boltHV)));
-  makeBar('boltSupBar', $('inq-bolt-supplier-bar').getContext('2d'), sups, [
-    { label: '평균 HV', data: supAvgs, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6 }
-  ]);
+  // ===== 재질×업체 평균 HV (그룹 막대) =====
+  const materials = uniq(rows.map(r => r.material || '미분류')).sort();
+  const matDatasets = sups.map((sup, i) => ({
+    label: sup,
+    data: materials.map(mat => avg(rows.filter(r => (r.material || '미분류') === mat && r.supplier === sup).map(boltHV))),
+    backgroundColor: PALETTE[i % PALETTE.length],
+    borderRadius: 6,
+  }));
+  makeBar('boltMatSup', $('inq-bolt-supplier-bar').getContext('2d'), materials, matDatasets, {
+    scales: { y: { beginAtZero: false, grid: { color: SIDIZ_COLORS.border }, title: { display: true, text: '평균 HV', font: { size: 10 } } }, x: { grid: { display: false } } },
+    plugins: {
+      legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
+      datalabels: { display: false }
+    }
+  });
 
-  // 색상별 분포
+  // ===== 색상별 분포 (유지) =====
   const cols = uniq(rows.map(r => r.color)).sort();
   const colCounts = cols.map(c => rows.filter(r => r.color === c).length);
   makeBar('boltCol', $('inq-bolt-color-bar').getContext('2d'), cols, [
@@ -298,13 +326,14 @@ function renderBoltTable(rows) {
   const sorted = [...rows].sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
   const tb = $('inq-bolt-table-body');
   if (!sorted.length) {
-    tb.innerHTML = '<tr><td colspan="11" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
+    tb.innerHTML = '<tr><td colspan="13" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
     return;
   }
   tb.innerHTML = sorted.slice(0, 500).map(r => `
     <tr>
       <td>${escHtml(r.measure_date)}</td>
       <td>${escHtml(r.supplier)}</td>
+      <td>${escHtml(r.material || '-')}</td>
       <td>${escHtml(r.code)}</td>
       <td>${escHtml(r.color || '')}</td>
       <td class="row-header" style="text-align:left">${escHtml(r.name)}</td>
@@ -312,6 +341,7 @@ function renderBoltTable(rows) {
       <td class="highlight">${fmt(boltHV(r))}</td>
       <td>${fmt(r.hrc1)}</td><td>${fmt(r.hrc2)}</td>
       <td class="highlight">${fmt(boltHRC(r))}</td>
+      <td><button onclick="deleteInspectRow('incoming_bolts', ${r.id})" class="btn-del" title="삭제" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">🗑</button></td>
     </tr>`).join('');
 }
 function initBoltDropdowns() {
@@ -369,10 +399,10 @@ function renderRodCharts(rows) {
   const dates = Object.keys(byDate).sort();
   makeLine('rodTrend', $('inq-rod-trend').getContext('2d'), dates, [
     { label: '테이퍼 높이', data: dates.map(d => avg(byDate[d].h)), borderColor: SIDIZ_COLORS.blue, backgroundColor: SIDIZ_COLORS.blue + '20', yAxisID: 'y', tension: 0.3, pointRadius: 2, borderWidth: 2 },
-    { label: '와블', data: dates.map(d => avg(byDate[d].w)), borderColor: SIDIZ_COLORS.violet, backgroundColor: SIDIZ_COLORS.violet + '20', yAxisID: 'y1', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+    { label: '와블', data: dates.map(d => avg(byDate[d].w)), borderColor: '#FF8C00', backgroundColor: '#FF8C0020', yAxisID: 'y1', tension: 0.3, pointRadius: 2, borderWidth: 2 },
     { label: '높이 상한', data: dates.map(() => 7.0), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [4, 4], pointRadius: 0, fill: false, yAxisID: 'y' },
     { label: '높이 하한', data: dates.map(() => 5.0), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [4, 4], pointRadius: 0, fill: false, yAxisID: 'y' },
-    { label: '와블 한계', data: dates.map(() => 1.0), borderColor: SIDIZ_COLORS.violet, borderWidth: 1, borderDash: [2, 2], pointRadius: 0, fill: false, yAxisID: 'y1' },
+    { label: '와블 한계', data: dates.map(() => 1.0), borderColor: '#FF8C00', borderWidth: 1, borderDash: [2, 2], pointRadius: 0, fill: false, yAxisID: 'y1' },
   ], {
     scales: {
       x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
@@ -400,7 +430,7 @@ function renderRodTable(rows) {
   const sorted = [...rows].sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
   const tb = $('inq-rod-table-body');
   if (!sorted.length) {
-    tb.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
+    tb.innerHTML = '<tr><td colspan="11" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
     return;
   }
   tb.innerHTML = sorted.slice(0, 500).map(r => {
@@ -415,6 +445,7 @@ function renderRodTable(rows) {
       <td class="highlight">${fmt(rodH(r), 2)}</td>
       <td>${fmt(r.wobble, 2)}</td>
       <td><span class="${j === 'NG' ? 'danger' : (j === 'OK' ? 'success' : '')}">${j || '-'}</span></td>
+      <td><button onclick="deleteInspectRow('incoming_rods', ${r.id})" class="btn-del" title="삭제" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">🗑</button></td>
     </tr>`;
   }).join('');
 }
@@ -443,6 +474,13 @@ function getSpongeFiltered() {
     inDateRange(r.measure_date, from, to)
   );
 }
+// 자재명에서 제품코드 추출 (예: "TC11_좌판...", "T50RE 조절형..." → "TC11", "T50RE")
+function extractProductCode(name) {
+  if (!name) return '기타';
+  const m = String(name).match(/^([A-Za-z][A-Za-z0-9]*)/);
+  return m ? m[1].toUpperCase() : '기타';
+}
+
 function renderSpongeKPI(rows) {
   const allAvg = avg(rows.map(spongeAvg));
   const ng = rows.filter(r => spongeJudge(r) === 'NG').length;
@@ -459,28 +497,57 @@ function renderSpongeKPI(rows) {
   `;
 }
 function renderSpongeCharts(rows) {
-  const specs = uniq(rows.map(r => r.spec_target).filter(v => v !== null && v !== undefined)).sort((a, b) => a - b);
+  // ===== 자재별 경도 추이 =====
+  // 선택된 자재가 있으면 그 자재만, 없으면 측정횟수 TOP 5 자재
+  const selCode = $('inq-sponge-code').value;
   const allDates = uniq(rows.map(r => r.measure_date)).sort();
-  const datasets = specs.map((spec, i) => ({
-    label: `${spec} ± ${rows.find(r => r.spec_target === spec)?.spec_tol || 5}`,
-    data: allDates.map(d => {
-      const ms = rows.filter(r => r.measure_date === d && r.spec_target === spec).map(spongeAvg).filter(v => v !== null);
-      return ms.length ? avg(ms) : null;
-    }),
-    borderColor: PALETTE[i % PALETTE.length],
-    backgroundColor: PALETTE[i % PALETTE.length] + '20',
-    tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
-  }));
-  makeLine('spongeTrend', $('inq-sponge-trend').getContext('2d'), allDates, datasets, {
+  let trendDatasets;
+  if (selCode) {
+    trendDatasets = [{
+      label: selCode,
+      data: allDates.map(d => {
+        const ms = rows.filter(r => r.measure_date === d && r.code === selCode).map(spongeAvg).filter(v => v !== null);
+        return ms.length ? avg(ms) : null;
+      }),
+      borderColor: SIDIZ_COLORS.blue, backgroundColor: SIDIZ_COLORS.blue + '20',
+      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true,
+    }];
+  } else {
+    const codeCount = {};
+    rows.forEach(r => { codeCount[r.code] = (codeCount[r.code] || 0) + 1; });
+    const topCodes = Object.entries(codeCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+    const codeNameMap = {};
+    rows.forEach(r => { if (!codeNameMap[r.code]) codeNameMap[r.code] = r.name; });
+    trendDatasets = topCodes.map((code, i) => ({
+      label: extractProductCode(codeNameMap[code]) + ' ' + code.slice(-4),
+      data: allDates.map(d => {
+        const ms = rows.filter(r => r.measure_date === d && r.code === code).map(spongeAvg).filter(v => v !== null);
+        return ms.length ? avg(ms) : null;
+      }),
+      borderColor: PALETTE[i % PALETTE.length],
+      backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
+    }));
+  }
+  makeLine('spongeTrend', $('inq-sponge-trend').getContext('2d'), allDates, trendDatasets, {
     scales: {
       x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
       y: { beginAtZero: false, title: { display: true, text: '경도', font: { size: 10 } }, grid: { color: SIDIZ_COLORS.border } }
     }
   });
 
-  makeDoughnut('spongeSpec', $('inq-sponge-spec-pie').getContext('2d'),
-    specs.map(s => `${s} ± 5`), specs.map(s => rows.filter(r => r.spec_target === s).length), PALETTE);
+  // ===== 제품별 측정 비율 (자재명 앞 코드: TC11, T50RE, GC1 등) =====
+  const prodCounts = {};
+  rows.forEach(r => {
+    const p = extractProductCode(r.name);
+    prodCounts[p] = (prodCounts[p] || 0) + 1;
+  });
+  const prodLabels = Object.keys(prodCounts).sort();
+  const prodData = prodLabels.map(p => prodCounts[p]);
+  makeDoughnut('spongeProd', $('inq-sponge-spec-pie').getContext('2d'),
+    prodLabels, prodData, PALETTE);
 
+  // ===== 위치별 평균 (유지) =====
   const cVals = rows.flatMap(r => [r.m1_center, r.m2_center]).filter(v => v !== null && v !== undefined);
   const lVals = rows.flatMap(r => [r.m1_left, r.m2_left]).filter(v => v !== null && v !== undefined);
   const rVals = rows.flatMap(r => [r.m1_right, r.m2_right]).filter(v => v !== null && v !== undefined);
@@ -488,6 +555,7 @@ function renderSpongeCharts(rows) {
     { label: '평균', data: [avg(cVals), avg(lVals), avg(rVals)], backgroundColor: [SIDIZ_COLORS.blue, SIDIZ_COLORS.cyan, SIDIZ_COLORS.emerald], borderRadius: 6 }
   ]);
 
+  // ===== 기준 부적합 (유지) =====
   const ok = rows.filter(r => spongeJudge(r) === 'OK').length;
   const ng = rows.filter(r => spongeJudge(r) === 'NG').length;
   makeDoughnut('spongeJudge', $('inq-sponge-judge-pie').getContext('2d'),
@@ -503,16 +571,15 @@ function renderSpongeTable(rows) {
   }
   tb.innerHTML = sorted.slice(0, 500).map(r => {
     const a = spongeAvg(r), j = spongeJudge(r);
-    const spec = r.spec_target ? `${r.spec_target} ± ${r.spec_tol || 5}` : '-';
     return `<tr>
       <td>${escHtml(r.measure_date)}</td>
       <td>${escHtml(r.code)}</td>
       <td class="row-header" style="text-align:left">${escHtml(r.name)}</td>
-      <td>${spec}</td>
       <td>${fmt(r.m1_center)}</td><td>${fmt(r.m1_left)}</td><td>${fmt(r.m1_right)}</td>
       <td>${fmt(r.m2_center)}</td><td>${fmt(r.m2_left)}</td><td>${fmt(r.m2_right)}</td>
       <td class="highlight">${fmt(a)}</td>
       <td><span class="${j === 'NG' ? 'danger' : (j === 'OK' ? 'success' : '')}">${j || '-'}</span></td>
+      <td><button onclick="deleteInspectRow('incoming_sponges', ${r.id})" class="btn-del" title="삭제" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">🗑</button></td>
     </tr>`;
   }).join('');
 }
@@ -819,6 +886,7 @@ window.submitInspectBolt = async function () {
     code: $('form-bolt-code').value.trim(),
     color: $('form-bolt-color').value.trim() || null,
     name: $('form-bolt-name').value.trim(),
+    material: $('form-bolt-material').value.trim() || null,
     hv1: parseFloat($('form-bolt-hv1').value) || null,
     hv2: parseFloat($('form-bolt-hv2').value) || null,
     hrc1: parseFloat($('form-bolt-hrc1').value) || null,
@@ -848,13 +916,21 @@ window.submitInspectRod = async function () {
   await postRow('incoming_rods', data, 'rod');
 };
 window.submitInspectSponge = async function () {
+  const name = $('form-sponge-name').value.trim();
+  // 자재명에서 자동 파싱: 예 "TC11 좌판 스펀지(35 ± 5)" → target=35, tol=5
+  let spec_target = null, spec_tol = null;
+  const specMatch = name.match(/\((\d+)\s*[±]\s*(\d+)\)/);
+  if (specMatch) {
+    spec_target = parseInt(specMatch[1]);
+    spec_tol = parseInt(specMatch[2]);
+  }
   const data = {
     measure_date: $('form-sponge-date').value,
     code: $('form-sponge-code').value.trim(),
     color: $('form-sponge-color').value.trim() || null,
-    name: $('form-sponge-name').value.trim(),
-    spec_target: parseInt($('form-sponge-spec').value) || null,
-    spec_tol: parseInt($('form-sponge-tol').value) || 5,
+    name,
+    spec_target,
+    spec_tol,
     m1_center: parseFloat($('form-sponge-m1c').value) || null,
     m1_left: parseFloat($('form-sponge-m1l').value) || null,
     m1_right: parseFloat($('form-sponge-m1r').value) || null,
@@ -868,6 +944,113 @@ window.submitInspectSponge = async function () {
   }
   await postRow('incoming_sponges', data, 'sponge');
 };
+
+// ===== 측정이력 삭제 =====
+window.deleteInspectRow = async function (table, id) {
+  if (!confirm('이 측정이력을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.')) return;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: SB_HEADERS,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`${res.status}: ${txt}`);
+    }
+    await loadIncomingData(true);
+    if (table === 'incoming_bolts') renderBolt();
+    else if (table === 'incoming_rods') renderRod();
+    else if (table === 'incoming_sponges') renderSponge();
+  } catch (e) {
+    console.error(e);
+    alert('❌ 삭제 실패: ' + e.message);
+  }
+};
+
+// ===== datalist 자동완성 + 자재코드↔자재명 자동연동 =====
+function fillDatalist(id, options) {
+  const dl = $(id);
+  if (!dl) return;
+  dl.innerHTML = uniq(options).sort().map(o => `<option value="${escHtml(o)}">`).join('');
+}
+
+let _formAutoBound = false;
+function bindFormAutocomplete() {
+  if (_formAutoBound) return;
+  _formAutoBound = true;
+
+  // 볼트: 자재코드 변경 → 자재명/색상/공급업체/재질 자동 채움
+  $('form-bolt-code')?.addEventListener('change', () => {
+    const code = $('form-bolt-code').value.trim();
+    const m = STATE.bolts.find(r => r.code === code);
+    if (!m) return;
+    if (!$('form-bolt-name').value) $('form-bolt-name').value = m.name;
+    if (!$('form-bolt-color').value) $('form-bolt-color').value = m.color || '';
+    if (!$('form-bolt-supplier').value) $('form-bolt-supplier').value = m.supplier || '';
+    if (!$('form-bolt-material').value && m.material) $('form-bolt-material').value = m.material;
+  });
+  $('form-bolt-name')?.addEventListener('change', () => {
+    const name = $('form-bolt-name').value.trim();
+    const m = STATE.bolts.find(r => r.name === name);
+    if (!m) return;
+    if (!$('form-bolt-code').value) $('form-bolt-code').value = m.code;
+    if (!$('form-bolt-color').value) $('form-bolt-color').value = m.color || '';
+    if (!$('form-bolt-supplier').value) $('form-bolt-supplier').value = m.supplier || '';
+    if (!$('form-bolt-material').value && m.material) $('form-bolt-material').value = m.material;
+  });
+
+  // 중심봉
+  $('form-rod-code')?.addEventListener('change', () => {
+    const code = $('form-rod-code').value.trim();
+    const m = STATE.rods.find(r => r.code === code);
+    if (!m) return;
+    if (!$('form-rod-name').value) $('form-rod-name').value = m.name;
+    if (!$('form-rod-color').value) $('form-rod-color').value = m.color || '';
+    if (!$('form-rod-supplier').value) $('form-rod-supplier').value = m.supplier || '';
+  });
+  $('form-rod-name')?.addEventListener('change', () => {
+    const name = $('form-rod-name').value.trim();
+    const m = STATE.rods.find(r => r.name === name);
+    if (!m) return;
+    if (!$('form-rod-code').value) $('form-rod-code').value = m.code;
+    if (!$('form-rod-color').value) $('form-rod-color').value = m.color || '';
+    if (!$('form-rod-supplier').value) $('form-rod-supplier').value = m.supplier || '';
+  });
+
+  // 스폰지
+  $('form-sponge-code')?.addEventListener('change', () => {
+    const code = $('form-sponge-code').value.trim();
+    const m = STATE.sponges.find(r => r.code === code);
+    if (!m) return;
+    if (!$('form-sponge-name').value) $('form-sponge-name').value = m.name;
+    if (!$('form-sponge-color').value) $('form-sponge-color').value = m.color || '';
+  });
+  $('form-sponge-name')?.addEventListener('change', () => {
+    const name = $('form-sponge-name').value.trim();
+    const m = STATE.sponges.find(r => r.name === name);
+    if (!m) return;
+    if (!$('form-sponge-code').value) $('form-sponge-code').value = m.code;
+    if (!$('form-sponge-color').value) $('form-sponge-color').value = m.color || '';
+  });
+}
+
+function refreshDatalists() {
+  // 볼트
+  fillDatalist('dl-bolt-supplier', STATE.bolts.map(r => r.supplier));
+  fillDatalist('dl-bolt-code', STATE.bolts.map(r => r.code));
+  fillDatalist('dl-bolt-color', STATE.bolts.map(r => r.color));
+  fillDatalist('dl-bolt-name', STATE.bolts.map(r => r.name));
+  fillDatalist('dl-bolt-material', STATE.bolts.map(r => r.material));
+  // 중심봉
+  fillDatalist('dl-rod-supplier', STATE.rods.map(r => r.supplier));
+  fillDatalist('dl-rod-code', STATE.rods.map(r => r.code));
+  fillDatalist('dl-rod-color', STATE.rods.map(r => r.color));
+  fillDatalist('dl-rod-name', STATE.rods.map(r => r.name));
+  // 스폰지
+  fillDatalist('dl-sponge-code', STATE.sponges.map(r => r.code));
+  fillDatalist('dl-sponge-color', STATE.sponges.map(r => r.color));
+  fillDatalist('dl-sponge-name', STATE.sponges.map(r => r.name));
+}
 
 async function postRow(table, data, kind) {
   try {
@@ -886,6 +1069,7 @@ async function postRow(table, data, kind) {
     document.querySelectorAll(`#inq-form-${kind} input:not([type="date"])`).forEach(i => i.value = '');
     document.querySelectorAll(`#inq-form-${kind} select`).forEach(s => s.selectedIndex = 0);
     await loadIncomingData(true);
+    refreshDatalists();
     if (kind === 'bolt') renderBolt();
     else if (kind === 'rod') renderRod();
     else if (kind === 'sponge') renderSponge();
@@ -955,6 +1139,8 @@ window.initInspectSection = async function () {
       $(id).addEventListener('input', renderSponge));
     STATE.bound = true;
   }
+  refreshDatalists();
+  bindFormAutocomplete();
   switchInspectTab(STATE.currentTab);
 };
 

@@ -1196,13 +1196,19 @@ body.share-mode .section > .header .header-left p { display: none; }
 
     <!-- 입력 폼 -->
     <div id="inq-form-bolt" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
-      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 볼트 인수검사 데이터 입력</h3>
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 볼트 인수검사 데이터 입력 <span style="font-weight:400;color:var(--text-muted);font-size:11px">(자재코드/자재명 입력 시 다른 필드 자동완성)</span></h3>
+      <datalist id="dl-bolt-supplier"></datalist>
+      <datalist id="dl-bolt-code"></datalist>
+      <datalist id="dl-bolt-color"></datalist>
+      <datalist id="dl-bolt-name"></datalist>
+      <datalist id="dl-bolt-material"></datalist>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-bolt-date" class="date-input" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">공급업체 *</label><input type="text" id="form-bolt-supplier" class="date-input" placeholder="영보/혜성/에스" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input type="text" id="form-bolt-code" class="date-input" placeholder="ETFS000XXX" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input type="text" id="form-bolt-color" class="date-input" placeholder="NI/BK/CR/WH" style="width:100%"></div>
-        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input type="text" id="form-bolt-name" class="date-input" placeholder="예: 육각렌치볼트M6*35NI" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">공급업체 *</label><input list="dl-bolt-supplier" type="text" id="form-bolt-supplier" class="date-input" placeholder="영보/혜성/에스" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input list="dl-bolt-code" type="text" id="form-bolt-code" class="date-input" placeholder="ETFS000XXX" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input list="dl-bolt-color" type="text" id="form-bolt-color" class="date-input" placeholder="NI/BK/CR/WH" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">재질</label><input list="dl-bolt-material" type="text" id="form-bolt-material" class="date-input" placeholder="예: SCM435/SUS304" style="width:100%"></div>
+        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input list="dl-bolt-name" type="text" id="form-bolt-name" class="date-input" placeholder="예: 육각렌치볼트M6*35NI" style="width:100%"></div>
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HV1</label><input type="number" step="0.1" id="form-bolt-hv1" class="date-input" style="width:100%"></div>
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HV2</label><input type="number" step="0.1" id="form-bolt-hv2" class="date-input" style="width:100%"></div>
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">HRC1</label><input type="number" step="0.1" id="form-bolt-hrc1" class="date-input" style="width:100%"></div>
@@ -1215,18 +1221,18 @@ body.share-mode .section > .header .header-left p { display: none; }
     </div>
 
     <div class="chart-row">
-      <div class="chart-card"><h3>일별 평균 경도 추이 (HV / HRC)</h3><div style="position:relative;height:260px"><canvas id="inq-bolt-trend"></canvas></div></div>
+      <div class="chart-card"><h3>자재별 경도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(자재 미선택 시 측정 TOP5)</span></h3><div style="position:relative;height:260px"><canvas id="inq-bolt-trend"></canvas></div></div>
       <div class="chart-card"><h3>공급업체별 측정 비율</h3><div style="position:relative;height:260px"><canvas id="inq-bolt-supplier-pie"></canvas></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>공급업체별 평균 HV</h3><div style="position:relative;height:240px"><canvas id="inq-bolt-supplier-bar"></canvas></div></div>
+      <div class="chart-card"><h3>재질 × 공급업체 평균 HV</h3><div style="position:relative;height:240px"><canvas id="inq-bolt-supplier-bar"></canvas></div></div>
       <div class="chart-card"><h3>색상별 측정 분포</h3><div style="position:relative;height:240px"><canvas id="inq-bolt-color-bar"></canvas></div></div>
     </div>
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-bolt-count">0</span>건)</h3></div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
         <table class="data-table">
-          <thead><tr><th>측정일</th><th>공급업체</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>HV1</th><th>HV2</th><th>HV평균</th><th>HRC1</th><th>HRC2</th><th>HRC평균</th></tr></thead>
+          <thead><tr><th>측정일</th><th>공급업체</th><th>재질</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>HV1</th><th>HV2</th><th>HV평균</th><th>HRC1</th><th>HRC2</th><th>HRC평균</th><th>삭제</th></tr></thead>
           <tbody id="inq-bolt-table-body"></tbody>
         </table>
       </div>
@@ -1250,13 +1256,17 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
     <div id="inq-form-rod" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
-      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 중심봉 인수검사 데이터 입력 (기준: 테이퍼 5~7, 와블 ≤1.0)</h3>
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 중심봉 인수검사 데이터 입력 (기준: 테이퍼 5~7, 와블 ≤1.0) <span style="font-weight:400;color:var(--text-muted);font-size:11px">(자재코드/자재명 입력 시 자동완성)</span></h3>
+      <datalist id="dl-rod-supplier"></datalist>
+      <datalist id="dl-rod-code"></datalist>
+      <datalist id="dl-rod-color"></datalist>
+      <datalist id="dl-rod-name"></datalist>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-rod-date" class="date-input" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">공급업체 *</label><input type="text" id="form-rod-supplier" class="date-input" placeholder="삼홍사/K.G.S" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input type="text" id="form-rod-code" class="date-input" placeholder="ETHW000XXX-R000" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input type="text" id="form-rod-color" class="date-input" placeholder="BK/CR/WW/MM/SG" style="width:100%"></div>
-        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input type="text" id="form-rod-name" class="date-input" placeholder="예: 중심봉,100G_EX BK" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">공급업체 *</label><input list="dl-rod-supplier" type="text" id="form-rod-supplier" class="date-input" placeholder="삼홍사/K.G.S" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input list="dl-rod-code" type="text" id="form-rod-code" class="date-input" placeholder="ETHW000XXX-R000" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input list="dl-rod-color" type="text" id="form-rod-color" class="date-input" placeholder="BK/CR/WW/MM/SG" style="width:100%"></div>
+        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input list="dl-rod-name" type="text" id="form-rod-name" class="date-input" placeholder="예: 중심봉,100G_EX BK" style="width:100%"></div>
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">높이1</label><input type="number" step="0.01" id="form-rod-h1" class="date-input" style="width:100%"></div>
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">높이2</label><input type="number" step="0.01" id="form-rod-h2" class="date-input" style="width:100%"></div>
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">와블</label><input type="number" step="0.01" id="form-rod-wobble" class="date-input" style="width:100%"></div>
@@ -1278,7 +1288,7 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-rod-count">0</span>건)</h3></div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
         <table class="data-table">
-          <thead><tr><th>측정일</th><th>공급업체</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>높이1</th><th>높이2</th><th>높이평균</th><th>와블</th><th>판정</th></tr></thead>
+          <thead><tr><th>측정일</th><th>공급업체</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>높이1</th><th>높이2</th><th>높이평균</th><th>와블</th><th>판정</th><th>삭제</th></tr></thead>
           <tbody id="inq-rod-table-body"></tbody>
         </table>
       </div>
@@ -1300,14 +1310,15 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
     <div id="inq-form-sponge" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
-      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 스폰지 인수검사 데이터 입력 (기준: 자재 규격 ± 5)</h3>
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 스폰지 인수검사 데이터 입력 <span style="font-weight:400;color:var(--text-muted);font-size:11px">(자재명에 (XX ± Y) 포함 시 규격 자동 인식 / 자재코드·자재명 자동완성)</span></h3>
+      <datalist id="dl-sponge-code"></datalist>
+      <datalist id="dl-sponge-color"></datalist>
+      <datalist id="dl-sponge-name"></datalist>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
         <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-sponge-date" class="date-input" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input type="text" id="form-sponge-code" class="date-input" placeholder="OPFW00XXXX-R000" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input type="text" id="form-sponge-color" class="date-input" placeholder="XX" style="width:100%"></div>
-        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input type="text" id="form-sponge-name" class="date-input" placeholder="예: TC11_좌판 스폰지(35 ± 5)" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">규격 목표</label><input type="number" id="form-sponge-spec" class="date-input" placeholder="35/45/55" style="width:100%"></div>
-        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">규격 허용오차</label><input type="number" id="form-sponge-tol" class="date-input" placeholder="5" value="5" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재코드 *</label><input list="dl-sponge-code" type="text" id="form-sponge-code" class="date-input" placeholder="OPFW00XXXX-R000" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">색상</label><input list="dl-sponge-color" type="text" id="form-sponge-color" class="date-input" placeholder="XX" style="width:100%"></div>
+        <div style="grid-column:span 2"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">자재명 *</label><input list="dl-sponge-name" type="text" id="form-sponge-name" class="date-input" placeholder="예: TC11_좌판 스폰지(35 ± 5)" style="width:100%"></div>
       </div>
       <div style="margin-top:14px;font-size:11px;color:var(--text-muted)">측정값 (1차/2차 × 중앙·좌·우)</div>
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px">
@@ -1324,8 +1335,8 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>규격별 일별 평균 경도 추이</h3><div style="position:relative;height:300px"><canvas id="inq-sponge-trend"></canvas></div></div>
-      <div class="chart-card"><h3>규격별 측정 비율</h3><div style="position:relative;height:300px"><canvas id="inq-sponge-spec-pie"></canvas></div></div>
+      <div class="chart-card"><h3>자재별 경도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(자재 미선택 시 측정 TOP5)</span></h3><div style="position:relative;height:300px"><canvas id="inq-sponge-trend"></canvas></div></div>
+      <div class="chart-card"><h3>제품별 측정 비율 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(자재명 앞 코드 기준 — TC11/T50RE/GC1 등)</span></h3><div style="position:relative;height:300px"><canvas id="inq-sponge-spec-pie"></canvas></div></div>
     </div>
     <div class="chart-row">
       <div class="chart-card"><h3>위치별 평균 경도 (중앙/좌/우)</h3><div style="position:relative;height:240px"><canvas id="inq-sponge-position"></canvas></div></div>
@@ -1335,7 +1346,7 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-sponge-count">0</span>건)</h3></div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
         <table class="data-table">
-          <thead><tr><th>측정일</th><th>자재코드</th><th style="text-align:left">자재명</th><th>규격</th><th>중앙(1)</th><th>좌(1)</th><th>우(1)</th><th>중앙(2)</th><th>좌(2)</th><th>우(2)</th><th>평균</th><th>판정</th></tr></thead>
+          <thead><tr><th>측정일</th><th>자재코드</th><th style="text-align:left">자재명</th><th>중앙(1)</th><th>좌(1)</th><th>우(1)</th><th>중앙(2)</th><th>좌(2)</th><th>우(2)</th><th>평균</th><th>판정</th><th>삭제</th></tr></thead>
           <tbody id="inq-sponge-table-body"></tbody>
         </table>
       </div>
