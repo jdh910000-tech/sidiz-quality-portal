@@ -1231,10 +1231,13 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="chart-card"><h3>색상별 측정 분포</h3><div style="position:relative;height:240px"><canvas id="inq-bolt-color-bar"></canvas></div></div>
     </div>
     <div class="data-table-wrapper">
-      <div class="data-table-header"><h3>측정 이력 (<span id="inq-bolt-count">0</span>건)</h3></div>
+      <div class="data-table-header">
+        <h3>측정 이력 (<span id="inq-bolt-count">0</span>건)</h3>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:500">※ HRC 값은 HV에서 환산된 값</span>
+      </div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
         <table class="data-table">
-          <thead><tr><th>측정일</th><th>공급업체</th><th>재질</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>HV1</th><th>HV2</th><th>HV평균</th><th>HRC1</th><th>HRC2</th><th>HRC평균</th><th>삭제</th></tr></thead>
+          <thead><tr><th>측정일</th><th>공급업체</th><th>재질</th><th>자재코드</th><th>색상</th><th style="text-align:left">자재명</th><th>HV1</th><th>HV2</th><th>HV평균</th><th>HRC1<br><span style="font-size:9px;color:var(--text-muted);font-weight:400">(환산)</span></th><th>HRC2<br><span style="font-size:9px;color:var(--text-muted);font-weight:400">(환산)</span></th><th>HRC평균<br><span style="font-size:9px;color:var(--text-muted);font-weight:400">(환산)</span></th><th>삭제</th></tr></thead>
           <tbody id="inq-bolt-table-body"></tbody>
         </table>
       </div>
