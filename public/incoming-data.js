@@ -498,13 +498,16 @@ function renderSpongeKPI(rows) {
 }
 function renderSpongeCharts(rows) {
   // ===== 자재별 경도 추이 =====
-  // 선택된 자재가 있으면 그 자재만, 없으면 측정횟수 TOP 5 자재
+  // 선택된 자재가 있으면 그 자재 + 기준선(목표/상한/하한), 없으면 측정횟수 TOP 5 자재
   const selCode = $('inq-sponge-code').value;
   const allDates = uniq(rows.map(r => r.measure_date)).sort();
   let trendDatasets;
   if (selCode) {
+    const sel = STATE.sponges.find(r => r.code === selCode);
+    const target = sel?.spec_target;
+    const tol = sel?.spec_tol || 5;
     trendDatasets = [{
-      label: selCode,
+      label: extractProductCode(sel?.name) || selCode,
       data: allDates.map(d => {
         const ms = rows.filter(r => r.measure_date === d && r.code === selCode).map(spongeAvg).filter(v => v !== null);
         return ms.length ? avg(ms) : null;
@@ -512,22 +515,36 @@ function renderSpongeCharts(rows) {
       borderColor: SIDIZ_COLORS.blue, backgroundColor: SIDIZ_COLORS.blue + '20',
       tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true,
     }];
+    if (target !== null && target !== undefined) {
+      trendDatasets.push(
+        { label: `목표 ${target}`, data: allDates.map(() => target), borderColor: SIDIZ_COLORS.emerald, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false },
+        { label: `상한 ${target + tol}`, data: allDates.map(() => target + tol), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false },
+        { label: `하한 ${target - tol}`, data: allDates.map(() => target - tol), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false }
+      );
+    }
   } else {
     const codeCount = {};
     rows.forEach(r => { codeCount[r.code] = (codeCount[r.code] || 0) + 1; });
     const topCodes = Object.entries(codeCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
     const codeNameMap = {};
     rows.forEach(r => { if (!codeNameMap[r.code]) codeNameMap[r.code] = r.name; });
-    trendDatasets = topCodes.map((code, i) => ({
-      label: extractProductCode(codeNameMap[code]) + ' ' + code.slice(-4),
-      data: allDates.map(d => {
-        const ms = rows.filter(r => r.measure_date === d && r.code === code).map(spongeAvg).filter(v => v !== null);
-        return ms.length ? avg(ms) : null;
-      }),
-      borderColor: PALETTE[i % PALETTE.length],
-      backgroundColor: PALETTE[i % PALETTE.length] + '20',
-      tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
-    }));
+    // 같은 제품코드가 중복되면 (1)/(2)로 구분
+    const labelCount = {};
+    trendDatasets = topCodes.map((code, i) => {
+      const p = extractProductCode(codeNameMap[code]);
+      labelCount[p] = (labelCount[p] || 0) + 1;
+      const label = labelCount[p] === 1 ? p : `${p} (${labelCount[p]})`;
+      return {
+        label,
+        data: allDates.map(d => {
+          const ms = rows.filter(r => r.measure_date === d && r.code === code).map(spongeAvg).filter(v => v !== null);
+          return ms.length ? avg(ms) : null;
+        }),
+        borderColor: PALETTE[i % PALETTE.length],
+        backgroundColor: PALETTE[i % PALETTE.length] + '20',
+        tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
+      };
+    });
   }
   makeLine('spongeTrend', $('inq-sponge-trend').getContext('2d'), allDates, trendDatasets, {
     scales: {
@@ -566,15 +583,18 @@ function renderSpongeTable(rows) {
   const sorted = [...rows].sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
   const tb = $('inq-sponge-table-body');
   if (!sorted.length) {
-    tb.innerHTML = '<tr><td colspan="12" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
+    tb.innerHTML = '<tr><td colspan="13" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
     return;
   }
   tb.innerHTML = sorted.slice(0, 500).map(r => {
     const a = spongeAvg(r), j = spongeJudge(r);
-    return `<tr>
+    const spec = (r.spec_target !== null && r.spec_target !== undefined) ? `${r.spec_target} ± ${r.spec_tol || 5}` : '-';
+    const rowClass = j === 'NG' ? ' class="ng-row"' : '';
+    return `<tr${rowClass}>
       <td>${escHtml(r.measure_date)}</td>
       <td>${escHtml(r.code)}</td>
       <td class="row-header" style="text-align:left">${escHtml(r.name)}</td>
+      <td><b>${spec}</b></td>
       <td>${fmt(r.m1_center)}</td><td>${fmt(r.m1_left)}</td><td>${fmt(r.m1_right)}</td>
       <td>${fmt(r.m2_center)}</td><td>${fmt(r.m2_left)}</td><td>${fmt(r.m2_right)}</td>
       <td class="highlight">${fmt(a)}</td>
