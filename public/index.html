@@ -1344,24 +1344,71 @@ body.share-mode .section > .header .header-left p { display: none; }
 
   <!-- ===== 불량 분석 리포트 탭 ===== -->
   <div id="inspect-pane-report" class="inspect-pane" style="display:none">
-    <div id="inq-report-kpi" class="kpi-grid"></div>
-
-    <div class="analysis-box">
-      <h4>📋 권장 조치사항 (자동 분석)</h4>
-      <div id="inq-report-recommendations"></div>
+    <!-- 카테고리 서브탭 -->
+    <div class="sub-tabs" style="margin-bottom:18px">
+      <button class="sub-tab report-cat-tab active" data-cat="bolt" onclick="switchReportCat('bolt')">🔩 볼트 분석</button>
+      <button class="sub-tab report-cat-tab" data-cat="rod" onclick="switchReportCat('rod')">⚙ 중심봉 분석</button>
+      <button class="sub-tab report-cat-tab" data-cat="sponge" onclick="switchReportCat('sponge')">🧊 스폰지 분석</button>
     </div>
 
-    <div class="chart-row">
-      <div class="chart-card"><h3>월별 부적합 추이 (NG 건수)</h3><div style="position:relative;height:280px"><canvas id="inq-report-trend"></canvas></div></div>
-      <div class="chart-card"><h3>공급업체별 NG율 (중심봉)</h3><div style="position:relative;height:280px"><canvas id="inq-report-supplier"></canvas></div></div>
+    <!-- 볼트 분석 -->
+    <div id="report-cat-bolt" class="report-cat-pane">
+      <div id="rep-bolt-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 볼트 권장 조치사항 (변동성 기반 자동 분석)</h4>
+        <div id="rep-bolt-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>월별 평균 HV 추이</h3><div style="position:relative;height:280px"><canvas id="rep-bolt-trend"></canvas></div></div>
+        <div class="chart-card"><h3>공급업체별 평균 / 표준편차</h3><div style="position:relative;height:280px"><canvas id="rep-bolt-supplier"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 측정 변동성 큰 자재 TOP 10 (표준편차 기준)</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>자재코드</th><th style="text-align:left">자재명</th><th>측정횟수</th><th>평균 HV</th><th>표준편차 σ</th><th>최소</th><th>최대</th><th>편차범위</th></tr></thead>
+          <tbody id="rep-bolt-top10"></tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="data-table-wrapper">
-      <div class="data-table-header"><h3>📊 부적합 자재 TOP 10</h3></div>
-      <table class="data-table">
-        <thead><tr><th>순위</th><th>분류</th><th>자재코드</th><th style="text-align:left">자재명</th><th>NG 건수</th><th>전체 측정</th><th>NG율</th></tr></thead>
-        <tbody id="inq-report-top10"></tbody>
-      </table>
+    <!-- 중심봉 분석 -->
+    <div id="report-cat-rod" class="report-cat-pane" style="display:none">
+      <div id="rep-rod-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 중심봉 권장 조치사항 (NG 분석)</h4>
+        <div id="rep-rod-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>월별 OK / NG 추이</h3><div style="position:relative;height:280px"><canvas id="rep-rod-trend"></canvas></div></div>
+        <div class="chart-card"><h3>공급업체별 NG율</h3><div style="position:relative;height:280px"><canvas id="rep-rod-supplier"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 부적합 자재 TOP 10</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>자재코드</th><th style="text-align:left">자재명</th><th>NG 건수</th><th>전체 측정</th><th>NG율</th></tr></thead>
+          <tbody id="rep-rod-top10"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 스폰지 분석 -->
+    <div id="report-cat-sponge" class="report-cat-pane" style="display:none">
+      <div id="rep-sponge-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 스폰지 권장 조치사항 (NG 분석)</h4>
+        <div id="rep-sponge-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>월별 OK / NG 추이</h3><div style="position:relative;height:280px"><canvas id="rep-sponge-trend"></canvas></div></div>
+        <div class="chart-card"><h3>규격별 NG율 / 평균 편차</h3><div style="position:relative;height:280px"><canvas id="rep-sponge-spec"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 부적합 자재 TOP 10</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>자재코드</th><th style="text-align:left">자재명</th><th>규격</th><th>NG 건수</th><th>전체 측정</th><th>NG율</th></tr></thead>
+          <tbody id="rep-sponge-top10"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 

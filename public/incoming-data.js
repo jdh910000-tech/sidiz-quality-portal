@@ -25,6 +25,12 @@ function avg(arr) {
   const v = arr.filter(x => x !== null && x !== undefined && !isNaN(x));
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 }
+function stdev(arr) {
+  const v = arr.filter(x => x !== null && x !== undefined && !isNaN(x));
+  if (v.length < 2) return 0;
+  const m = v.reduce((a, b) => a + b, 0) / v.length;
+  return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length);
+}
 function fmt(n, d = 1) { return (n === null || n === undefined || isNaN(n)) ? '-' : Number(n).toFixed(d); }
 function uniq(arr) { return [...new Set(arr)].filter(v => v !== null && v !== undefined && v !== ''); }
 function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -109,7 +115,24 @@ window.switchInspectTab = function (tab) {
   if (tab === 'bolt') renderBolt();
   else if (tab === 'rod') renderRod();
   else if (tab === 'sponge') renderSponge();
-  else if (tab === 'report') renderReport();
+  else if (tab === 'report') {
+    // 리포트 진입 시 현재 카테고리 유지 (기본: 볼트)
+    switchReportCat(STATE.reportCat || 'bolt');
+  }
+};
+
+// 리포트 카테고리 전환
+STATE.reportCat = 'bolt';
+window.switchReportCat = function (cat) {
+  STATE.reportCat = cat;
+  document.querySelectorAll('.report-cat-tab').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.report-cat-tab[data-cat="${cat}"]`)?.classList.add('active');
+  document.querySelectorAll('.report-cat-pane').forEach(p => p.style.display = 'none');
+  const pane = document.getElementById(`report-cat-${cat}`);
+  if (pane) pane.style.display = 'block';
+  if (cat === 'bolt') renderReportBolt();
+  else if (cat === 'rod') renderReportRod();
+  else if (cat === 'sponge') renderReportSponge();
 };
 
 // ===== 측정 평균/판정 =====
@@ -507,104 +530,280 @@ function renderSponge() {
 }
 
 // ============ 불량 분석 리포트 ============
-function renderReport() {
-  const allRows = [
-    ...STATE.bolts.map(r => ({ kind: '볼트', date: r.measure_date, supplier: r.supplier, code: r.code, name: r.name, judge: '-' })),
-    ...STATE.rods.map(r => ({ kind: '중심봉', date: r.measure_date, supplier: r.supplier, code: r.code, name: r.name, judge: rodJudge(r), spec: '높이 5~7 / 와블 ≤1.0' })),
-    ...STATE.sponges.map(r => ({ kind: '스폰지', date: r.measure_date, supplier: '-', code: r.code, name: r.name, judge: spongeJudge(r), spec: r.spec_target ? `${r.spec_target}±${r.spec_tol || 5}` : '-' })),
-  ];
 
-  const rodNG = STATE.rods.filter(r => rodJudge(r) === 'NG');
-  const spongeNG = STATE.sponges.filter(r => spongeJudge(r) === 'NG');
-  const totalNG = rodNG.length + spongeNG.length;
-  const judgeable = STATE.rods.length + STATE.sponges.length;
-  const ngRate = judgeable ? (totalNG / judgeable * 100) : 0;
+// ----- 볼트 리포트 (NG 기준 없음 → 측정 변동성/이상치 분석) -----
+function renderReportBolt() {
+  const rows = STATE.bolts;
+  // 자재별 통계
+  const codeMap = {};
+  rows.forEach(r => {
+    const k = r.code + '|' + r.name;
+    if (!codeMap[k]) codeMap[k] = { code: r.code, name: r.name, supplier: r.supplier, hvs: [], hrcs: [] };
+    const hv = boltHV(r), hrc = boltHRC(r);
+    if (hv !== null) codeMap[k].hvs.push(hv);
+    if (hrc !== null) codeMap[k].hrcs.push(hrc);
+  });
+  const stats = Object.values(codeMap).map(s => ({
+    ...s,
+    n: s.hvs.length,
+    mean: avg(s.hvs),
+    std: stdev(s.hvs),
+    min: s.hvs.length ? Math.min(...s.hvs) : null,
+    max: s.hvs.length ? Math.max(...s.hvs) : null,
+    range: s.hvs.length ? Math.max(...s.hvs) - Math.min(...s.hvs) : null,
+  }));
 
-  $('inq-report-kpi').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">전체 측정 건수</div><div class="kpi-value">${(STATE.bolts.length+STATE.rods.length+STATE.sponges.length).toLocaleString()}</div><div class="kpi-change">3개 자재 통합</div></div>
-    <div class="kpi-card"><div class="kpi-label">전체 부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${SIDIZ_COLORS.rose},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${totalNG}</div><div class="kpi-change up">중심봉 ${rodNG.length} · 스폰지 ${spongeNG.length}</div></div>
-    <div class="kpi-card"><div class="kpi-label">전체 부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">판정 대상 ${judgeable.toLocaleString()}건</div></div>
-    <div class="kpi-card"><div class="kpi-label">중심봉 NG율</div><div class="kpi-value">${STATE.rods.length ? (rodNG.length/STATE.rods.length*100).toFixed(2) : '0.00'}%</div><div class="kpi-change">스폰지 NG율 ${STATE.sponges.length ? (spongeNG.length/STATE.sponges.length*100).toFixed(2) : '0.00'}%</div></div>
+  // 공급업체별 통계
+  const supMap = {};
+  rows.forEach(r => {
+    if (!supMap[r.supplier]) supMap[r.supplier] = { sup: r.supplier, hvs: [], n: 0 };
+    const hv = boltHV(r);
+    if (hv !== null) { supMap[r.supplier].hvs.push(hv); supMap[r.supplier].n++; }
+  });
+  const supStats = Object.values(supMap).map(s => ({ ...s, mean: avg(s.hvs), std: stdev(s.hvs) }));
+
+  const allHV = rows.map(boltHV).filter(v => v !== null);
+  const overallMean = avg(allHV), overallStd = stdev(allHV);
+
+  $('rep-bolt-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">자재 ${stats.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">전체 평균 HV</div><div class="kpi-value">${fmt(overallMean, 1)}</div><div class="kpi-change">표준편차 σ=${fmt(overallStd, 1)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">변동성 큰 자재</div><div class="kpi-value">${stats.filter(s => s.std > 20).length}</div><div class="kpi-change">σ &gt; 20 (편차 큰 자재)</div></div>
+    <div class="kpi-card"><div class="kpi-label">공급업체별 평균</div><div class="kpi-value" style="font-size:14px">${supStats.map(s => `${s.sup} ${fmt(s.mean,0)}`).join(' · ')}</div><div class="kpi-change">${supStats.length}개사</div></div>
   `;
 
-  // 자재별 NG TOP10 (NG 건수 + NG율)
+  // 권장 조치
+  const recs = [];
+  const topVar = [...stats].filter(s => s.n >= 2).sort((a, b) => b.std - a.std).slice(0, 3);
+  topVar.forEach(s => {
+    if (s.std > 20) recs.push({ level: 'warning', text: `자재 <b>${escHtml(s.code)}</b> (${escHtml(s.name)}) — 표준편차 ${s.std.toFixed(1)}, 측정값 편차 ${s.range.toFixed(1)} HV. 열처리 균일성 점검 권장.` });
+  });
+  supStats.forEach(s => {
+    if (s.std > overallStd * 1.3) recs.push({ level: 'info', text: `공급업체 <b>${escHtml(s.sup)}</b> — 표준편차 σ=${s.std.toFixed(1)} (전체 ${overallStd.toFixed(1)} 대비 높음). 공정 일관성 모니터링.` });
+  });
+  if (recs.length === 0) recs.push({ level: 'info', text: '측정값 변동성 양호 — 안정적 품질 유지 중.' });
+  $('rep-bolt-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+
+  // 월별 평균 HV 추이
+  const byMonth = {};
+  rows.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = [];
+    const hv = boltHV(r);
+    if (hv !== null) byMonth[m].push(hv);
+  });
+  const months = Object.keys(byMonth).sort();
+  makeBar('repBoltTrend', $('rep-bolt-trend').getContext('2d'), months, [
+    { label: '월별 평균 HV', data: months.map(m => avg(byMonth[m])), backgroundColor: SIDIZ_COLORS.blue, borderRadius: 6 }
+  ], { scales: { y: { beginAtZero: false, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } } });
+
+  // 공급업체별 평균/편차
+  const supLabels = supStats.map(s => s.sup);
+  makeBar('repBoltSup', $('rep-bolt-supplier').getContext('2d'), supLabels, [
+    { label: '평균 HV', data: supStats.map(s => s.mean), backgroundColor: SIDIZ_COLORS.blue, borderRadius: 6, yAxisID: 'y' },
+    { label: '표준편차 σ', data: supStats.map(s => s.std), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 6, yAxisID: 'y1' },
+  ], {
+    scales: {
+      y: { type: 'linear', position: 'left', beginAtZero: false, grid: { color: SIDIZ_COLORS.border }, title: { display: true, text: '평균 HV', font: { size: 10 } } },
+      y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { display: false }, title: { display: true, text: '표준편차', font: { size: 10 } } },
+      x: { grid: { display: false } }
+    },
+    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+  });
+
+  // 변동성 TOP10 테이블
+  const top10 = [...stats].filter(s => s.n >= 2).sort((a, b) => b.std - a.std).slice(0, 10);
+  $('rep-bolt-top10').innerHTML = top10.length ? top10.map((s, i) => `
+    <tr>
+      <td><span class="rct-rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':'normal'}">${i + 1}</span></td>
+      <td>${escHtml(s.code)}</td>
+      <td class="row-header" style="text-align:left">${escHtml(s.name)}</td>
+      <td>${s.n}</td>
+      <td>${fmt(s.mean, 1)}</td>
+      <td><span class="${s.std > 20 ? 'danger' : (s.std > 10 ? 'highlight' : '')}">${fmt(s.std, 2)}</span></td>
+      <td>${fmt(s.min, 1)}</td>
+      <td>${fmt(s.max, 1)}</td>
+      <td>${fmt(s.range, 1)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="9" style="padding:40px;text-align:center;color:#8a8a9a">데이터 없음</td></tr>';
+}
+
+// ----- 중심봉 리포트 -----
+function renderReportRod() {
+  const rows = STATE.rods;
+  const ngRows = rows.filter(r => rodJudge(r) === 'NG');
+  const ngRate = rows.length ? (ngRows.length / rows.length * 100) : 0;
+  const codes = uniq(rows.map(r => r.code));
+  const sups = uniq(rows.map(r => r.supplier)).sort();
+
+  $('rep-rod-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">자재 ${codes.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?SIDIZ_COLORS.rose:SIDIZ_COLORS.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">기준 5~7 / ≤1.0</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
+    <div class="kpi-card"><div class="kpi-label">공급업체</div><div class="kpi-value" style="font-size:18px">${sups.join(' · ')}</div><div class="kpi-change">${sups.length}개사</div></div>
+  `;
+
+  // 자재별 NG TOP10
   const codeStats = {};
-  STATE.rods.forEach(r => {
-    const k = `중심봉|${r.code}|${r.name}`;
-    if (!codeStats[k]) codeStats[k] = { kind: '중심봉', code: r.code, name: r.name, total: 0, ng: 0 };
+  rows.forEach(r => {
+    const k = r.code + '|' + r.name;
+    if (!codeStats[k]) codeStats[k] = { code: r.code, name: r.name, total: 0, ng: 0 };
     codeStats[k].total++;
     if (rodJudge(r) === 'NG') codeStats[k].ng++;
   });
-  STATE.sponges.forEach(r => {
-    const k = `스폰지|${r.code}|${r.name}`;
-    if (!codeStats[k]) codeStats[k] = { kind: '스폰지', code: r.code, name: r.name, total: 0, ng: 0 };
-    codeStats[k].total++;
-    if (spongeJudge(r) === 'NG') codeStats[k].ng++;
-  });
   const ngList = Object.values(codeStats).filter(s => s.ng > 0).sort((a, b) => b.ng - a.ng).slice(0, 10);
-
-  // NG TOP10 테이블
-  $('inq-report-top10').innerHTML = ngList.length ? ngList.map((s, i) => `
+  $('rep-rod-top10').innerHTML = ngList.length ? ngList.map((s, i) => `
     <tr>
       <td><span class="rct-rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':'normal'}">${i + 1}</span></td>
-      <td>${escHtml(s.kind)}</td>
       <td>${escHtml(s.code)}</td>
       <td class="row-header" style="text-align:left">${escHtml(s.name)}</td>
       <td><span class="danger">${s.ng}</span></td>
       <td>${s.total}</td>
       <td><span class="${s.ng/s.total > 0.1 ? 'danger' : 'highlight'}">${(s.ng / s.total * 100).toFixed(1)}%</span></td>
     </tr>
-  `).join('') : '<tr><td colspan="7" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 자재가 없습니다</td></tr>';
+  `).join('') : '<tr><td colspan="6" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 자재가 없습니다</td></tr>';
 
-  // 월별 NG 추이 차트
+  // 월별 NG 추이
   const ngByMonth = {};
-  [...rodNG, ...spongeNG].forEach(r => {
+  rows.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
     if (!m) return;
-    if (!ngByMonth[m]) ngByMonth[m] = { rod: 0, sponge: 0 };
-    if (r.h1 !== undefined || r.wobble !== undefined) ngByMonth[m].rod++;
-    else ngByMonth[m].sponge++;
+    if (!ngByMonth[m]) ngByMonth[m] = { ok: 0, ng: 0 };
+    if (rodJudge(r) === 'NG') ngByMonth[m].ng++; else ngByMonth[m].ok++;
   });
   const months = Object.keys(ngByMonth).sort();
-  makeBar('reportTrend', $('inq-report-trend').getContext('2d'), months, [
-    { label: '중심봉', data: months.map(m => ngByMonth[m].rod), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 6, stack: 's' },
-    { label: '스폰지', data: months.map(m => ngByMonth[m].sponge), backgroundColor: SIDIZ_COLORS.amber, borderRadius: 6, stack: 's' },
+  makeBar('repRodTrend', $('rep-rod-trend').getContext('2d'), months, [
+    { label: 'OK', data: months.map(m => ngByMonth[m].ok), backgroundColor: SIDIZ_COLORS.emerald, borderRadius: 4, stack: 's' },
+    { label: 'NG', data: months.map(m => ngByMonth[m].ng), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 4, stack: 's' },
   ], {
     scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: SIDIZ_COLORS.border } } },
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // 공급업체별 NG (중심봉 한정)
+  // 공급업체별 NG율
   const supStats = {};
-  STATE.rods.forEach(r => {
+  rows.forEach(r => {
     if (!supStats[r.supplier]) supStats[r.supplier] = { total: 0, ng: 0 };
     supStats[r.supplier].total++;
     if (rodJudge(r) === 'NG') supStats[r.supplier].ng++;
   });
-  const sups = Object.keys(supStats).sort();
-  makeBar('reportSupplier', $('inq-report-supplier').getContext('2d'), sups, [
-    { label: 'NG율 (%)', data: sups.map(s => supStats[s].total ? supStats[s].ng / supStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6 }
-  ], { scales: { y: { beginAtZero: true, suggestedMax: 5, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } }, plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v.toFixed(2) + '%' } } });
+  const supList = Object.keys(supStats).sort();
+  makeBar('repRodSup', $('rep-rod-supplier').getContext('2d'), supList, [
+    { label: 'NG율 (%)', data: supList.map(s => supStats[s].total ? supStats[s].ng / supStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, supList.length), borderRadius: 6 }
+  ], {
+    scales: { y: { beginAtZero: true, suggestedMax: 5, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } },
+    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v.toFixed(2) + '%' } }
+  });
 
-  // 권장 조치사항 자동 생성
+  // 권장 조치
   const recs = [];
-  if (rodNG.length > 0) {
-    const topNgCode = ngList.find(s => s.kind === '중심봉');
-    if (topNgCode) recs.push({ level: 'critical', text: `중심봉 <b>${topNgCode.code}</b> (${topNgCode.name}) — NG ${topNgCode.ng}/${topNgCode.total}건 (${(topNgCode.ng/topNgCode.total*100).toFixed(1)}%). 공급업체 품질 협의 필요.` });
-  }
-  if (spongeNG.length > 0) {
-    const topNgCode = ngList.find(s => s.kind === '스폰지');
-    if (topNgCode) recs.push({ level: 'warning', text: `스폰지 <b>${topNgCode.code}</b> — 규격 이탈 발견. 발포 공정 점검 권장.` });
-  }
+  ngList.slice(0, 3).forEach(s => {
+    recs.push({ level: 'critical', text: `자재 <b>${escHtml(s.code)}</b> (${escHtml(s.name)}) — NG ${s.ng}/${s.total}건 (${(s.ng/s.total*100).toFixed(1)}%). 공급업체 품질 협의 필요.` });
+  });
   Object.entries(supStats).forEach(([s, st]) => {
     if (st.total >= 30 && st.ng / st.total > 0.05) {
-      recs.push({ level: 'warning', text: `중심봉 공급업체 <b>${s}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}). 5% 초과로 모니터링 강화.` });
+      recs.push({ level: 'warning', text: `공급업체 <b>${escHtml(s)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 5% 초과로 모니터링 강화.` });
     }
   });
-  if (recs.length === 0) recs.push({ level: 'info', text: '현재 모든 자재가 기준 범위 내 — 안정적 품질 유지 중.' });
-  $('inq-report-recommendations').innerHTML = recs.map(r => `
-    <div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>
-  `).join('');
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 자재가 기준 범위 내 — 안정적 품질 유지 중.' });
+  $('rep-rod-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+}
+
+// ----- 스폰지 리포트 -----
+function renderReportSponge() {
+  const rows = STATE.sponges;
+  const ngRows = rows.filter(r => spongeJudge(r) === 'NG');
+  const ngRate = rows.length ? (ngRows.length / rows.length * 100) : 0;
+  const codes = uniq(rows.map(r => r.code));
+  const specs = uniq(rows.map(r => r.spec_target).filter(v => v !== null && v !== undefined)).sort((a, b) => a - b);
+
+  $('rep-sponge-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">자재 ${codes.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?SIDIZ_COLORS.rose:SIDIZ_COLORS.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">규격 ±5 이탈</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
+    <div class="kpi-card"><div class="kpi-label">규격 종류</div><div class="kpi-value" style="font-size:18px">${specs.map(s => `${s}±5`).join(' · ')}</div><div class="kpi-change">${specs.length}종 규격</div></div>
+  `;
+
+  // 자재별 NG TOP10
+  const codeStats = {};
+  rows.forEach(r => {
+    const k = r.code + '|' + r.name;
+    if (!codeStats[k]) codeStats[k] = { code: r.code, name: r.name, total: 0, ng: 0, spec: r.spec_target };
+    codeStats[k].total++;
+    if (spongeJudge(r) === 'NG') codeStats[k].ng++;
+  });
+  const ngList = Object.values(codeStats).filter(s => s.ng > 0).sort((a, b) => b.ng - a.ng).slice(0, 10);
+  $('rep-sponge-top10').innerHTML = ngList.length ? ngList.map((s, i) => `
+    <tr>
+      <td><span class="rct-rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':'normal'}">${i + 1}</span></td>
+      <td>${escHtml(s.code)}</td>
+      <td class="row-header" style="text-align:left">${escHtml(s.name)}</td>
+      <td>${s.spec ? s.spec + '±5' : '-'}</td>
+      <td><span class="danger">${s.ng}</span></td>
+      <td>${s.total}</td>
+      <td><span class="${s.ng/s.total > 0.1 ? 'danger' : 'highlight'}">${(s.ng / s.total * 100).toFixed(1)}%</span></td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 자재가 없습니다</td></tr>';
+
+  // 월별 OK/NG
+  const byMonth = {};
+  rows.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = { ok: 0, ng: 0 };
+    if (spongeJudge(r) === 'NG') byMonth[m].ng++; else byMonth[m].ok++;
+  });
+  const months = Object.keys(byMonth).sort();
+  makeBar('repSpongeTrend', $('rep-sponge-trend').getContext('2d'), months, [
+    { label: 'OK', data: months.map(m => byMonth[m].ok), backgroundColor: SIDIZ_COLORS.emerald, borderRadius: 4, stack: 's' },
+    { label: 'NG', data: months.map(m => byMonth[m].ng), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 4, stack: 's' },
+  ], {
+    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: SIDIZ_COLORS.border } } },
+    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+  });
+
+  // 규격별 NG율
+  const specStats = {};
+  rows.forEach(r => {
+    const sp = r.spec_target;
+    if (sp === null || sp === undefined) return;
+    if (!specStats[sp]) specStats[sp] = { total: 0, ng: 0, deviations: [] };
+    specStats[sp].total++;
+    const a = spongeAvg(r);
+    if (a !== null) specStats[sp].deviations.push(Math.abs(a - sp));
+    if (spongeJudge(r) === 'NG') specStats[sp].ng++;
+  });
+  const specLabels = Object.keys(specStats).sort((a, b) => +a - +b).map(s => `${s}±5`);
+  const specKeys = Object.keys(specStats).sort((a, b) => +a - +b);
+  makeBar('repSpongeSpec', $('rep-sponge-spec').getContext('2d'), specLabels, [
+    { label: 'NG율 (%)', data: specKeys.map(k => specStats[k].total ? specStats[k].ng / specStats[k].total * 100 : 0), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 6, yAxisID: 'y' },
+    { label: '평균 편차', data: specKeys.map(k => avg(specStats[k].deviations)), backgroundColor: SIDIZ_COLORS.cyan, borderRadius: 6, yAxisID: 'y1' },
+  ], {
+    scales: {
+      y: { type: 'linear', position: 'left', beginAtZero: true, suggestedMax: 5, grid: { color: SIDIZ_COLORS.border }, title: { display: true, text: 'NG율 %', font: { size: 10 } } },
+      y1: { type: 'linear', position: 'right', beginAtZero: true, suggestedMax: 5, grid: { display: false }, title: { display: true, text: '|평균-목표|', font: { size: 10 } } },
+      x: { grid: { display: false } }
+    },
+    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+  });
+
+  // 권장 조치
+  const recs = [];
+  ngList.slice(0, 3).forEach(s => {
+    recs.push({ level: 'critical', text: `자재 <b>${escHtml(s.code)}</b> (${escHtml(s.name)}) — NG ${s.ng}/${s.total}건 (${(s.ng/s.total*100).toFixed(1)}%). 발포 공정 점검 권장.` });
+  });
+  Object.entries(specStats).forEach(([sp, st]) => {
+    const avgDev = avg(st.deviations);
+    if (avgDev !== null && avgDev > 3) {
+      recs.push({ level: 'warning', text: `규격 <b>${sp}±5</b> — 평균 편차 ${avgDev.toFixed(1)} (한계 ±5 대비 60% 이상). 발포량 조정 검토.` });
+    }
+    if (st.total >= 20 && st.ng / st.total > 0.05) {
+      recs.push({ level: 'warning', text: `규격 <b>${sp}±5</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}%. 모니터링 강화.` });
+    }
+  });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 자재가 규격 범위 내 — 안정적 품질 유지 중.' });
+  $('rep-sponge-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
 }
 
 // ============ 입력 폼 ============
