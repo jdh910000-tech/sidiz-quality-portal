@@ -832,13 +832,16 @@ function renderReportSponge() {
   const ngRows = rows.filter(r => spongeJudge(r) === 'NG');
   const ngRate = rows.length ? (ngRows.length / rows.length * 100) : 0;
   const codes = uniq(rows.map(r => r.code));
-  const specs = uniq(rows.map(r => r.spec_target).filter(v => v !== null && v !== undefined)).sort((a, b) => a - b);
 
+  // 제품 라벨 매핑 (자재명 앞부분 — 같은 키워드면 차별화 키워드 추가)
+  const productLabels = spongeChartLabels(rows);
+
+  // KPI 3개 (규격 종류 카드 제거)
+  $('rep-sponge-kpi').style.gridTemplateColumns = 'repeat(3, 1fr)';
   $('rep-sponge-kpi').innerHTML = `
     <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">자재 ${codes.length}종</div></div>
     <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?SIDIZ_COLORS.rose:SIDIZ_COLORS.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">규격 ±5 이탈</div></div>
     <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
-    <div class="kpi-card"><div class="kpi-label">규격 종류</div><div class="kpi-value" style="font-size:18px">${specs.map(s => `${s}±5`).join(' · ')}</div><div class="kpi-change">${specs.length}종 규격</div></div>
   `;
 
   // 자재별 NG TOP10
@@ -879,27 +882,28 @@ function renderReportSponge() {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // 규격별 NG율
-  const specStats = {};
+  // 제품별 NG율 / 평균 편차
+  const prodStats = {};
   rows.forEach(r => {
-    const sp = r.spec_target;
-    if (sp === null || sp === undefined) return;
-    if (!specStats[sp]) specStats[sp] = { total: 0, ng: 0, deviations: [] };
-    specStats[sp].total++;
+    const label = productLabels[r.code];
+    if (!label) return;
+    if (!prodStats[label]) prodStats[label] = { total: 0, ng: 0, deviations: [] };
+    prodStats[label].total++;
     const a = spongeAvg(r);
-    if (a !== null) specStats[sp].deviations.push(Math.abs(a - sp));
-    if (spongeJudge(r) === 'NG') specStats[sp].ng++;
+    if (a !== null && r.spec_target !== null && r.spec_target !== undefined) {
+      prodStats[label].deviations.push(Math.abs(a - r.spec_target));
+    }
+    if (spongeJudge(r) === 'NG') prodStats[label].ng++;
   });
-  const specLabels = Object.keys(specStats).sort((a, b) => +a - +b).map(s => `${s}±5`);
-  const specKeys = Object.keys(specStats).sort((a, b) => +a - +b);
-  makeBar('repSpongeSpec', $('rep-sponge-spec').getContext('2d'), specLabels, [
-    { label: 'NG율 (%)', data: specKeys.map(k => specStats[k].total ? specStats[k].ng / specStats[k].total * 100 : 0), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 6, yAxisID: 'y' },
-    { label: '평균 편차', data: specKeys.map(k => avg(specStats[k].deviations)), backgroundColor: SIDIZ_COLORS.cyan, borderRadius: 6, yAxisID: 'y1' },
+  const prodKeys = Object.keys(prodStats).sort();
+  makeBar('repSpongeProd', $('rep-sponge-spec').getContext('2d'), prodKeys, [
+    { label: 'NG율 (%)', data: prodKeys.map(k => prodStats[k].total ? prodStats[k].ng / prodStats[k].total * 100 : 0), backgroundColor: SIDIZ_COLORS.rose, borderRadius: 6, yAxisID: 'y' },
+    { label: '평균 편차', data: prodKeys.map(k => avg(prodStats[k].deviations)), backgroundColor: SIDIZ_COLORS.cyan, borderRadius: 6, yAxisID: 'y1' },
   ], {
     scales: {
       y: { type: 'linear', position: 'left', beginAtZero: true, suggestedMax: 5, grid: { color: SIDIZ_COLORS.border }, title: { display: true, text: 'NG율 %', font: { size: 10 } } },
       y1: { type: 'linear', position: 'right', beginAtZero: true, suggestedMax: 5, grid: { display: false }, title: { display: true, text: '|평균-목표|', font: { size: 10 } } },
-      x: { grid: { display: false } }
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } }
     },
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
@@ -909,13 +913,13 @@ function renderReportSponge() {
   ngList.slice(0, 3).forEach(s => {
     recs.push({ level: 'critical', text: `자재 <b>${escHtml(s.code)}</b> (${escHtml(s.name)}) — NG ${s.ng}/${s.total}건 (${(s.ng/s.total*100).toFixed(1)}%). 발포 공정 점검 권장.` });
   });
-  Object.entries(specStats).forEach(([sp, st]) => {
+  Object.entries(prodStats).forEach(([p, st]) => {
     const avgDev = avg(st.deviations);
     if (avgDev !== null && avgDev > 3) {
-      recs.push({ level: 'warning', text: `규격 <b>${sp}±5</b> — 평균 편차 ${avgDev.toFixed(1)} (한계 ±5 대비 60% 이상). 발포량 조정 검토.` });
+      recs.push({ level: 'warning', text: `제품 <b>${escHtml(p)}</b> — 평균 편차 ${avgDev.toFixed(1)} (한계 ±5 대비 60% 이상). 발포량 조정 검토.` });
     }
     if (st.total >= 20 && st.ng / st.total > 0.05) {
-      recs.push({ level: 'warning', text: `규격 <b>${sp}±5</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}%. 모니터링 강화.` });
+      recs.push({ level: 'warning', text: `제품 <b>${escHtml(p)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}%. 모니터링 강화.` });
     }
   });
   if (recs.length === 0) recs.push({ level: 'info', text: '모든 자재가 규격 범위 내 — 안정적 품질 유지 중.' });
