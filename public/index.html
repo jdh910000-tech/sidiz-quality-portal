@@ -1288,8 +1288,131 @@ body.share-mode .section > .header .header-left p { display: none; }
 <!-- ===== LAB ===== -->
 <div id="section-lab" class="section">
   <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
-  <div class="header"><div class="header-left"><h1>시디즈 <span>시험소</span></h1><p>시험소 업무 현황 및 시험 진행 상태 모니터링</p></div></div>
-  <div class="iframe-container"><iframe src="https://script.google.com/macros/s/AKfycbzH-unHLRm-eJO2MO60qoyIPHQjBbfkdlrqDuXu9ndZ55oRyilNB7IJo8QMzXQkI-aD/exec" title="시디즈 시험소" loading="lazy"></iframe></div>
+  <div class="header">
+    <div class="header-left"><h1>시디즈 <span>시험소</span></h1><p>시험소 업무 현황 · 강도 시험(다이캐스팅 / 사출 베이스) 통합 관리</p></div>
+    <div class="header-right"><span class="header-badge">Supabase 실시간</span></div>
+  </div>
+
+  <div class="sub-tabs">
+    <button class="sub-tab lab-subtab active" data-tab="schedule" onclick="switchLabTab('schedule')">📅 시험 일정</button>
+    <button class="sub-tab lab-subtab" data-tab="die" onclick="switchLabTab('die')">🛠 다이캐스팅 강도</button>
+    <button class="sub-tab lab-subtab" data-tab="inj" onclick="switchLabTab('inj')">⬛ 사출 베이스 강도</button>
+  </div>
+
+  <!-- 시험 일정 (기존 iframe) -->
+  <div id="lab-pane-schedule" class="lab-pane">
+    <div class="iframe-container"><iframe src="https://script.google.com/macros/s/AKfycbzH-unHLRm-eJO2MO60qoyIPHQjBbfkdlrqDuXu9ndZ55oRyilNB7IJo8QMzXQkI-aD/exec" title="시디즈 시험소" loading="lazy"></iframe></div>
+  </div>
+
+  <!-- 다이캐스팅 강도 시험 -->
+  <div id="lab-pane-die" class="lab-pane" style="display:none">
+    <div id="str-die-loading" style="display:none;padding:60px;text-align:center;color:var(--text-muted)">⏳ 데이터 로드 중...</div>
+    <div id="str-die-kpi" class="kpi-grid"></div>
+
+    <div class="data-table-wrapper" style="padding:14px 18px">
+      <div class="date-filter" style="margin:0;flex-wrap:wrap">
+        <div><label style="display:block;margin-bottom:4px">사양</label><select id="str-die-spec" class="date-input" style="min-width:160px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">측정 주체</label><select id="str-die-source" class="date-input" style="min-width:120px"><option value="">전체</option><option value="시디즈">시디즈</option><option value="GCK">GCK</option></select></div>
+        <div><label style="display:block;margin-bottom:4px">판정</label><select id="str-die-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
+        <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="str-die-from" class="date-input"></div>
+        <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="str-die-to" class="date-input"></div>
+        <button class="date-btn" onclick="resetStrengthFilter('die')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
+        <button class="date-btn" onclick="exportStrength('die')" style="align-self:flex-end">⬇ 자료변환</button>
+        <button class="date-btn" onclick="toggleStrengthForm('die')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+        <button class="date-btn" onclick="document.getElementById('gck-file-input').click()" style="background:var(--sidiz-blue-bright);align-self:flex-end">📁 GCK 파일 업로드</button>
+        <input type="file" id="gck-file-input" accept=".xlsx" style="display:none" onchange="handleGckUpload(event)">
+      </div>
+    </div>
+
+    <div id="str-form-die" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 다이캐스팅 강도 시험 데이터 입력</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-die-date" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">사양 *</label><select id="form-die-spec" class="date-input" style="width:100%"></select></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정 주체 *</label><select id="form-die-source" class="date-input" style="width:100%"><option value="시디즈">시디즈</option><option value="GCK">GCK</option></select></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">금형번호</label><input type="text" id="form-die-mold" class="date-input" placeholder="예: 5차" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">중량 (g)</label><input type="number" step="0.1" id="form-die-weight" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">강도 (kgf)</label><input type="number" step="0.1" id="form-die-strength" class="date-input" style="width:100%"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="date-btn" onclick="toggleStrengthForm('die')" style="background:var(--text-muted)">취소</button>
+        <button class="date-btn" onclick="submitStrengthDie()" style="background:var(--accent-emerald)">저장</button>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card"><h3>사양별 월별 강도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(기준선 자동 표시)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-trend"></canvas></div></div>
+      <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:300px"><canvas id="str-die-avg"></canvas></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>시디즈 vs GCK 비교 (4000G / S-TILT)</h3><div style="position:relative;height:260px"><canvas id="str-die-compare"></canvas></div></div>
+      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:260px"><canvas id="str-die-judge-pie"></canvas></div></div>
+    </div>
+
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>측정 이력 (<span id="str-die-count">0</span>건)</h3><span style="font-size:11px;color:var(--text-muted)">월 2회 정기 측정 · 기준값 미달 시 NG</span></div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table class="data-table">
+          <thead><tr><th>측정일</th><th>사양</th><th>측정 주체</th><th>금형번호</th><th>중량(g)</th><th>강도(kgf)</th><th>기준(kgf)</th><th>판정</th><th>삭제</th></tr></thead>
+          <tbody id="str-die-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사출 베이스 강도 시험 -->
+  <div id="lab-pane-inj" class="lab-pane" style="display:none">
+    <div id="str-inj-loading" style="display:none;padding:60px;text-align:center;color:var(--text-muted)">⏳ 데이터 로드 중...</div>
+    <div id="str-inj-kpi" class="kpi-grid"></div>
+
+    <div class="data-table-wrapper" style="padding:14px 18px">
+      <div class="date-filter" style="margin:0;flex-wrap:wrap">
+        <div><label style="display:block;margin-bottom:4px">사양</label><select id="str-inj-spec" class="date-input" style="min-width:200px"></select></div>
+        <div><label style="display:block;margin-bottom:4px">판정</label><select id="str-inj-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
+        <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="str-inj-from" class="date-input"></div>
+        <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="str-inj-to" class="date-input"></div>
+        <button class="date-btn" onclick="resetStrengthFilter('inj')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
+        <button class="date-btn" onclick="exportStrength('inj')" style="align-self:flex-end">⬇ 자료변환</button>
+        <button class="date-btn" onclick="toggleStrengthForm('inj')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+      </div>
+    </div>
+
+    <div id="str-form-inj" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent-emerald)">📝 사출 베이스 강도 시험 데이터 입력 (기준 1,134.7 kgf 이상)</h3>
+      <datalist id="dl-inj-spec"></datalist>
+      <datalist id="dl-inj-material"></datalist>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">측정일 *</label><input type="date" id="form-inj-date" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">사양 *</label><input list="dl-inj-spec" type="text" id="form-inj-spec" class="date-input" placeholder="예: 690 각 (WW)" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">재료</label><input list="dl-inj-material" type="text" id="form-inj-material" class="date-input" placeholder="SNB240G33" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">중량 (g)</label><input type="number" step="0.1" id="form-inj-weight" class="date-input" style="width:100%"></div>
+        <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">강도 (kgf)</label><input type="number" step="0.1" id="form-inj-strength" class="date-input" style="width:100%"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="date-btn" onclick="toggleStrengthForm('inj')" style="background:var(--text-muted)">취소</button>
+        <button class="date-btn" onclick="submitStrengthInj()" style="background:var(--accent-emerald)">저장</button>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card"><h3>사양별 월별 강도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(기준 1,134.7 kgf)</span></h3><div style="position:relative;height:320px"><canvas id="str-inj-trend"></canvas></div></div>
+      <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:320px"><canvas id="str-inj-avg"></canvas></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>사양별 평균 중량 (g)</h3><div style="position:relative;height:260px"><canvas id="str-inj-weight"></canvas></div></div>
+      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:260px"><canvas id="str-inj-judge-pie"></canvas></div></div>
+    </div>
+
+    <div class="data-table-wrapper">
+      <div class="data-table-header"><h3>측정 이력 (<span id="str-inj-count">0</span>건)</h3><span style="font-size:11px;color:var(--text-muted)">월 2회 정기 측정 · 기준 1,134.7 kgf 미달 시 NG</span></div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table class="data-table">
+          <thead><tr><th>측정일</th><th>사양</th><th>재료</th><th>중량(g)</th><th>강도(kgf)</th><th>기준(kgf)</th><th>판정</th><th>삭제</th></tr></thead>
+          <tbody id="str-inj-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== AS / INSPECT / CERT ===== -->
@@ -2449,6 +2572,7 @@ if (typeof Chart !== 'undefined') {
 </script>
 <script src="supabase-client.js"></script>
 <script src="incoming-data.js"></script>
+<script src="strength-data.js"></script>
 <script src="symptom-data.js"></script>
 <script src="kpi-data.js"></script>
 <script src="cost-data.js"></script>
@@ -2465,6 +2589,7 @@ function showSection(id) {
   window.scrollTo(0,0);
   if (id === 'team' && !_orgLoaded) { loadOrgChart(); _orgLoaded = true; }
   if (id === 'inspect' && typeof initInspectSection === 'function') { initInspectSection(); }
+  if (id === 'lab' && typeof initLabSection === 'function') { initLabSection(); }
   // 모바일: 메뉴 클릭 시 사이드바 자동 닫기
   document.querySelector('.sidebar')?.classList.remove('mobile-open');
   document.querySelector('.sidebar-backdrop')?.classList.remove('show');
