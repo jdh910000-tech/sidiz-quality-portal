@@ -197,12 +197,40 @@ function renderDieCharts(rows) {
     }
   });
 
-  // 사양별 평균 강도 vs 기준
+  // 사양별 평균 강도 vs 기준 (기준선 빨간색 강조 + 앞으로)
   const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const specThres = specs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
   makeBar('dieAvg', $('str-die-avg').getContext('2d'), specs, [
-    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 },
-    { label: '기준', data: specThres, backgroundColor: '#FF8C00AA', borderRadius: 6, type: 'line', borderColor: C.rose, borderDash: [4,4], borderWidth: 2, pointRadius: 4, fill: false },
+    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6, order: 2 },
+    {
+      label: '기준',
+      data: specThres,
+      type: 'line',
+      borderColor: '#dc2626',
+      borderWidth: 3,
+      borderDash: [6, 4],
+      pointRadius: 7,
+      pointHoverRadius: 9,
+      pointBackgroundColor: '#dc2626',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      fill: false,
+      order: 1,
+      datalabels: {
+        display: true,
+        color: '#dc2626',
+        backgroundColor: '#fff',
+        borderColor: '#dc2626',
+        borderWidth: 1,
+        borderRadius: 4,
+        padding: { top: 2, bottom: 2, left: 5, right: 5 },
+        font: { weight: 800, size: 11 },
+        align: 'top',
+        anchor: 'end',
+        offset: 4,
+        formatter: v => v ? v.toLocaleString() : ''
+      }
+    },
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } }, x: { grid: { display: false } } },
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
@@ -323,8 +351,36 @@ function renderInjCharts(rows) {
 
   const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   makeBar('injAvg', $('str-inj-avg').getContext('2d'), specs, [
-    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 },
-    { label: '기준', data: specs.map(() => 1134.7), type: 'line', borderColor: C.rose, borderDash: [4,4], borderWidth: 2, pointRadius: 4, fill: false },
+    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6, order: 2 },
+    {
+      label: '기준 1,134.7',
+      data: specs.map(() => 1134.7),
+      type: 'line',
+      borderColor: '#dc2626',
+      borderWidth: 3,
+      borderDash: [6, 4],
+      pointRadius: 7,
+      pointHoverRadius: 9,
+      pointBackgroundColor: '#dc2626',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      fill: false,
+      order: 1,
+      datalabels: {
+        display: ctx => ctx.dataIndex === 0,
+        color: '#dc2626',
+        backgroundColor: '#fff',
+        borderColor: '#dc2626',
+        borderWidth: 1,
+        borderRadius: 4,
+        padding: { top: 3, bottom: 3, left: 6, right: 6 },
+        font: { weight: 800, size: 12 },
+        align: 'left',
+        anchor: 'start',
+        offset: 6,
+        formatter: () => '기준 1,134.7'
+      }
+    },
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
@@ -436,7 +492,10 @@ async function postStrength(table, data, kind) {
 }
 
 window.deleteStrengthRow = async function (table, id) {
-  if (!confirm('이 측정이력을 삭제하시겠습니까?')) return;
+  const pw = prompt('이 측정이력을 삭제하려면 비밀번호를 입력하세요:');
+  if (pw === null) return;
+  if (pw !== '1234') { alert('❌ 비밀번호가 일치하지 않습니다.\n삭제가 취소되었습니다.'); return; }
+  if (!confirm('비밀번호 확인 완료. 정말 삭제하시겠습니까?')) return;
   try {
     const res = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method: 'DELETE', headers: SB_HEADERS });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);

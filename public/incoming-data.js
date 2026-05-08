@@ -998,9 +998,12 @@ window.submitInspectSponge = async function () {
   await postRow('incoming_sponges', data, 'sponge');
 };
 
-// ===== 측정이력 삭제 =====
+// ===== 측정이력 삭제 (비밀번호 보호) =====
 window.deleteInspectRow = async function (table, id) {
-  if (!confirm('이 측정이력을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.')) return;
+  const pw = prompt('이 측정이력을 삭제하려면 비밀번호를 입력하세요:');
+  if (pw === null) return; // 취소
+  if (pw !== '1234') { alert('❌ 비밀번호가 일치하지 않습니다.\n삭제가 취소되었습니다.'); return; }
+  if (!confirm('비밀번호 확인 완료. 정말 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.')) return;
   try {
     const res = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
       method: 'DELETE',
