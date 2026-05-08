@@ -1352,14 +1352,11 @@ body.share-mode .section > .header .header-left p { display: none; }
 
     <div class="chart-row">
       <div class="chart-card"><h3>사양별 월별 강도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(기준선 자동 표시)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-trend"></canvas></div></div>
-      <div class="chart-card"><h3>사양별 월별 중량 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(g)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-weight-trend"></canvas></div></div>
+      <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:300px"><canvas id="str-die-avg"></canvas></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:300px"><canvas id="str-die-avg"></canvas></div></div>
-      <div class="chart-card"><h3>시디즈 vs GCK 비교 (4000G / S-TILT)</h3><div style="position:relative;height:300px"><canvas id="str-die-compare"></canvas></div></div>
-    </div>
-    <div class="chart-row" style="grid-template-columns:1fr">
-      <div class="chart-card" style="max-width:520px;margin:0 auto;width:100%"><h3>기준 부적합 비율</h3><div style="position:relative;height:260px"><canvas id="str-die-judge-pie"></canvas></div></div>
+      <div class="chart-card"><h3>시디즈 vs GCK 강도/중량 비교 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(4000G / S-TILT, 듀얼축)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-compare"></canvas></div></div>
+      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:300px"><canvas id="str-die-judge-pie"></canvas></div></div>
     </div>
 
     <div class="data-table-wrapper">

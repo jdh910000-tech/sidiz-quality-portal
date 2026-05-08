@@ -199,21 +199,6 @@ function renderDieCharts(rows) {
     }
   });
 
-  // ===== 사양별 월별 중량 추이 (신규) =====
-  const wDatasets = specs.map((spec, i) => ({
-    label: spec,
-    data: months.map(m => avg(rows.filter(r => (r.measure_date||'').slice(0,7) === m && r.spec === spec).map(r => r.weight))),
-    borderColor: PALETTE[i % PALETTE.length],
-    backgroundColor: PALETTE[i % PALETTE.length] + '20',
-    tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true,
-  }));
-  makeLine('dieWeightTrend', $('str-die-weight-trend').getContext('2d'), months, wDatasets, {
-    scales: {
-      x: { grid: { display: false } },
-      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '중량 (g)', font: { size: 10 } } }
-    }
-  });
-
   // 사양별 평균 강도 vs 기준 (기준선 빨간색 강조 + 앞으로)
   const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const specThres = specs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
@@ -253,18 +238,40 @@ function renderDieCharts(rows) {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // 시디즈 vs GCK (4000G / S-TILT)
+  // 시디즈 vs GCK 강도/중량 비교 (4000G / S-TILT) — 듀얼 Y축
   const compareSpecs = ['4000G', 'S-TILT'];
-  const sourcesOrder = ['시디즈', 'GCK'];
-  const compareDatasets = sourcesOrder.map((src, i) => ({
-    label: src,
-    data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === src).map(r => r.strength))),
-    backgroundColor: i === 0 ? C.blue : C.amber,
-    borderRadius: 6,
-  }));
+  const compareDatasets = [
+    {
+      label: '시디즈 강도',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength))),
+      backgroundColor: C.blue, borderRadius: 6, yAxisID: 'y',
+    },
+    {
+      label: 'GCK 강도',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength))),
+      backgroundColor: C.amber, borderRadius: 6, yAxisID: 'y',
+    },
+    {
+      label: '시디즈 중량',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.weight))),
+      backgroundColor: C.blueLight, borderRadius: 6, yAxisID: 'y1',
+    },
+    {
+      label: 'GCK 중량',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.weight))),
+      backgroundColor: '#FFB347', borderRadius: 6, yAxisID: 'y1',
+    },
+  ];
   makeBar('dieCompare', $('str-die-compare').getContext('2d'), compareSpecs, compareDatasets, {
-    scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '평균 강도 (kgf)', font: { size: 10 } } }, x: { grid: { display: false } } },
-    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(0) : '-' } }
+    scales: {
+      y: { type: 'linear', position: 'left', beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } },
+      y1: { type: 'linear', position: 'right', beginAtZero: false, grid: { display: false }, title: { display: true, text: '중량 (g)', font: { size: 10 } } },
+      x: { grid: { display: false } }
+    },
+    plugins: {
+      legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
+      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(0) : '-' }
+    }
   });
 
   // 부적합 도넛
