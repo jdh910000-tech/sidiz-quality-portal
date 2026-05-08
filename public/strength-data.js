@@ -144,11 +144,13 @@ window.switchLabTab = function (tab) {
 // ===== 다이캐스팅 =====
 function getDieFiltered() {
   const spec = $('str-die-spec').value, source = $('str-die-source').value;
+  const mold = $('str-die-mold').value;
   const j = $('str-die-judge').value;
   const from = $('str-die-from').value, to = $('str-die-to').value;
   return STATE.die.filter(r =>
     (!spec || r.spec === spec) &&
     (!source || r.source === source) &&
+    (!mold || (r.mold_number || '') === mold) &&
     (!j || judge(r) === j) &&
     inDateRange(r.measure_date, from, to)
   );
@@ -194,6 +196,21 @@ function renderDieCharts(rows) {
     scales: {
       x: { grid: { display: false } },
       y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
+    }
+  });
+
+  // ===== 사양별 월별 중량 추이 (신규) =====
+  const wDatasets = specs.map((spec, i) => ({
+    label: spec,
+    data: months.map(m => avg(rows.filter(r => (r.measure_date||'').slice(0,7) === m && r.spec === spec).map(r => r.weight))),
+    borderColor: PALETTE[i % PALETTE.length],
+    backgroundColor: PALETTE[i % PALETTE.length] + '20',
+    tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true,
+  }));
+  makeLine('dieWeightTrend', $('str-die-weight-trend').getContext('2d'), months, wDatasets, {
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '중량 (g)', font: { size: 10 } } }
     }
   });
 
@@ -287,6 +304,16 @@ function initDieDropdowns() {
   const cur = sel.value;
   sel.innerHTML = '<option value="">전체</option>' + specs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+
+  // 금형번호 드롭다운
+  const moldSel = $('str-die-mold');
+  if (moldSel) {
+    const molds = uniq(STATE.die.map(r => r.mold_number)).sort();
+    const cm = moldSel.value;
+    moldSel.innerHTML = '<option value="">전체</option>' + molds.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+    if ([...moldSel.options].some(o => o.value === cm)) moldSel.value = cm;
+  }
+
   // 입력 폼 사양 셀렉트
   const formSel = $('form-die-spec');
   formSel.innerHTML = Object.keys(DIE_SPEC_THRESHOLDS).map(s => `<option value="${escHtml(s)}">${escHtml(s)} (≥${DIE_SPEC_THRESHOLDS[s]} kgf)</option>`).join('');
@@ -508,7 +535,7 @@ window.deleteStrengthRow = async function (table, id) {
 
 window.resetStrengthFilter = function (kind) {
   if (kind === 'die') {
-    ['str-die-spec', 'str-die-source', 'str-die-judge', 'str-die-from', 'str-die-to'].forEach(id => $(id).value = '');
+    ['str-die-spec', 'str-die-source', 'str-die-mold', 'str-die-judge', 'str-die-from', 'str-die-to'].forEach(id => $(id).value = '');
     renderDie();
   } else {
     ['str-inj-spec', 'str-inj-judge', 'str-inj-from', 'str-inj-to'].forEach(id => $(id).value = '');
@@ -647,7 +674,7 @@ window.initLabSection = async function () {
     await loadStrengthData();
   }
   if (!STATE.bound) {
-    ['str-die-spec', 'str-die-source', 'str-die-judge', 'str-die-from', 'str-die-to'].forEach(id => $(id)?.addEventListener('input', renderDie));
+    ['str-die-spec', 'str-die-source', 'str-die-mold', 'str-die-judge', 'str-die-from', 'str-die-to'].forEach(id => $(id)?.addEventListener('input', renderDie));
     ['str-inj-spec', 'str-inj-judge', 'str-inj-from', 'str-inj-to'].forEach(id => $(id)?.addEventListener('input', renderInj));
     STATE.bound = true;
   }

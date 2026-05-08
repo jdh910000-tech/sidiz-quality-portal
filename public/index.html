@@ -182,8 +182,17 @@ body.share-mode .section > .header .header-left p { display: none; }
 .data-table td { padding: 9px 14px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 .data-table td.row-header { text-align: left; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
 .data-table tr:hover td { background: rgba(0,87,184,0.04); }
-.data-table tr.ng-row td { background: rgba(255,108,57,0.10); }
-.data-table tr.ng-row:hover td { background: rgba(255,108,57,0.18); }
+.data-table tr.ng-row td {
+  background: rgba(255,108,57,0.13) !important;
+  border-bottom: 1px solid rgba(255,108,57,0.30);
+  font-weight: 600;
+}
+.data-table tr.ng-row td:first-child { border-left: 4px solid var(--accent-rose); }
+.data-table tr.ng-row:hover td { background: rgba(255,108,57,0.22) !important; }
+.data-table tr.ng-row .danger {
+  background: var(--accent-rose); color: #fff;
+  padding: 3px 10px; border-radius: 4px; font-weight: 700;
+}
 
 /* KPI 현황 섹션 전체 표 폰트 확대 */
 #section-kpi .data-table-header h3 { font-size: 16px; }
@@ -1313,6 +1322,7 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="date-filter" style="margin:0;flex-wrap:wrap">
         <div><label style="display:block;margin-bottom:4px">사양</label><select id="str-die-spec" class="date-input" style="min-width:160px"></select></div>
         <div><label style="display:block;margin-bottom:4px">측정 주체</label><select id="str-die-source" class="date-input" style="min-width:120px"><option value="">전체</option><option value="시디즈">시디즈</option><option value="GCK">GCK</option></select></div>
+        <div><label style="display:block;margin-bottom:4px">금형번호</label><select id="str-die-mold" class="date-input" style="min-width:110px"></select></div>
         <div><label style="display:block;margin-bottom:4px">판정</label><select id="str-die-judge" class="date-input" style="min-width:100px"><option value="">전체</option><option value="OK">OK</option><option value="NG">NG</option></select></div>
         <div><label style="display:block;margin-bottom:4px">시작일</label><input type="date" id="str-die-from" class="date-input"></div>
         <div><label style="display:block;margin-bottom:4px">종료일</label><input type="date" id="str-die-to" class="date-input"></div>
@@ -1342,11 +1352,14 @@ body.share-mode .section > .header .header-left p { display: none; }
 
     <div class="chart-row">
       <div class="chart-card"><h3>사양별 월별 강도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(기준선 자동 표시)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-trend"></canvas></div></div>
-      <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:300px"><canvas id="str-die-avg"></canvas></div></div>
+      <div class="chart-card"><h3>사양별 월별 중량 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(g)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-weight-trend"></canvas></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>시디즈 vs GCK 비교 (4000G / S-TILT)</h3><div style="position:relative;height:260px"><canvas id="str-die-compare"></canvas></div></div>
-      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:260px"><canvas id="str-die-judge-pie"></canvas></div></div>
+      <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:300px"><canvas id="str-die-avg"></canvas></div></div>
+      <div class="chart-card"><h3>시디즈 vs GCK 비교 (4000G / S-TILT)</h3><div style="position:relative;height:300px"><canvas id="str-die-compare"></canvas></div></div>
+    </div>
+    <div class="chart-row" style="grid-template-columns:1fr">
+      <div class="chart-card" style="max-width:520px;margin:0 auto;width:100%"><h3>기준 부적합 비율</h3><div style="position:relative;height:260px"><canvas id="str-die-judge-pie"></canvas></div></div>
     </div>
 
     <div class="data-table-wrapper">
