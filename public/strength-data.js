@@ -503,13 +503,18 @@ window.submitStrengthInj = async function () {
 
 async function postStrength(table, data, kind) {
   try {
+    // 다이캐스팅: (date, spec, source) UNIQUE → 같은 키 입력 시 자동 갱신 (upsert)
+    const preferUpsert = (table === 'strength_diecasting');
+    const headers = preferUpsert
+      ? { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' }
+      : { ...SB_HEADERS, 'Prefer': 'return=representation' };
     const res = await fetch(`${SB_URL}/rest/v1/${table}`, {
       method: 'POST',
-      headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+      headers,
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-    alert('✅ 저장 완료');
+    alert(preferUpsert ? '✅ 저장 완료 (동일 키는 자동 갱신)' : '✅ 저장 완료');
     document.querySelectorAll(`#str-form-${kind} input:not([type="date"])`).forEach(i => i.value = '');
     await loadStrengthData(true);
     if (kind === 'die') renderDie(); else renderInj();
@@ -590,18 +595,32 @@ window.handleGckUpload = async function (event) {
       return;
     }
 
-    if (!confirm(`총 ${records.length}건의 GCK 측정 데이터를 추가하시겠습니까?`)) {
+    // 신규/갱신 분류 (현재 DB 상태 기준)
+    const existKeys = new Set(STATE.die
+      .filter(r => r.source === 'GCK')
+      .map(r => `${r.measure_date}|${r.spec}|${r.source}`));
+    const newCount = records.filter(r => !existKeys.has(`${r.measure_date}|${r.spec}|${r.source}`)).length;
+    const updateCount = records.length - newCount;
+
+    if (!confirm(
+      `GCK 파일 파싱 결과:\n\n` +
+      `• 총 ${records.length}건\n` +
+      `• 신규 추가: ${newCount}건\n` +
+      `• 기존 갱신: ${updateCount}건 (이미 등록된 일자는 값 자동 갱신)\n\n` +
+      `진행하시겠습니까?`
+    )) {
       event.target.value = '';
       return;
     }
 
+    // upsert: (measure_date, spec, source) UNIQUE 제약 기반으로 자동 병합
     const res = await fetch(`${SB_URL}/rest/v1/strength_diecasting`, {
       method: 'POST',
-      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
       body: JSON.stringify(records),
     });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-    alert(`✅ GCK ${records.length}건 업로드 완료`);
+    alert(`✅ GCK 업로드 완료\n\n• 신규 추가: ${newCount}건\n• 기존 갱신: ${updateCount}건\n\n동일 일자/사양은 최신 값으로 자동 갱신되었습니다.`);
     await loadStrengthData(true);
     renderDie();
   } catch (e) {
