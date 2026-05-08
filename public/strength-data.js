@@ -200,10 +200,14 @@ function renderDieCharts(rows) {
   });
 
   // 사양별 평균 강도 vs 기준 (기준선 빨간색 강조 + 앞으로)
-  const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
-  const specThres = specs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
-  makeBar('dieAvg', $('str-die-avg').getContext('2d'), specs, [
-    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6, order: 2 },
+  // X축 고정 순서: 4000G → S-TILT → ITO-TILT → CH4800 → T502F → 700 FLAT (RAW) → 700 FLAT (POL)
+  const SPEC_ORDER = ['4000G', 'S-TILT', 'ITO-TILT', 'CH4800', 'T502F', '700 FLAT (RAW)', '700 FLAT (POL)'];
+  const orderedSpecs = SPEC_ORDER.filter(s => specs.includes(s))
+    .concat(specs.filter(s => !SPEC_ORDER.includes(s))); // 미정의 사양은 뒤로
+  const specAvgs = orderedSpecs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
+  const specThres = orderedSpecs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
+  makeBar('dieAvg', $('str-die-avg').getContext('2d'), orderedSpecs, [
+    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, orderedSpecs.length), borderRadius: 6, order: 2 },
     {
       label: '기준',
       data: specThres,
@@ -238,28 +242,34 @@ function renderDieCharts(rows) {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // 시디즈 vs GCK 강도/중량 비교 (4000G / S-TILT) — 듀얼 Y축
+  // 시디즈 vs GCK 강도/중량 비교 (4000G / S-TILT) — 듀얼 Y축, 강도=막대 / 중량=꺾은선
   const compareSpecs = ['4000G', 'S-TILT'];
   const compareDatasets = [
     {
-      label: '시디즈 강도',
+      label: '시디즈 강도', type: 'bar',
       data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength))),
-      backgroundColor: C.blue, borderRadius: 6, yAxisID: 'y',
+      backgroundColor: C.blue, borderRadius: 6, yAxisID: 'y', order: 3,
     },
     {
-      label: 'GCK 강도',
+      label: 'GCK 강도', type: 'bar',
       data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength))),
-      backgroundColor: C.amber, borderRadius: 6, yAxisID: 'y',
+      backgroundColor: C.amber, borderRadius: 6, yAxisID: 'y', order: 3,
     },
     {
-      label: '시디즈 중량',
+      label: '시디즈 중량', type: 'line',
       data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.weight))),
-      backgroundColor: C.blueLight, borderRadius: 6, yAxisID: 'y1',
+      borderColor: C.blueLight, backgroundColor: C.blueLight,
+      borderWidth: 3, pointRadius: 8, pointHoverRadius: 10,
+      pointBackgroundColor: C.blueLight, pointBorderColor: '#fff', pointBorderWidth: 2,
+      tension: 0.3, fill: false, yAxisID: 'y1', order: 1,
     },
     {
-      label: 'GCK 중량',
+      label: 'GCK 중량', type: 'line',
       data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.weight))),
-      backgroundColor: '#FFB347', borderRadius: 6, yAxisID: 'y1',
+      borderColor: '#FFB347', backgroundColor: '#FFB347',
+      borderWidth: 3, pointRadius: 8, pointHoverRadius: 10,
+      pointBackgroundColor: '#FFB347', pointBorderColor: '#fff', pointBorderWidth: 2,
+      tension: 0.3, fill: false, yAxisID: 'y1', order: 1,
     },
   ];
   makeBar('dieCompare', $('str-die-compare').getContext('2d'), compareSpecs, compareDatasets, {
