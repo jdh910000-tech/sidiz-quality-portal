@@ -1306,6 +1306,7 @@ body.share-mode .section > .header .header-left p { display: none; }
     <button class="sub-tab lab-subtab active" data-tab="schedule" onclick="switchLabTab('schedule')">📅 시험 일정</button>
     <button class="sub-tab lab-subtab" data-tab="die" onclick="switchLabTab('die')">🛠 다이캐스팅 강도</button>
     <button class="sub-tab lab-subtab" data-tab="inj" onclick="switchLabTab('inj')">⬛ 사출 베이스 강도</button>
+    <button class="sub-tab lab-subtab" data-tab="report" onclick="switchLabTab('report')">📊 불량 분석 리포트</button>
   </div>
 
   <!-- 시험 일정 (기존 iframe) -->
@@ -1355,8 +1356,8 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="chart-card"><h3>사양별 평균 강도 (기준 대비)</h3><div style="position:relative;height:300px"><canvas id="str-die-avg"></canvas></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>시디즈 vs GCK 강도/중량 비교 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(4000G / S-TILT, 듀얼축)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-compare"></canvas></div></div>
-      <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:300px"><canvas id="str-die-judge-pie"></canvas></div></div>
+      <div class="chart-card"><h3>시디즈 vs GCK 강도 비교 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(4000G / S-TILT, kgf)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-compare-strength"></canvas></div></div>
+      <div class="chart-card"><h3>시디즈 vs GCK 중량 비교 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(4000G / S-TILT, g)</span></h3><div style="position:relative;height:300px"><canvas id="str-die-compare-weight"></canvas></div></div>
     </div>
 
     <div class="data-table-wrapper">
@@ -1419,6 +1420,55 @@ body.share-mode .section > .header .header-left p { display: none; }
         <table class="data-table">
           <thead><tr><th>측정일</th><th>사양</th><th>재료</th><th>중량(g)</th><th>강도(kgf)</th><th>기준(kgf)</th><th>판정</th><th>삭제</th></tr></thead>
           <tbody id="str-inj-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 불량 분석 리포트 -->
+  <div id="lab-pane-report" class="lab-pane" style="display:none">
+    <!-- 카테고리 서브탭 -->
+    <div class="sub-tabs" style="margin-bottom:18px">
+      <button class="sub-tab lab-report-cat-tab active" data-cat="die" onclick="switchLabReportCat('die')">🛠 다이캐스팅 분석</button>
+      <button class="sub-tab lab-report-cat-tab" data-cat="inj" onclick="switchLabReportCat('inj')">⬛ 사출 베이스 분석</button>
+    </div>
+
+    <!-- 다이캐스팅 분석 -->
+    <div id="lab-report-cat-die" class="lab-report-cat-pane">
+      <div id="rep-die-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 다이캐스팅 권장 조치사항 (자동 분석)</h4>
+        <div id="rep-die-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>월별 OK / NG 추이</h3><div style="position:relative;height:280px"><canvas id="rep-die-trend"></canvas></div></div>
+        <div class="chart-card"><h3>사양별 NG율</h3><div style="position:relative;height:280px"><canvas id="rep-die-spec"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 부적합 측정 TOP 10 (강도 미달 순)</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>측정일</th><th>사양</th><th>측정 주체</th><th>금형번호</th><th>강도(kgf)</th><th>기준(kgf)</th><th>차이</th></tr></thead>
+          <tbody id="rep-die-top10"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 사출 베이스 분석 -->
+    <div id="lab-report-cat-inj" class="lab-report-cat-pane" style="display:none">
+      <div id="rep-inj-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 사출 베이스 권장 조치사항 (자동 분석)</h4>
+        <div id="rep-inj-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>월별 OK / NG 추이</h3><div style="position:relative;height:280px"><canvas id="rep-inj-trend"></canvas></div></div>
+        <div class="chart-card"><h3>사양별 NG율</h3><div style="position:relative;height:280px"><canvas id="rep-inj-spec"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 부적합 측정 TOP 10 (강도 미달 순)</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>측정일</th><th>사양</th><th>재료</th><th>강도(kgf)</th><th>기준(kgf)</th><th>차이</th></tr></thead>
+          <tbody id="rep-inj-top10"></tbody>
         </table>
       </div>
     </div>

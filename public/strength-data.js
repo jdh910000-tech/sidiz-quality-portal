@@ -139,6 +139,19 @@ window.switchLabTab = function (tab) {
   $(`lab-pane-${tab}`).style.display = 'block';
   if (tab === 'die') renderDie();
   else if (tab === 'inj') renderInj();
+  else if (tab === 'report') switchLabReportCat(STATE.labReportCat || 'die');
+};
+
+// 리포트 카테고리 전환
+STATE.labReportCat = 'die';
+window.switchLabReportCat = function (cat) {
+  STATE.labReportCat = cat;
+  document.querySelectorAll('.lab-report-cat-tab').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.lab-report-cat-tab[data-cat="${cat}"]`)?.classList.add('active');
+  document.querySelectorAll('.lab-report-cat-pane').forEach(p => p.style.display = 'none');
+  $(`lab-report-cat-${cat}`).style.display = 'block';
+  if (cat === 'die') renderLabReportDie();
+  else if (cat === 'inj') renderLabReportInj();
 };
 
 // ===== 다이캐스팅 =====
@@ -242,52 +255,52 @@ function renderDieCharts(rows) {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // 시디즈 vs GCK 강도/중량 비교 (4000G / S-TILT) — 듀얼 Y축, 강도=막대 / 중량=꺾은선
+  // 시디즈 vs GCK 강도 비교 (4000G / S-TILT) — 막대
   const compareSpecs = ['4000G', 'S-TILT'];
-  const compareDatasets = [
+  makeBar('dieCompareStrength', $('str-die-compare-strength').getContext('2d'), compareSpecs, [
     {
-      label: '시디즈 강도', type: 'bar',
+      label: '시디즈',
       data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength))),
-      backgroundColor: C.blue, borderRadius: 6, yAxisID: 'y', order: 3,
+      backgroundColor: C.blue, borderRadius: 6,
     },
     {
-      label: 'GCK 강도', type: 'bar',
+      label: 'GCK',
       data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength))),
-      backgroundColor: C.amber, borderRadius: 6, yAxisID: 'y', order: 3,
+      backgroundColor: C.amber, borderRadius: 6,
     },
-    {
-      label: '시디즈 중량', type: 'line',
-      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.weight))),
-      borderColor: C.blueLight, backgroundColor: C.blueLight,
-      borderWidth: 3, pointRadius: 8, pointHoverRadius: 10,
-      pointBackgroundColor: C.blueLight, pointBorderColor: '#fff', pointBorderWidth: 2,
-      tension: 0.3, fill: false, yAxisID: 'y1', order: 1,
-    },
-    {
-      label: 'GCK 중량', type: 'line',
-      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.weight))),
-      borderColor: '#FFB347', backgroundColor: '#FFB347',
-      borderWidth: 3, pointRadius: 8, pointHoverRadius: 10,
-      pointBackgroundColor: '#FFB347', pointBorderColor: '#fff', pointBorderWidth: 2,
-      tension: 0.3, fill: false, yAxisID: 'y1', order: 1,
-    },
-  ];
-  makeBar('dieCompare', $('str-die-compare').getContext('2d'), compareSpecs, compareDatasets, {
+  ], {
     scales: {
-      y: { type: 'linear', position: 'left', beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } },
-      y1: { type: 'linear', position: 'right', beginAtZero: false, grid: { display: false }, title: { display: true, text: '중량 (g)', font: { size: 10 } } },
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } },
       x: { grid: { display: false } }
     },
     plugins: {
-      legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(0) : '-' }
+      legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } },
+      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 
-  // 부적합 도넛
-  const ok = rows.filter(r => judge(r) === 'OK').length;
-  const ng = rows.filter(r => judge(r) === 'NG').length;
-  makeDoughnut('dieJudge', $('str-die-judge-pie').getContext('2d'), ['OK (적합)', 'NG (부적합)'], [ok, ng], [C.emerald, C.rose]);
+  // 시디즈 vs GCK 중량 비교 (4000G / S-TILT) — 막대
+  makeBar('dieCompareWeight', $('str-die-compare-weight').getContext('2d'), compareSpecs, [
+    {
+      label: '시디즈',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.weight))),
+      backgroundColor: C.blueLight, borderRadius: 6,
+    },
+    {
+      label: 'GCK',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.weight))),
+      backgroundColor: '#FFB347', borderRadius: 6,
+    },
+  ], {
+    scales: {
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '중량 (g)', font: { size: 10 } } },
+      x: { grid: { display: false } }
+    },
+    plugins: {
+      legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } },
+      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
+    }
+  });
 }
 
 function renderDieTable(rows) {
@@ -483,6 +496,187 @@ function renderInj() {
   renderInjKPI(rows);
   renderInjCharts(rows);
   renderInjTable(rows);
+}
+
+// ===== 불량 분석 리포트 =====
+const DIE_SPEC_ORDER_REP = ['4000G', 'S-TILT', 'ITO-TILT', 'CH4800', 'T502F', '700 FLAT (RAW)', '700 FLAT (POL)'];
+
+function renderLabReportDie() {
+  const rows = STATE.die;
+  const ngRows = rows.filter(r => judge(r) === 'NG');
+  const ngRate = rows.length ? (ngRows.length / rows.length * 100) : 0;
+  const specsAll = uniq(rows.map(r => r.spec));
+  const sources = uniq(rows.map(r => r.source)).sort();
+
+  $('rep-die-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">사양 ${specsAll.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">기준값 미달 측정</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
+    <div class="kpi-card"><div class="kpi-label">측정 주체</div><div class="kpi-value" style="font-size:18px">${sources.join(' · ')}</div><div class="kpi-change">${sources.length}개사</div></div>
+  `;
+
+  // 사양별 통계
+  const specStats = {};
+  rows.forEach(r => {
+    if (!specStats[r.spec]) specStats[r.spec] = { total: 0, ng: 0 };
+    specStats[r.spec].total++;
+    if (judge(r) === 'NG') specStats[r.spec].ng++;
+  });
+
+  // TOP10 (강도가 기준 대비 가장 많이 미달한 순)
+  const topNG = [...ngRows]
+    .map(r => ({ ...r, _diff: r.strength - r.threshold }))
+    .sort((a, b) => a._diff - b._diff)
+    .slice(0, 10);
+  $('rep-die-top10').innerHTML = topNG.length ? topNG.map((r, i) => {
+    return `<tr class="ng-row">
+      <td><span class="rct-rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':'normal'}">${i + 1}</span></td>
+      <td>${escHtml(r.measure_date)}</td>
+      <td>${escHtml(r.spec)}</td>
+      <td>${escHtml(r.source)}</td>
+      <td>${escHtml(r.mold_number || '-')}</td>
+      <td><span class="danger">${fmt(r.strength, 1)}</span></td>
+      <td>${fmt(r.threshold, 1)}</td>
+      <td><span class="danger">${r._diff.toFixed(1)} kgf</span></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 측정값이 없습니다</td></tr>';
+
+  // 월별 OK/NG 스택 추이
+  const byMonth = {};
+  rows.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = { ok: 0, ng: 0 };
+    if (judge(r) === 'NG') byMonth[m].ng++; else byMonth[m].ok++;
+  });
+  const months = Object.keys(byMonth).sort();
+  makeBar('repDieTrend', $('rep-die-trend').getContext('2d'), months, [
+    { label: 'OK', data: months.map(m => byMonth[m].ok), backgroundColor: C.emerald, borderRadius: 4, stack: 's' },
+    { label: 'NG', data: months.map(m => byMonth[m].ng), backgroundColor: C.rose, borderRadius: 4, stack: 's' },
+  ], {
+    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: C.border } } },
+    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+  });
+
+  // 사양별 NG율 (정의된 순서로)
+  const specs = DIE_SPEC_ORDER_REP.filter(s => specStats[s])
+    .concat(Object.keys(specStats).filter(s => !DIE_SPEC_ORDER_REP.includes(s)));
+  makeBar('repDieSpec', $('rep-die-spec').getContext('2d'), specs, [
+    { label: 'NG율 (%)', data: specs.map(s => specStats[s].total ? specStats[s].ng / specStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
+  ], {
+    scales: { y: { beginAtZero: true, suggestedMax: 5, grid: { color: C.border } }, x: { grid: { display: false } } },
+    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v.toFixed(2) + '%' } }
+  });
+
+  // 권장 조치
+  const recs = [];
+  topNG.slice(0, 3).forEach(r => {
+    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)} (${escHtml(r.source)})</b> — 강도 ${r.strength.toFixed(1)} (기준 ${r.threshold} 대비 ${r._diff.toFixed(1)} kgf 미달). 시험 재진행 / 잉곳 조성 점검 권장.` });
+  });
+  Object.entries(specStats).forEach(([sp, st]) => {
+    if (st.total >= 4 && st.ng / st.total > 0.10) {
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 10% 초과로 모니터링 강화.` });
+    }
+  });
+  // 시디즈 vs GCK 강도 차이 분석
+  ['4000G', 'S-TILT'].forEach(sp => {
+    const sidiz = avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength));
+    const gck = avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength));
+    if (sidiz !== null && gck !== null) {
+      const diff = Math.abs(sidiz - gck);
+      const pctDiff = diff / Math.min(sidiz, gck) * 100;
+      if (pctDiff > 20) {
+        recs.push({ level: 'info', text: `<b>${sp}</b> — 시디즈(${sidiz.toFixed(1)}) vs GCK(${gck.toFixed(1)}) 강도 차이 ${diff.toFixed(1)} kgf (${pctDiff.toFixed(1)}%). 측정 환경/방법 점검 권장.` });
+      }
+    }
+  });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
+  $('rep-die-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+}
+
+function renderLabReportInj() {
+  const rows = STATE.inj;
+  const ngRows = rows.filter(r => judge(r) === 'NG');
+  const ngRate = rows.length ? (ngRows.length / rows.length * 100) : 0;
+  const specs = uniq(rows.map(r => r.spec)).sort();
+
+  $('rep-inj-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">사양 ${specs.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">기준 1,134.7 kgf 미달</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 강도</div><div class="kpi-value">${fmt(avg(rows.map(r => r.strength)), 1)}</div><div class="kpi-change">단위: kgf</div></div>
+  `;
+
+  // 사양별 통계
+  const specStats = {};
+  rows.forEach(r => {
+    if (!specStats[r.spec]) specStats[r.spec] = { total: 0, ng: 0 };
+    specStats[r.spec].total++;
+    if (judge(r) === 'NG') specStats[r.spec].ng++;
+  });
+
+  // TOP10 (강도 미달 순)
+  const topNG = [...ngRows]
+    .map(r => ({ ...r, _diff: r.strength - r.threshold }))
+    .sort((a, b) => a._diff - b._diff)
+    .slice(0, 10);
+  $('rep-inj-top10').innerHTML = topNG.length ? topNG.map((r, i) => `
+    <tr class="ng-row">
+      <td><span class="rct-rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':'normal'}">${i + 1}</span></td>
+      <td>${escHtml(r.measure_date)}</td>
+      <td>${escHtml(r.spec)}</td>
+      <td>${escHtml(r.material || '-')}</td>
+      <td><span class="danger">${fmt(r.strength, 1)}</span></td>
+      <td>${fmt(r.threshold, 1)}</td>
+      <td><span class="danger">${r._diff.toFixed(1)} kgf</span></td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 측정값이 없습니다</td></tr>';
+
+  // 월별 OK/NG
+  const byMonth = {};
+  rows.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = { ok: 0, ng: 0 };
+    if (judge(r) === 'NG') byMonth[m].ng++; else byMonth[m].ok++;
+  });
+  const months = Object.keys(byMonth).sort();
+  makeBar('repInjTrend', $('rep-inj-trend').getContext('2d'), months, [
+    { label: 'OK', data: months.map(m => byMonth[m].ok), backgroundColor: C.emerald, borderRadius: 4, stack: 's' },
+    { label: 'NG', data: months.map(m => byMonth[m].ng), backgroundColor: C.rose, borderRadius: 4, stack: 's' },
+  ], {
+    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: C.border } } },
+    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+  });
+
+  // 사양별 NG율
+  const specOrder = Object.keys(specStats).sort();
+  makeBar('repInjSpec', $('rep-inj-spec').getContext('2d'), specOrder, [
+    { label: 'NG율 (%)', data: specOrder.map(s => specStats[s].total ? specStats[s].ng / specStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, specOrder.length), borderRadius: 6 }
+  ], {
+    scales: { y: { beginAtZero: true, suggestedMax: 5, grid: { color: C.border } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
+    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v.toFixed(2) + '%' } }
+  });
+
+  // 권장 조치
+  const recs = [];
+  topNG.slice(0, 3).forEach(r => {
+    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)}</b> — 강도 ${r.strength.toFixed(1)} (기준 1,134.7 대비 ${r._diff.toFixed(1)} kgf 미달). 사출 조건/재료 점검 권장.` });
+  });
+  Object.entries(specStats).forEach(([sp, st]) => {
+    if (st.total >= 4 && st.ng / st.total > 0.10) {
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 모니터링 강화.` });
+    }
+  });
+  // 평균 강도가 기준 +30 미만인 사양 (안전 마진 부족)
+  Object.keys(specStats).forEach(sp => {
+    const sAvg = avg(rows.filter(r => r.spec === sp).map(r => r.strength));
+    if (sAvg !== null && sAvg < 1134.7 + 30 && sAvg > 1134.7) {
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — 평균 강도 ${sAvg.toFixed(1)} kgf, 기준 대비 안전마진 30 kgf 미만. 잠재 NG 위험.` });
+    }
+  });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
+  $('rep-inj-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
 }
 
 // ===== 입력 / 저장 / 삭제 =====
