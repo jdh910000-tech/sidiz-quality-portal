@@ -759,26 +759,161 @@ window.resetStrengthFilter = function (kind) {
   }
 };
 
+// ── SheetJS 스타일 헬퍼 ──────────────────────────────────────────
+function _xlsBorder(rgb) {
+  return { style: 'thin', color: { rgb: rgb || 'BFBFBF' } };
+}
+function _xlsApplyStyles(ws, aoa, opts) {
+  // opts: { headerRows, thresholdColStep, thresholdColOffset, specMap, specs }
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  const defaultBorder = { top: _xlsBorder(), bottom: _xlsBorder(), left: _xlsBorder(), right: _xlsBorder() };
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!ws[addr]) { ws[addr] = { v: '', t: 's' }; }
+
+      const isHdr = R < (opts.headerRows || 1);
+      const s = {
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border: defaultBorder,
+      };
+
+      if (isHdr) {
+        s.fill = { patternType: 'solid', fgColor: { rgb: 'D9D9D9' } };
+        s.font = { bold: true, sz: 10 };
+      }
+
+      // 월별 추이 시트: 기준값 컬럼 (빨간 글씨)
+      if (!isHdr && opts.thresholdColStep && C > 0) {
+        const colInGroup = (C - 1) % opts.thresholdColStep;
+        if (colInGroup === opts.thresholdColOffset) {
+          s.font = { bold: true, color: { rgb: 'FF0000' } };
+          s.fill = { patternType: 'solid', fgColor: { rgb: 'FFF2F2' } };
+        }
+        // 기준값 미달 셀 (시디즈/GCK 컬럼만)
+        if (colInGroup !== opts.thresholdColOffset && opts.specs && opts.specMap) {
+          const specIdx = Math.floor((C - 1) / opts.thresholdColStep);
+          const spec = opts.specs[specIdx];
+          const threshold = spec ? opts.specMap[spec] : null;
+          const val = ws[addr].v;
+          if (threshold !== null && typeof val === 'number' && val < threshold) {
+            s.font = { bold: true, color: { rgb: 'C00000' } };
+            s.fill = { patternType: 'solid', fgColor: { rgb: 'FFCCCC' } };
+          }
+        }
+      }
+
+      ws[addr].s = s;
+    }
+  }
+}
+
+// ── 월별 강도 추이 시트 생성 ─────────────────────────────────────
+function _buildTrendSheet(rows) {
+  // 사양별 기준값 수집
+  const specMap = {};
+  rows.forEach(r => { if (r.spec && r.threshold != null) specMap[r.spec] = r.threshold; });
+  const specs = Object.keys(specMap).sort();
+  if (!specs.length) return null;
+
+  // 월별 × 사양별 × 업체별 평균 집계
+  const agg = {};   // agg[month][spec][source] = { sum, cnt }
+  rows.forEach(r => {
+    if (!r.measure_date || r.strength == null) return;
+    const month = r.measure_date.slice(0, 7);
+    const src   = r.source || '시디즈';
+    if (!agg[month])            agg[month] = {};
+    if (!agg[month][r.spec])    agg[month][r.spec] = {};
+    if (!agg[month][r.spec][src]) agg[month][r.spec][src] = { sum: 0, cnt: 0 };
+    agg[month][r.spec][src].sum += r.strength;
+    agg[month][r.spec][src].cnt++;
+  });
+
+  const months = Object.keys(agg).sort();
+
+  // 헤더 2행: 사양명(merged 3칸) / 시디즈·GCK·기준
+  const hdr1 = ['측정월'];
+  const hdr2 = [''];
+  specs.forEach(sp => { hdr1.push(sp, '', ''); hdr2.push('시디즈', 'GCK', '기준(kgf)'); });
+
+  const dataRows = months.map(mo => {
+    const row = [mo];
+    specs.forEach(sp => {
+      const threshold = specMap[sp];
+      const sdData = agg[mo]?.[sp]?.['시디즈'];
+      const gkData = agg[mo]?.[sp]?.['GCK'];
+      const sdAvg = sdData ? Math.round(sdData.sum / sdData.cnt * 10) / 10 : null;
+      const gkAvg = gkData ? Math.round(gkData.sum / gkData.cnt * 10) / 10 : null;
+      row.push(sdAvg, gkAvg, threshold);
+    });
+    return row;
+  });
+
+  const aoa = [hdr1, hdr2, ...dataRows];
+  const ws  = XLSX.utils.aoa_to_sheet(aoa);
+
+  // 열 너비
+  ws['!cols'] = [{ wch: 10 }, ...specs.flatMap(() => [{ wch: 11 }, { wch: 11 }, { wch: 11 }])];
+
+  // 셀 병합: 사양명 3칸
+  ws['!merges'] = specs.map((_, i) => ({
+    s: { r: 0, c: 1 + i * 3 },
+    e: { r: 0, c: 1 + i * 3 + 2 },
+  }));
+
+  // 스타일 적용 (헤더 2행, 기준값 컬럼=3번째/그룹 offset=2)
+  _xlsApplyStyles(ws, aoa, {
+    headerRows: 2,
+    thresholdColStep: 3,
+    thresholdColOffset: 2,
+    specs,
+    specMap,
+  });
+
+  return ws;
+}
+
+// ── 로우데이터 시트 생성 (테두리·정렬·헤더 음영) ──────────────────
+function _buildRawSheet(aoa, numCols) {
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = Array(numCols).fill({ wch: 16 });
+  _xlsApplyStyles(ws, aoa, { headerRows: 1 });
+  return ws;
+}
+
+// ── 자료변환 진입점 ───────────────────────────────────────────────
 window.exportStrength = function (kind) {
   if (!window.XLSX) { alert('XLSX 라이브러리 미로드'); return; }
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   let rows, header, mapper, filename;
+
   if (kind === 'die') {
-    rows = getDieFiltered();
+    rows     = getDieFiltered();
     filename = `강도시험_다이캐스팅_${today}.xlsx`;
-    header = ['측정일', '사양', '측정 주체', '금형번호', '중량(g)', '강도(kgf)', '기준(kgf)', '판정'];
-    mapper = r => [r.measure_date, r.spec, r.source, r.mold_number, r.weight, r.strength, r.threshold, judge(r)];
+    header   = ['측정일', '사양', '측정 주체', '금형번호', '중량(g)', '강도(kgf)', '기준(kgf)', '판정'];
+    mapper   = r => [r.measure_date, r.spec, r.source, r.mold_number, r.weight, r.strength, r.threshold, judge(r)];
   } else {
-    rows = getInjFiltered();
+    rows     = getInjFiltered();
     filename = `강도시험_사출베이스_${today}.xlsx`;
-    header = ['측정일', '사양', '재료', '중량(g)', '강도(kgf)', '기준(kgf)', '판정'];
-    mapper = r => [r.measure_date, r.spec, r.material, r.weight, r.strength, r.threshold, judge(r)];
+    header   = ['측정일', '사양', '재료', '중량(g)', '강도(kgf)', '기준(kgf)', '판정'];
+    mapper   = r => [r.measure_date, r.spec, r.material, r.weight, r.strength, r.threshold, judge(r)];
   }
-  const aoa = [header, ...rows.sort((a,b)=>(b.measure_date||'').localeCompare(a.measure_date||'')).map(mapper)];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = header.map(() => ({ wch: 14 }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '데이터');
+
+  const sorted = rows.slice().sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
+  const aoa    = [header, ...sorted.map(mapper)];
+  const wb     = XLSX.utils.book_new();
+
+  // 시트 1: 월별 강도 추이 (다이캐스팅만)
+  if (kind === 'die') {
+    const trendWs = _buildTrendSheet(rows);
+    if (trendWs) XLSX.utils.book_append_sheet(wb, trendWs, '월별 강도 추이');
+  }
+
+  // 시트 2(다이) / 시트 1(사출): 로우데이터
+  const rawWs = _buildRawSheet(aoa, header.length);
+  XLSX.utils.book_append_sheet(wb, rawWs, '로우데이터');
+
   XLSX.writeFile(wb, filename);
 };
 
@@ -863,7 +998,10 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
     let d = row[dateIdx];
     let dateStr;
     if (d instanceof Date) {
-      dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      // SheetJS cellDates:true는 UTC 자정 기준 Date를 생성 → 한국시간(UTC+9)에서 하루 앞으로 밀림
+      // +1일 보정 후 UTC 메서드로 날짜 추출
+      const fixed = new Date(d.getTime() + 86400000);
+      dateStr = `${fixed.getUTCFullYear()}-${String(fixed.getUTCMonth()+1).padStart(2,'0')}-${String(fixed.getUTCDate()).padStart(2,'0')}`;
     } else if (typeof d === 'string') {
       const m = d.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
       if (!m) continue;
