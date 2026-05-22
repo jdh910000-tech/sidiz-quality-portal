@@ -1300,6 +1300,61 @@ function _getDieDiagRecs(rows) {
   return recs;
 }
 
+// 전체 데이터(STATE.die)로 오프스크린 추이 차트 생성 → 흰 배경 PNG DataURL
+// 보고서 삽입 전용 — 필터 기간과 무관하게 1월~현재 전체 기간을 표시
+function _createDieTrendImageFull() {
+  const allRows = STATE.die;
+  if (!allRows || !allRows.length) return null;
+
+  const months  = uniq(allRows.map(r => (r.measure_date || '').slice(0, 7))).sort();
+  const specs   = uniq(allRows.map(r => r.spec));
+  const datasets = [];
+  specs.forEach((spec, i) => {
+    datasets.push({
+      label: spec,
+      data: months.map(m => avg(
+        allRows.filter(r => (r.measure_date||'').slice(0,7) === m && r.spec === spec)
+               .map(r => r.strength)
+      )),
+      borderColor: PALETTE[i % PALETTE.length],
+      backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true,
+    });
+  });
+
+  // 오프스크린 캔버스에 Chart.js 렌더 (animation:false → 동기)
+  const canvas = document.createElement('canvas');
+  canvas.width = 900; canvas.height = 380;
+  const tmpChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: false, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: false, grid: { color: C.border },
+             title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
+      },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
+        datalabels: { display: false }
+      }
+    }
+  });
+
+  // 흰 배경 합성
+  const off = document.createElement('canvas');
+  off.width = canvas.width; off.height = canvas.height;
+  const offCtx = off.getContext('2d');
+  offCtx.fillStyle = '#ffffff';
+  offCtx.fillRect(0, 0, off.width, off.height);
+  offCtx.drawImage(canvas, 0, 0);
+  tmpChart.destroy();
+
+  return off.toDataURL('image/png');
+}
+
 // 캔버스 → 흰 배경 PNG DataURL
 function _captureChart(canvasId) {
   const c = document.getElementById(canvasId);
@@ -1337,8 +1392,9 @@ window.generateDieReport = function () {
     </tr>`;
   }).join('');
 
-  // 차트 이미지 (현재 화면에 렌더된 캔버스 캡쳐)
-  const imgTrend   = _captureChart('str-die-trend');
+  // 차트 이미지
+  // ※ 추이 차트: STATE.die 전체 데이터로 오프스크린 재생성 (필터 기간 무관 — 전체 기간 표시)
+  const imgTrend   = _createDieTrendImageFull();
   const imgAvg     = _captureChart('str-die-avg');
   const imgCompare = _captureChart('str-die-compare-strength');
 
@@ -1374,9 +1430,11 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-seri
 .sign-lbl{background:#f3f5fb;font-weight:600;color:#555;width:25%}
 .sign-area{height:56px;vertical-align:bottom;padding-bottom:8px}
 .footer{border-top:1px solid #e0e4ee;margin-top:44px;padding-top:12px;font-size:11px;color:#bbb;text-align:center}
-.print-area{text-align:center;margin-top:30px}
+.print-area{text-align:center;margin-top:30px;display:flex;gap:12px;justify-content:center}
 .print-btn{padding:12px 36px;background:#002BD2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
 .print-btn:hover{background:#1A59FF}
+.save-btn{padding:12px 36px;background:#7c5fe6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
+.save-btn:hover{background:#6246ca}
 @media print{
   body{background:#fff}
   .page{padding:24px 28px;box-shadow:none;margin:0;max-width:100%}
@@ -1401,12 +1459,12 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-seri
       <tr><td class="lbl">시험 내용</td><td>다이캐스팅 강도 시험 (잉곳)</td></tr>
       <tr><td class="lbl">시험 장비</td><td>UTM (만능 재료 시험기 5.0 Ton)</td></tr>
       <tr><td class="lbl">시험 일자</td><td>${period}</td></tr>
-      <tr><td class="lbl">시료명</td><td>${specNames}</td></tr>
+      <tr><td class="lbl">시료</td><td>${specNames}</td></tr>
     </table>
   </div>
 
   <div class="sec">
-    <div class="sec-h">2. 시험 결과 (자동 분석)</div>
+    <div class="sec-h">2. 시험 결과</div>
     <div class="ana"><table><tbody>${recRows}</tbody></table></div>
   </div>
 
@@ -1446,9 +1504,24 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-seri
 
   <div class="print-area">
     <button class="print-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+    <button class="save-btn" onclick="downloadReport()">⬇ HTML 저장</button>
   </div>
 
 </div>
+<script>
+function downloadReport() {
+  var html = document.documentElement.outerHTML;
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href   = url;
+  a.download = '다이캐스팅_강도시험_보고서.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+</script>
 </body>
 </html>`;
 
