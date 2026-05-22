@@ -1260,4 +1260,202 @@ window.initLabSection = async function () {
   switchLabTab(STATE.currentTab);
 };
 
+// ── 다이캐스팅 강도 시험 보고서 ──────────────────────────────────────
+
+// 분석 권장사항 배열 반환 (현재 필터 rows 기준)
+function _getDieDiagRecs(rows) {
+  const ngRows = rows.filter(r => judge(r) === 'NG');
+  const specStats = {};
+  rows.forEach(r => {
+    if (!specStats[r.spec]) specStats[r.spec] = { total: 0, ng: 0 };
+    specStats[r.spec].total++;
+    if (judge(r) === 'NG') specStats[r.spec].ng++;
+  });
+  const topNG = [...ngRows]
+    .map(r => ({ ...r, _diff: r.strength - r.threshold }))
+    .sort((a, b) => a._diff - b._diff)
+    .slice(0, 3);
+
+  const recs = [];
+  topNG.forEach(r => {
+    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)} (${escHtml(r.source)})</b> — 강도 ${r.strength.toFixed(1)} kgf (기준 ${r.threshold} kgf 대비 ${Math.abs(r._diff).toFixed(1)} kgf 미달). 시험 재진행 / 잉곳 조성 점검 권장.` });
+  });
+  Object.entries(specStats).forEach(([sp, st]) => {
+    if (st.total >= 4 && st.ng / st.total > 0.10) {
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 10% 초과, 모니터링 강화 필요.` });
+    }
+  });
+  ['4000G', 'S-TILT'].forEach(sp => {
+    const sidiz = avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength));
+    const gck   = avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength));
+    if (sidiz !== null && gck !== null) {
+      const diff = Math.abs(sidiz - gck);
+      const pct  = diff / Math.min(sidiz, gck) * 100;
+      if (pct > 20) {
+        recs.push({ level: 'info', text: `<b>${escHtml(sp)}</b> — 시디즈(${sidiz.toFixed(1)}) vs GCK(${gck.toFixed(1)}) 강도 차이 ${diff.toFixed(1)} kgf (${pct.toFixed(1)}%). 측정 환경·방법 점검 권장.` });
+      }
+    }
+  });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
+  return recs;
+}
+
+// 캔버스 → 흰 배경 PNG DataURL
+function _captureChart(canvasId) {
+  const c = document.getElementById(canvasId);
+  if (!c) return null;
+  const off = document.createElement('canvas');
+  off.width = c.width; off.height = c.height;
+  const ctx = off.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(c, 0, 0);
+  return off.toDataURL('image/png');
+}
+
+window.generateDieReport = function () {
+  const filtered = getDieFiltered();
+  const from = $('str-die-from').value;
+  const to   = $('str-die-to').value;
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+
+  // 시료명: 현재 필터 기준 사양 목록 (지정 순서)
+  const specSet = new Set(filtered.map(r => r.spec).filter(Boolean));
+  const specNames = DIE_SPEC_ORDER_REP.filter(s => specSet.has(s))
+    .concat([...specSet].filter(s => !DIE_SPEC_ORDER_REP.includes(s)))
+    .join(', ') || '전체';
+
+  // 분석 결과
+  const recs = _getDieDiagRecs(filtered);
+  const recRows = recs.map(r => {
+    const dot = r.level === 'critical' ? '#E53935' : r.level === 'warning' ? '#FF8F00' : '#1E88E5';
+    return `<tr>
+      <td style="width:14px;padding:5px 6px 5px 0;vertical-align:top">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-top:5px"></span>
+      </td>
+      <td style="padding:5px 0;font-size:13px;line-height:1.75;color:#222">${r.text}</td>
+    </tr>`;
+  }).join('');
+
+  // 차트 이미지 (현재 화면에 렌더된 캔버스 캡쳐)
+  const imgTrend   = _captureChart('str-die-trend');
+  const imgAvg     = _captureChart('str-die-avg');
+  const imgCompare = _captureChart('str-die-compare-strength');
+
+  const today = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit' });
+
+  const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>다이캐스팅 강도 시험 보고서</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;background:#eef0f5;color:#111}
+.page{max-width:900px;margin:32px auto 48px;background:#fff;padding:52px 58px;box-shadow:0 4px 28px rgba(0,0,0,.12)}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:3px solid #002BD2;padding-bottom:18px;margin-bottom:36px}
+.hdr-logo{font-size:22px;font-weight:900;color:#002BD2;letter-spacing:-.5px}.hdr-logo em{color:#FF6C39;font-style:normal}
+.hdr-right{text-align:right}
+.hdr-title{font-size:20px;font-weight:700;color:#111}
+.hdr-sub{font-size:12px;color:#999;margin-top:3px}
+.sec{margin-bottom:34px}
+.sec-h{font-size:14px;font-weight:700;color:#002BD2;border-left:4px solid #002BD2;padding:2px 0 2px 11px;margin-bottom:15px}
+.info-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.info-tbl td{padding:11px 16px;border:1px solid #dde1ee;vertical-align:top;line-height:1.55}
+.info-tbl .lbl{background:#f3f5fb;font-weight:600;width:150px;color:#002BD2;white-space:nowrap}
+.ana{background:#f7f8ff;border:1px solid #dce0f0;border-radius:10px;padding:18px 20px}
+.ana table{border-collapse:collapse;width:100%}
+.chart-blk{margin-bottom:30px}
+.chart-lbl{font-size:13px;font-weight:600;color:#333;border-left:3px solid #3C7DFF;padding:2px 0 2px 9px;margin-bottom:10px}
+.chart-lbl small{font-size:11px;font-weight:400;color:#888;margin-left:6px}
+.chart-img{width:100%;border:1px solid #dde1ee;border-radius:8px;display:block}
+.sign-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.sign-tbl td{border:1px solid #cdd1e0;text-align:center;padding:10px 12px}
+.sign-lbl{background:#f3f5fb;font-weight:600;color:#555;width:25%}
+.sign-area{height:56px;vertical-align:bottom;padding-bottom:8px}
+.footer{border-top:1px solid #e0e4ee;margin-top:44px;padding-top:12px;font-size:11px;color:#bbb;text-align:center}
+.print-area{text-align:center;margin-top:30px}
+.print-btn{padding:12px 36px;background:#002BD2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
+.print-btn:hover{background:#1A59FF}
+@media print{
+  body{background:#fff}
+  .page{padding:24px 28px;box-shadow:none;margin:0;max-width:100%}
+  .print-area{display:none}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hdr">
+    <div class="hdr-logo">SIDIZ<em>.</em> 품질관리</div>
+    <div class="hdr-right">
+      <div class="hdr-title">다이캐스팅 강도 시험 보고서</div>
+      <div class="hdr-sub">작성일: ${today}</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">1. 시험 정보</div>
+    <table class="info-tbl">
+      <tr><td class="lbl">시험 내용</td><td>다이캐스팅 강도 시험 (잉곳)</td></tr>
+      <tr><td class="lbl">시험 장비</td><td>UTM (만능 재료 시험기 5.0 Ton)</td></tr>
+      <tr><td class="lbl">시험 일자</td><td>${period}</td></tr>
+      <tr><td class="lbl">시료명</td><td>${specNames}</td></tr>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">2. 시험 결과 (자동 분석)</div>
+    <div class="ana"><table><tbody>${recRows}</tbody></table></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">3. 측정 결과 그래프</div>
+    ${imgTrend ? `<div class="chart-blk">
+      <div class="chart-lbl">사양별 월별 강도 추이<small>(기준선 자동 표시 · 전체 기간)</small></div>
+      <img class="chart-img" src="${imgTrend}" alt="월별 강도 추이">
+    </div>` : ''}
+    ${imgAvg ? `<div class="chart-blk">
+      <div class="chart-lbl">사양별 평균 강도 (기준 대비)<small>(${period})</small></div>
+      <img class="chart-img" src="${imgAvg}" alt="사양별 평균 강도">
+    </div>` : ''}
+    ${imgCompare ? `<div class="chart-blk">
+      <div class="chart-lbl">시디즈 vs GCK 강도 비교<small>(4000G / S-TILT, kgf)</small></div>
+      <img class="chart-img" src="${imgCompare}" alt="시디즈 vs GCK 강도 비교">
+    </div>` : ''}
+  </div>
+
+  <div class="sec">
+    <div class="sec-h">4. 검토 · 확인</div>
+    <table class="sign-tbl">
+      <tr>
+        <td class="sign-lbl">작성</td>
+        <td class="sign-lbl">검토</td>
+        <td class="sign-lbl">승인</td>
+      </tr>
+      <tr>
+        <td class="sign-area"></td>
+        <td class="sign-area"></td>
+        <td class="sign-area"></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="footer">SIDIZ 품질관리 포털 — 자동 생성 보고서 | ${today}</div>
+
+  <div class="print-area">
+    <button class="print-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('팝업이 차단되었습니다.\n브라우저 팝업 차단을 해제 후 다시 시도해주세요.'); return; }
+  w.document.write(html);
+  w.document.close();
+};
+
 })();

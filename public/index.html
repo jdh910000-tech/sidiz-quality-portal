@@ -1332,6 +1332,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         <button class="date-btn" onclick="toggleStrengthForm('die')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
         <button class="date-btn" onclick="document.getElementById('gck-file-input').click()" style="background:var(--sidiz-blue-bright);align-self:flex-end">📁 GCK 파일 업로드</button>
         <input type="file" id="gck-file-input" accept=".xlsx" style="display:none" onchange="handleGckUpload(event)">
+        <button class="date-btn" onclick="generateDieReport()" style="background:var(--accent-violet);align-self:flex-end">📄 보고서 작성</button>
       </div>
     </div>
 
