@@ -1380,15 +1380,15 @@ window.generateDieReport = function () {
     .concat([...specSet].filter(s => !DIE_SPEC_ORDER_REP.includes(s)))
     .join(', ') || '전체';
 
-  // ── 분석 결과: EP 2단계 항목(1) 형식으로 변환 ──────
+  // ── 분석 결과: ':' 형식으로 변환 ────────────────────
   const recs = _getDieDiagRecs(filtered);
-  const recItems = recs.map((r, i) => {
+  const recItems = recs.map(r => {
     const prefix = r.level === 'critical'
       ? '<span style="color:red;font-weight:bold;">[주의]</span> '
       : r.level === 'warning'
       ? '<span style="color:#CC7700;font-weight:bold;">[경고]</span> '
       : '';
-    return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">${i + 1}) ${prefix}${r.text}</p>`;
+    return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">: ${prefix}${r.text}</p>`;
   }).join('\n');
 
   // ── 차트 이미지 캡쳐 ─────────────────────────────
@@ -1397,35 +1397,34 @@ window.generateDieReport = function () {
   const imgAvg     = _captureChart('str-die-avg');
   const imgCompare = _captureChart('str-die-compare-strength');
 
-  // ── EP 호환 HTML 생성 ─────────────────────────────
-  // 규칙 (ep-report-generator 스킬 기준):
-  //   · 결재란·문서정보 헤더는 EP 자동 생성 → 본문 미포함
-  //   · body: 맑은 고딕 10pt, 여백 없음 (EP 자체 적용)
-  //   · 대항목: <p font-weight:bold margin:25px 0 8px>
-  //   · 중항목: <p margin:3px 0 3px 15px> (1) 2) 형식)
-  //   · 표: border 1px solid #000, th/td 9pt
-  //   · 도구바(.ep-tools)는 브라우저 편의용, 인쇄 시 숨김
-
+  // ── EP 호환 HTML 생성 후 바로 다운로드 ──────────────
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>다이캐스팅 강도 시험 보고서</title>
-<style>@media print{.ep-tools{display:none!important}}</style>
 </head>
 <body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
 
-<div class="ep-tools" style="padding:10px 16px;background:#f0f0f0;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-  <span style="font-size:10px;color:#888;flex:1;">EP 업로드: 파일 → 열기 → HTML Document</span>
-  <button onclick="window.print()" style="padding:6px 20px;background:#002BD2;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:bold;">🖨️ 인쇄 / PDF</button>
-  <button onclick="downloadReport()" style="padding:6px 20px;background:#7c5fe6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:bold;">⬇ HTML 저장</button>
-</div>
-
 <p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 시험 정보</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 시험 내용 : 다이캐스팅 강도 시험 (잉곳)</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 시험 장비 : UTM (만능 재료 시험기 5.0 Ton)</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 시험 일자 : ${period}</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 시료 : ${specNames}</p>
+<table style="border-collapse: collapse; width: 100%; margin: 10px 0 15px 0;">
+  <tr>
+    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2; width: 28%;">시험 내용</td>
+    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">다이캐스팅 강도 시험 (잉곳)</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2;">시험 장비</td>
+    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">UTM (만능 재료 시험기 5.0 Ton)</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2;">시험 일자</td>
+    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">${period}</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2;">시료</td>
+    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">${specNames}</td>
+  </tr>
+</table>
 
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 시험 결과</p>
 ${recItems}
@@ -1438,26 +1437,19 @@ ${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 사양별 평
 ${imgCompare ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 시디즈 vs GCK 강도 비교 (4000G / S-TILT, kgf)</p>
 <img src="${imgCompare}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 
-<script>
-function downloadReport() {
-  var blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = '다이캐스팅_강도시험_보고서.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(url);}, 1000);
-}
-<\/script>
 </body>
 </html>`;
 
-  const w = window.open('', '_blank');
-  if (!w) { alert('팝업이 차단되었습니다.\n브라우저 팝업 차단을 해제 후 다시 시도해주세요.'); return; }
-  w.document.write(html);
-  w.document.close();
+  // 팝업 없이 바로 다운로드
+  var _blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var _url  = URL.createObjectURL(_blob);
+  var _a    = document.createElement('a');
+  _a.href   = _url;
+  _a.download = '다이캐스팅_강도시험_보고서.html';
+  document.body.appendChild(_a);
+  _a.click();
+  document.body.removeChild(_a);
+  setTimeout(function(){ URL.revokeObjectURL(_url); }, 1000);
 };
 
 })();
