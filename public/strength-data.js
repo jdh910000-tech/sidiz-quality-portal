@@ -1102,6 +1102,119 @@ async function _buildTrendSheetEJS(wb, rows) {
   }
 }
 
+// ── 사출 베이스 월별 강도 추이 시트 ────────────────────────────────
+async function _buildInjTrendSheetEJS(wb, rows) {
+  const INJ_THR = 1134.7;
+
+  // 사양 목록 (데이터 있는 것만)
+  const specSet = uniq(rows.map(r => r.spec).filter(Boolean)).sort();
+  if (!specSet.length) return;
+
+  // 월별 × 사양 집계 (시디즈 단일 업체)
+  const agg = {};
+  rows.forEach(r => {
+    if (!r.measure_date || r.strength == null) return;
+    const mo = r.measure_date.slice(0, 7);
+    if (!agg[mo]) agg[mo] = {};
+    if (!agg[mo][r.spec]) agg[mo][r.spec] = { sum: 0, cnt: 0 };
+    agg[mo][r.spec].sum += r.strength;
+    agg[mo][r.spec].cnt++;
+  });
+
+  const dataMonths = Object.keys(agg).sort();
+  if (!dataMonths.length) return;
+  const year = dataMonths[0].slice(0, 4);
+  const months = Array.from({ length: 12 }, (_, i) =>
+    `${year}-${String(i + 1).padStart(2, '0')}`
+  );
+
+  const ws = wb.addWorksheet('월별 강도 추이');
+  ws.views = [{ showGridLines: false }];
+
+  // 열 너비: A(측정월) + 사양별 2열(시디즈·기준)
+  ws.getColumn(1).width = 12;
+  const specColStarts = [];
+  let col1 = 2;
+  specSet.forEach(() => {
+    specColStarts.push(col1);
+    ws.getColumn(col1).width = 30;
+    ws.getColumn(col1 + 1).width = 14;
+    col1 += 2;
+  });
+
+  // 헤더 행 1: 측정월 병합 + 사양명
+  ws.getRow(1).height = 22;
+  ws.mergeCells(1, 1, 2, 1);
+  const mo1 = ws.getCell(1, 1);
+  mo1.value = '측정월'; _ejsStyleCell(mo1, { isHdr: true });
+
+  specSet.forEach((sp, si) => {
+    const sc = specColStarts[si];
+    ws.mergeCells(1, sc, 1, sc + 1);
+    const hc = ws.getCell(1, sc);
+    hc.value = sp; _ejsStyleCell(hc, { isHdr: true });
+    ws.getCell(1, sc + 1).border = _EJS_BORDER_ALL;
+    ws.getCell(1, sc + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+  });
+
+  // 헤더 행 2: 서브헤더
+  ws.getRow(2).height = 20;
+  specSet.forEach((_, si) => {
+    const sc = specColStarts[si];
+    ['시디즈', '기준(kgf)'].forEach((h, i) => {
+      const cell = ws.getCell(2, sc + i);
+      cell.value = h; _ejsStyleCell(cell, { isHdr: true });
+    });
+  });
+
+  // 데이터 행
+  months.forEach((mo, mi) => {
+    const rowNum = 3 + mi;
+    ws.getRow(rowNum).height = 18;
+    const moCell = ws.getCell(rowNum, 1);
+    moCell.value = mo; _ejsStyleCell(moCell);
+
+    specSet.forEach((sp, si) => {
+      const sc = specColStarts[si];
+      const d  = agg[mo] && agg[mo][sp];
+      const v  = d ? Math.round(d.sum / d.cnt * 10) / 10 : null;
+      const sdCell = ws.getCell(rowNum, sc);
+      sdCell.value = v !== null ? v : '';
+      _ejsStyleCell(sdCell, v !== null && v < INJ_THR ? { redBg: true } : {});
+      const thrCell = ws.getCell(rowNum, sc + 1);
+      thrCell.value = INJ_THR; _ejsStyleCell(thrCell, { bold: true, grayBg: true });
+    });
+  });
+
+  // 차트 이미지 (사양별)
+  const DISP_W = 433, DISP_H = 254;
+  const CHART_ROWS = 13;
+  const chartR1 = 3 + months.length;
+  const chartR2 = chartR1 + CHART_ROWS - 1;
+
+  ws.mergeCells(chartR1, 1, chartR2, 1);
+  const aChartCell = ws.getCell(chartR1, 1);
+  aChartCell.value = '그래프'; _ejsStyleCell(aChartCell, { isHdr: true });
+
+  for (let si = 0; si < specSet.length; si++) {
+    const sp = specSet[si];
+    const sc = specColStarts[si];
+    ws.mergeCells(chartR1, sc, chartR2, sc + 1);
+    ws.getCell(chartR1, sc).border = _EJS_BORDER_ALL;
+
+    const sdValues = months.map(mo => {
+      const d = agg[mo] && agg[mo][sp];
+      return d ? Math.round(d.sum / d.cnt * 10) / 10 : null;
+    });
+    const imgB64 = await _createSpecChartImage(sp, months, sdValues, null, INJ_THR);
+    const imgId  = wb.addImage({ base64: imgB64, extension: 'png' });
+    ws.addImage(imgId, {
+      tl: { col: sc - 1 + 0.05, row: chartR1 - 1 + 0.1 },
+      ext: { width: DISP_W, height: DISP_H },
+    });
+  }
+}
+
 // ── 자료변환 진입점 (ExcelJS) ─────────────────────────────────────
 window.exportStrength = async function (kind) {
   if (!window.ExcelJS) { alert('ExcelJS 라이브러리 미로드'); return; }
@@ -1124,10 +1237,11 @@ window.exportStrength = async function (kind) {
     const wb     = new ExcelJS.Workbook();
     const sorted = rows.slice().sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
 
-    // 시트 1: 월별 강도 추이 (다이캐스팅) — async 이므로 await 필수
+    // 시트 1: 월별 강도 추이
     if (kind === 'die') await _buildTrendSheetEJS(wb, rows);
+    else await _buildInjTrendSheetEJS(wb, rows);
 
-    // 시트 2(다이) / 1(사출): 로우데이터
+    // 시트 2(다이) / 2(사출): 로우데이터
     _buildRawSheetEJS(wb, header, sorted.map(mapper));
 
     // 다운로드
@@ -1449,6 +1563,159 @@ ${imgCompare ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 시디즈
   var _a    = document.createElement('a');
   _a.href   = _url;
   _a.download = '다이캐스팅_강도시험_보고서.html';
+  document.body.appendChild(_a);
+  _a.click();
+  document.body.removeChild(_a);
+  setTimeout(function(){ URL.revokeObjectURL(_url); }, 1000);
+};
+
+// 전체 데이터(STATE.inj)로 오프스크린 추이 차트 생성 → 흰 배경 PNG DataURL
+function _createInjTrendImageFull() {
+  const allRows = STATE.inj;
+  if (!allRows || !allRows.length) return null;
+
+  const months  = uniq(allRows.map(r => (r.measure_date || '').slice(0, 7))).sort();
+  const specs   = uniq(allRows.map(r => r.spec)).sort();
+  const datasets = [];
+  specs.forEach((spec, i) => {
+    datasets.push({
+      label: spec,
+      data: months.map(m => avg(
+        allRows.filter(r => (r.measure_date||'').slice(0,7) === m && r.spec === spec)
+               .map(r => r.strength)
+      )),
+      borderColor: PALETTE[i % PALETTE.length],
+      backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true,
+    });
+  });
+  datasets.push({
+    label: '기준 1,134.7',
+    data: months.map(() => 1134.7),
+    borderColor: '#dc2626', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false,
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 900; canvas.height = 380;
+  const tmpChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: false, maintainAspectRatio: false, animation: false,
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: false, grid: { color: C.border },
+             title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
+      },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
+        datalabels: { display: false }
+      }
+    }
+  });
+
+  const off = document.createElement('canvas');
+  off.width = canvas.width; off.height = canvas.height;
+  const offCtx = off.getContext('2d');
+  offCtx.fillStyle = '#ffffff';
+  offCtx.fillRect(0, 0, off.width, off.height);
+  offCtx.drawImage(canvas, 0, 0);
+  tmpChart.destroy();
+  return off.toDataURL('image/png');
+}
+
+window.generateInjReport = function () {
+  const filtered = getInjFiltered();
+  const from = $('str-inj-from').value;
+  const to   = $('str-inj-to').value;
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+
+  // 시료명: 사양 + 재료 조합 (중복 제거, 예: 690 각 WW SNB240G33)
+  const specimenSet = new Set();
+  filtered.forEach(r => {
+    const key = r.material ? `${r.spec} ${r.material}`.trim() : r.spec;
+    specimenSet.add(key);
+  });
+  const specimenNames = [...specimenSet].sort().join(', ') || '전체';
+
+  // 자동 분석 권장 조치사항 (불량분석 리포트와 동일 로직)
+  const INJ_THR = 1134.7;
+  const ngRows = filtered.filter(r => judge(r) === 'NG');
+  const specStats = {};
+  filtered.forEach(r => {
+    if (!specStats[r.spec]) specStats[r.spec] = { total: 0, ng: 0 };
+    specStats[r.spec].total++;
+    if (judge(r) === 'NG') specStats[r.spec].ng++;
+  });
+  const topNG = [...ngRows]
+    .map(r => ({ ...r, _diff: r.strength - r.threshold }))
+    .sort((a, b) => a._diff - b._diff)
+    .slice(0, 3);
+
+  const recs = [];
+  topNG.forEach(r => {
+    recs.push({ level: 'critical', text: `${r.measure_date} ${r.spec} — 강도 ${r.strength.toFixed(1)} kgf (기준 ${INJ_THR} 대비 ${r._diff.toFixed(1)} kgf 미달). 사출 조건/재료 점검 권장.` });
+  });
+  Object.entries(specStats).forEach(([sp, st]) => {
+    if (st.total >= 4 && st.ng / st.total > 0.10) {
+      recs.push({ level: 'warning', text: `사양 ${sp} — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 모니터링 강화.` });
+    }
+  });
+  Object.keys(specStats).forEach(sp => {
+    const sAvg = avg(filtered.filter(r => r.spec === sp).map(r => r.strength));
+    if (sAvg !== null && sAvg < INJ_THR + 30 && sAvg > INJ_THR) {
+      recs.push({ level: 'warning', text: `사양 ${sp} — 평균 강도 ${sAvg.toFixed(1)} kgf, 기준 대비 안전마진 30 kgf 미만. 잠재 NG 위험.` });
+    }
+  });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
+
+  const recItems = recs.map(r => {
+    const prefix = r.level === 'critical'
+      ? '<span style="color:red;font-weight:bold;">[주의]</span> '
+      : r.level === 'warning'
+      ? '<span style="color:#CC7700;font-weight:bold;">[경고]</span> '
+      : '';
+    return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">: ${prefix}${r.text}</p>`;
+  }).join('\n');
+
+  // 차트 캡쳐: 전체기간 추이(오프스크린) + 필터기간 평균강도 + 사양별 평균 중량
+  const imgTrend  = _createInjTrendImageFull();
+  const imgAvg    = _captureChart('str-inj-avg');
+  const imgWeight = _captureChart('str-inj-weight');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>사출 베이스 강도 시험 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 시험 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 시험 내용 : 사출 베이스 강도 시험</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 시험 장비 : UTM (만능 재료 시험기 5.0 Ton)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 시험 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 시료명 : ${specimenNames}</p>
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 시험 결과</p>
+${recItems}
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 측정 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 사양별 월별 강도 추이 (기준 1,134.7 kgf · 전체 기간)</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 사양별 평균 강도 (기준 대비, ${period})</p>
+<img src="${imgAvg}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgWeight ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 사양별 평균 중량 (g, ${period})</p>
+<img src="${imgWeight}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+
+</body>
+</html>`;
+
+  var _blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var _url  = URL.createObjectURL(_blob);
+  var _a    = document.createElement('a');
+  _a.href   = _url;
+  _a.download = '사출베이스_강도시험_보고서.html';
   document.body.appendChild(_a);
   _a.click();
   document.body.removeChild(_a);
