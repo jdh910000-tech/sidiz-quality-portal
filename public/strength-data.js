@@ -947,20 +947,26 @@ async function _buildTrendSheetEJS(wb, rows) {
     agg[mo][r.spec][src].sum += r.strength;
     agg[mo][r.spec][src].cnt++;
   });
-  const months = Object.keys(agg).sort();
-  if (!months.length) return;
+  // 데이터 있는 월뿐 아니라, 해당 연도 1~12월 전체 표시 (빈 행 포함)
+  const dataMonths = Object.keys(agg).sort();
+  if (!dataMonths.length) return;
+  const year = dataMonths[0].slice(0, 4);
+  const months = Array.from({ length: 12 }, (_, i) =>
+    `${year}-${String(i + 1).padStart(2, '0')}`
+  );
 
   const ws = wb.addWorksheet('월별 강도 추이');
   ws.views = [{ showGridLines: false }];
 
   // ─── 열 너비 + 사양별 1-based 시작 열 기록 ─────────────────────
-  // 참고파일 기준: 각 사양 열 너비 ≈ 11 (차트 크기 433px에 맞춤)
-  ws.getColumn(1).width = 10; // A (측정월)
+  // 차트 433px가 겹치지 않으려면: 3열 사양 ≥ 21자/열, 2열 사양 ≥ 32자/열
+  ws.getColumn(1).width = 12; // A (측정월/그래프)
   const specColStarts = []; // 각 사양의 1-based 시작 열
   let col1 = 2; // 1-based 현재 열 추적
   orderedSpecs.forEach(sp => {
     specColStarts.push(col1);
-    for (let i = 0; i < sp.cols; i++) ws.getColumn(col1 + i).width = 11;
+    const colW = sp.cols === 3 ? 21 : 32; // 3열=21자(≈462px), 2열=32자(≈453px)
+    for (let i = 0; i < sp.cols; i++) ws.getColumn(col1 + i).width = colW;
     col1 += sp.cols;
   });
 
@@ -1044,9 +1050,11 @@ async function _buildTrendSheetEJS(wb, rows) {
   const chartR1  = 3 + months.length;  // 1-based 차트 시작 행
   const chartR2  = chartR1 + CHART_ROWS - 1;
 
-  // A열 (측정월) 차트 영역 병합
+  // A열: '그래프' 레이블 (측정월 헤더와 동일한 회색 음영)
   ws.mergeCells(chartR1, 1, chartR2, 1);
-  ws.getCell(chartR1, 1).border = _EJS_BORDER_ALL;
+  const aChartCell = ws.getCell(chartR1, 1);
+  aChartCell.value = '그래프';
+  _ejsStyleCell(aChartCell, { isHdr: true }); // 측정월과 동일 스타일(회색 배경+검정 굵게)
 
   for (let si = 0; si < orderedSpecs.length; si++) {
     const { spec, gck, threshold, label } = orderedSpecs[si];
