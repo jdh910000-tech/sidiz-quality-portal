@@ -253,7 +253,7 @@ function renderDieCharts(rows) {
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } }, x: { grid: { display: false } } },
     plugins: { legend: { display: true, position: 'top', align: 'end' },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' }
+      datalabels: { display: true, anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 
@@ -294,7 +294,7 @@ function renderDieCharts(rows) {
     },
     plugins: {
       legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
+      datalabels: { display: true, anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 
@@ -317,7 +317,7 @@ function renderDieCharts(rows) {
     },
     plugins: {
       legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
+      datalabels: { display: true, anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 }
@@ -460,7 +460,7 @@ function renderInjCharts(rows) {
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
     plugins: { legend: { display: true, position: 'top', align: 'end' },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' }
+      datalabels: { display: true, anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 
@@ -469,7 +469,7 @@ function renderInjCharts(rows) {
     { label: '평균 중량', data: wAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'g', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
-    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' } }
+    plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' } }
   });
 
   const ok = rows.filter(r => judge(r) === 'OK').length;
