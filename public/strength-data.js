@@ -1,4 +1,4 @@
-﻿/* strength-data.js ??媛뺣룄 ?쒗뿕 (?ㅼ씠罹먯뒪??/ ?ъ텧 踰좎씠?? Supabase ?곕룞 + 李⑦듃 + ?낅젰 + GCK ?뚯씪 ?낅줈??*/
+/* strength-data.js — 강도 시험 (다이캐스팅 / 사출 베이스) Supabase 연동 + 차트 + 입력 + GCK 파일 업로드 */
 (function () {
 'use strict';
 
@@ -20,7 +20,7 @@ const C = {
 };
 const PALETTE = [C.blue, C.cyan, C.emerald, C.amber, C.rose, C.violet, C.blueLight, '#94a3b8', '#FF8C00', '#a78bfa'];
 
-// ?ㅼ씠罹먯뒪???ъ뼇蹂?湲곗?媛?(?낅젰 ???먮룞 寃곗젙??
+// 다이캐스팅 사양별 기준값 (입력 폼 자동 결정용)
 const DIE_SPEC_THRESHOLDS = {
   '4000G': 800,
   'S-TILT': 750,
@@ -38,7 +38,7 @@ const uniq = arr => [...new Set(arr)].filter(v => v !== null && v !== undefined 
 const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inDateRange = (d, f, t) => { if (!d) return false; if (f && d < f) return false; if (t && d > t) return false; return true; };
 
-// ?먯젙 (媛뺣룄 ??湲곗? ??OK)
+// 판정 (강도 ≥ 기준 → OK)
 function judge(r) {
   if (r.strength === null || r.strength === undefined) return '';
   return r.strength >= (r.threshold || 0) ? 'OK' : 'NG';
@@ -70,14 +70,14 @@ async function loadStrengthData(force = false) {
     STATE.die = die;
     STATE.inj = inj;
     STATE.loaded = true;
-    console.log(`[媛뺣룄?쒗뿕] ?ㅼ씠罹먯뒪??${die.length}, ?ъ텧踰좎씠??${inj.length}`);
+    console.log(`[강도시험] 다이캐스팅=${die.length}, 사출베이스=${inj.length}`);
   } catch (e) {
-    console.error('[媛뺣룄?쒗뿕] 濡쒕뱶 ?ㅽ뙣:', e);
-    alert('媛뺣룄 ?쒗뿕 ?곗씠??濡쒕뱶 ?ㅽ뙣: ' + e.message);
+    console.error('[강도시험] 로드 실패:', e);
+    alert('강도 시험 데이터 로드 실패: ' + e.message);
   }
 }
 
-// Chart.js 湲곕낯
+// Chart.js 기본
 function chartDefault() {
   if (window.Chart && window.ChartDataLabels) {
     try { Chart.register(window.ChartDataLabels); } catch (e) {}
@@ -90,7 +90,7 @@ function chartDefault() {
   }
 }
 
-// 李⑦듃 ?ы띁
+// 차트 헬퍼
 function destroyChart(k) { if (STATE.charts[k]) { STATE.charts[k].destroy(); STATE.charts[k] = null; } }
 function makeLine(k, ctx, labels, datasets, opts = {}) {
   destroyChart(k);
@@ -130,7 +130,7 @@ function makeDoughnut(k, ctx, labels, data, colors, opts = {}) {
   });
 }
 
-// ===== ?쒕툕???꾪솚 =====
+// ===== 서브탭 전환 =====
 window.switchLabTab = function (tab) {
   STATE.currentTab = tab;
   document.querySelectorAll('.lab-subtab').forEach(b => b.classList.remove('active'));
@@ -142,7 +142,7 @@ window.switchLabTab = function (tab) {
   else if (tab === 'report') switchLabReportCat(STATE.labReportCat || 'die');
 };
 
-// 由ы룷??移댄뀒怨좊━ ?꾪솚
+// 리포트 카테고리 전환
 STATE.labReportCat = 'die';
 window.switchLabReportCat = function (cat) {
   STATE.labReportCat = cat;
@@ -154,7 +154,7 @@ window.switchLabReportCat = function (cat) {
   else if (cat === 'inj') renderLabReportInj();
 };
 
-// ===== ?ㅼ씠罹먯뒪??=====
+// ===== 다이캐스팅 =====
 function getDieFiltered() {
   const spec = $('str-die-spec').value, source = $('str-die-source').value;
   const mold = $('str-die-mold').value;
@@ -175,15 +175,15 @@ function renderDieKPI(rows) {
   const ngRate = rows.length ? (ng / rows.length * 100) : 0;
   const specs = uniq(rows.map(r => r.spec));
   $('str-die-kpi').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">珥?痢≪젙 嫄댁닔</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">?ъ뼇 ${specs.length}醫?/div></div>
-    <div class="kpi-card"><div class="kpi-label">?됯퇏 媛뺣룄</div><div class="kpi-value">${fmt(sAvg, 1)}</div><div class="kpi-change">?⑥쐞: kgf</div></div>
-    <div class="kpi-card"><div class="kpi-label">湲곗? 遺?곹빀</div><div class="kpi-value" style="background:linear-gradient(135deg,${ng>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ng}</div><div class="kpi-change ${ng>0?'up':'down'}">${ngRate.toFixed(1)}% NG??/div></div>
-    <div class="kpi-card"><div class="kpi-label">痢≪젙 二쇱껜</div><div class="kpi-value" style="font-size:18px">${uniq(rows.map(r => r.source)).join(' 쨌 ')}</div><div class="kpi-change">?쒕뵒利?/ GCK</div></div>
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">사양 ${specs.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 강도</div><div class="kpi-value">${fmt(sAvg, 1)}</div><div class="kpi-change">단위: kgf</div></div>
+    <div class="kpi-card"><div class="kpi-label">기준 부적합</div><div class="kpi-value" style="background:linear-gradient(135deg,${ng>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ng}</div><div class="kpi-change ${ng>0?'up':'down'}">${ngRate.toFixed(1)}% NG율</div></div>
+    <div class="kpi-card"><div class="kpi-label">측정 주체</div><div class="kpi-value" style="font-size:18px">${uniq(rows.map(r => r.source)).join(' · ')}</div><div class="kpi-change">시디즈 / GCK</div></div>
   `;
 }
 
 function renderDieCharts(rows) {
-  // ?ъ뼇蹂??붾퀎 媛뺣룄 異붿씠 (???됯퇏)
+  // 사양별 월별 강도 추이 (월 평균)
   const months = uniq(rows.map(r => (r.measure_date || '').slice(0, 7))).sort();
   const specs = uniq(rows.map(r => r.spec));
   const datasets = [];
@@ -196,11 +196,11 @@ function renderDieCharts(rows) {
       tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true,
     });
   });
-  // ?좏깮???ъ뼇???덉쑝硫?洹??ъ뼇??湲곗???異붽?
+  // 선택된 사양이 있으면 그 사양의 기준선 추가
   const selSpec = $('str-die-spec').value;
   if (selSpec && DIE_SPEC_THRESHOLDS[selSpec]) {
     datasets.push({
-      label: `湲곗? ${DIE_SPEC_THRESHOLDS[selSpec]}`,
+      label: `기준 ${DIE_SPEC_THRESHOLDS[selSpec]}`,
       data: months.map(() => DIE_SPEC_THRESHOLDS[selSpec]),
       borderColor: C.rose, borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false
     });
@@ -208,21 +208,21 @@ function renderDieCharts(rows) {
   makeLine('dieTrend', $('str-die-trend').getContext('2d'), months, datasets, {
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '媛뺣룄 (kgf)', font: { size: 10 } } }
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
     }
   });
 
-  // ?ъ뼇蹂??됯퇏 媛뺣룄 vs 湲곗? (湲곗???鍮④컙??媛뺤“ + ?욎쑝濡?
-  // X異?怨좎젙 ?쒖꽌: 4000G ??S-TILT ??ITO-TILT ??CH4800 ??T502F ??700 FLAT (RAW) ??700 FLAT (POL)
+  // 사양별 평균 강도 vs 기준 (기준선 빨간색 강조 + 앞으로)
+  // X축 고정 순서: 4000G → S-TILT → ITO-TILT → CH4800 → T502F → 700 FLAT (RAW) → 700 FLAT (POL)
   const SPEC_ORDER = ['4000G', 'S-TILT', 'ITO-TILT', 'CH4800', 'T502F', '700 FLAT (RAW)', '700 FLAT (POL)'];
   const orderedSpecs = SPEC_ORDER.filter(s => specs.includes(s))
-    .concat(specs.filter(s => !SPEC_ORDER.includes(s))); // 誘몄젙???ъ뼇? ?ㅻ줈
+    .concat(specs.filter(s => !SPEC_ORDER.includes(s))); // 미정의 사양은 뒤로
   const specAvgs = orderedSpecs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const specThres = orderedSpecs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
   makeBar('dieAvg', $('str-die-avg').getContext('2d'), orderedSpecs, [
-    { label: '?됯퇏 媛뺣룄', data: specAvgs, backgroundColor: PALETTE.slice(0, orderedSpecs.length), borderRadius: 6, order: 2 },
+    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, orderedSpecs.length), borderRadius: 6, order: 2 },
     {
-      label: '湲곗?',
+      label: '기준',
       data: specThres,
       type: 'line',
       borderColor: '#dc2626',
@@ -257,21 +257,21 @@ function renderDieCharts(rows) {
     }
   });
 
-  // ?쒕뵒利?vs GCK 媛뺣룄 鍮꾧탳 (4000G / S-TILT) ??留됰? + 湲곗???+ OK/NG ?됱긽
+  // 시디즈 vs GCK 강도 비교 (4000G / S-TILT) — 막대 + 기준선 + OK/NG 색상
   const compareSpecs = ['4000G', 'S-TILT'];
-  const _cmpSidizData = compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '?쒕뵒利?).map(r => r.strength)));
+  const _cmpSidizData = compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength)));
   const _cmpGckData   = compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength)));
   const _cmpThres     = compareSpecs.map(sp => DIE_SPEC_THRESHOLDS[sp] || 0);
-  // 湲곗? 誘몃떖(NG)?대㈃ 鍮④컙?? 湲곗? ?댁긽(OK)?대㈃ ?먯깋 ?좎?
+  // 기준 미달(NG)이면 빨간색, 기준 이상(OK)이면 원색 유지
   const _cmpSidizColors = compareSpecs.map((sp, i) =>
     (_cmpSidizData[i] !== null && _cmpSidizData[i] >= _cmpThres[i]) ? C.blue : '#FF4C6A');
   const _cmpGckColors = compareSpecs.map((sp, i) =>
     (_cmpGckData[i] !== null && _cmpGckData[i] >= _cmpThres[i]) ? C.amber : '#FF4C6A');
   makeBar('dieCompareStrength', $('str-die-compare-strength').getContext('2d'), compareSpecs, [
-    { label: '?쒕뵒利?, data: _cmpSidizData, backgroundColor: _cmpSidizColors, borderRadius: 6 },
+    { label: '시디즈', data: _cmpSidizData, backgroundColor: _cmpSidizColors, borderRadius: 6 },
     { label: 'GCK',   data: _cmpGckData,   backgroundColor: _cmpGckColors,   borderRadius: 6 },
     {
-      label: '湲곗?',
+      label: '기준',
       data: _cmpThres,
       type: 'line',
       borderColor: '#dc2626', borderWidth: 2, borderDash: [6, 4],
@@ -289,7 +289,7 @@ function renderDieCharts(rows) {
     },
   ], {
     scales: {
-      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '媛뺣룄 (kgf)', font: { size: 10 } } },
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } },
       x: { grid: { display: false } }
     },
     plugins: {
@@ -298,11 +298,11 @@ function renderDieCharts(rows) {
     }
   });
 
-  // ?쒕뵒利?vs GCK 以묐웾 鍮꾧탳 (4000G / S-TILT) ??留됰?
+  // 시디즈 vs GCK 중량 비교 (4000G / S-TILT) — 막대
   makeBar('dieCompareWeight', $('str-die-compare-weight').getContext('2d'), compareSpecs, [
     {
-      label: '?쒕뵒利?,
-      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '?쒕뵒利?).map(r => r.weight))),
+      label: '시디즈',
+      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.weight))),
       backgroundColor: C.blueLight, borderRadius: 6,
     },
     {
@@ -312,7 +312,7 @@ function renderDieCharts(rows) {
     },
   ], {
     scales: {
-      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '以묐웾 (g)', font: { size: 10 } } },
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '중량 (g)', font: { size: 10 } } },
       x: { grid: { display: false } }
     },
     plugins: {
@@ -327,7 +327,7 @@ function renderDieTable(rows) {
   const sorted = [...rows].sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
   const tb = $('str-die-table-body');
   if (!sorted.length) {
-    tb.innerHTML = '<tr><td colspan="9" style="padding:40px;text-align:center;color:#8a8a9a">寃??寃곌낵媛 ?놁뒿?덈떎</td></tr>';
+    tb.innerHTML = '<tr><td colspan="9" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
     return;
   }
   tb.innerHTML = sorted.slice(0, 500).map(r => {
@@ -342,7 +342,7 @@ function renderDieTable(rows) {
       <td class="highlight">${fmt(r.strength, 1)}</td>
       <td>${fmt(r.threshold, 1)}</td>
       <td><span class="${j === 'NG' ? 'danger' : (j === 'OK' ? 'success' : '')}">${j || '-'}</span></td>
-      <td><button onclick="deleteStrengthRow('strength_diecasting', ${r.id})" class="btn-del" title="??젣" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">?뿊</button></td>
+      <td><button onclick="deleteStrengthRow('strength_diecasting', ${r.id})" class="btn-del" title="삭제" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">🗑</button></td>
     </tr>`;
   }).join('');
 }
@@ -351,21 +351,21 @@ function initDieDropdowns() {
   const specs = uniq(STATE.die.map(r => r.spec)).sort();
   const sel = $('str-die-spec');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">?꾩껜</option>' + specs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+  sel.innerHTML = '<option value="">전체</option>' + specs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
 
-  // 湲덊삎踰덊샇 ?쒕∼?ㅼ슫
+  // 금형번호 드롭다운
   const moldSel = $('str-die-mold');
   if (moldSel) {
     const molds = uniq(STATE.die.map(r => r.mold_number)).sort();
     const cm = moldSel.value;
-    moldSel.innerHTML = '<option value="">?꾩껜</option>' + molds.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+    moldSel.innerHTML = '<option value="">전체</option>' + molds.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
     if ([...moldSel.options].some(o => o.value === cm)) moldSel.value = cm;
   }
 
-  // ?낅젰 ???ъ뼇 ??됲듃
+  // 입력 폼 사양 셀렉트
   const formSel = $('form-die-spec');
-  formSel.innerHTML = Object.keys(DIE_SPEC_THRESHOLDS).map(s => `<option value="${escHtml(s)}">${escHtml(s)} (??{DIE_SPEC_THRESHOLDS[s]} kgf)</option>`).join('');
+  formSel.innerHTML = Object.keys(DIE_SPEC_THRESHOLDS).map(s => `<option value="${escHtml(s)}">${escHtml(s)} (≥${DIE_SPEC_THRESHOLDS[s]} kgf)</option>`).join('');
 }
 
 function renderDie() {
@@ -376,7 +376,7 @@ function renderDie() {
   renderDieTable(rows);
 }
 
-// ===== ?ъ텧 踰좎씠??=====
+// ===== 사출 베이스 =====
 function getInjFiltered() {
   const spec = $('str-inj-spec').value;
   const j = $('str-inj-judge').value;
@@ -395,10 +395,10 @@ function renderInjKPI(rows) {
   const ngRate = rows.length ? (ng / rows.length * 100) : 0;
   const specs = uniq(rows.map(r => r.spec));
   $('str-inj-kpi').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">珥?痢≪젙 嫄댁닔</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">?ъ뼇 ${specs.length}醫?/div></div>
-    <div class="kpi-card"><div class="kpi-label">?됯퇏 媛뺣룄</div><div class="kpi-value">${fmt(sAvg, 1)}</div><div class="kpi-change">湲곗? 1,134.7 kgf</div></div>
-    <div class="kpi-card"><div class="kpi-label">?됯퇏 以묐웾</div><div class="kpi-value">${fmt(wAvg, 1)}</div><div class="kpi-change">?⑥쐞: g</div></div>
-    <div class="kpi-card"><div class="kpi-label">湲곗? 遺?곹빀</div><div class="kpi-value" style="background:linear-gradient(135deg,${ng>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ng}</div><div class="kpi-change ${ng>0?'up':'down'}">${ngRate.toFixed(1)}% NG??/div></div>
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">사양 ${specs.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 강도</div><div class="kpi-value">${fmt(sAvg, 1)}</div><div class="kpi-change">기준 1,134.7 kgf</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 중량</div><div class="kpi-value">${fmt(wAvg, 1)}</div><div class="kpi-change">단위: g</div></div>
+    <div class="kpi-card"><div class="kpi-label">기준 부적합</div><div class="kpi-value" style="background:linear-gradient(135deg,${ng>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ng}</div><div class="kpi-change ${ng>0?'up':'down'}">${ngRate.toFixed(1)}% NG율</div></div>
   `;
 }
 
@@ -412,24 +412,24 @@ function renderInjCharts(rows) {
     backgroundColor: PALETTE[i % PALETTE.length] + '20',
     tension: 0.3, borderWidth: 2, pointRadius: 2, spanGaps: true,
   }));
-  // 湲곗???(紐⑤뱺 ?ъ뼇 怨듯넻 1134.7)
+  // 기준선 (모든 사양 공통 1134.7)
   datasets.push({
-    label: '湲곗? 1,134.7',
+    label: '기준 1,134.7',
     data: months.map(() => 1134.7),
     borderColor: C.rose, borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false
   });
   makeLine('injTrend', $('str-inj-trend').getContext('2d'), months, datasets, {
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '媛뺣룄 (kgf)', font: { size: 10 } } }
+      y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
     }
   });
 
   const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   makeBar('injAvg', $('str-inj-avg').getContext('2d'), specs, [
-    { label: '?됯퇏 媛뺣룄', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6, order: 2 },
+    { label: '평균 강도', data: specAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6, order: 2 },
     {
-      label: '湲곗? 1,134.7',
+      label: '기준 1,134.7',
       data: specs.map(() => 1134.7),
       type: 'line',
       borderColor: '#dc2626',
@@ -454,7 +454,7 @@ function renderInjCharts(rows) {
         align: 'left',
         anchor: 'start',
         offset: 6,
-        formatter: () => '湲곗? 1,134.7'
+        formatter: () => '기준 1,134.7'
       }
     },
   ], {
@@ -466,7 +466,7 @@ function renderInjCharts(rows) {
 
   const wAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.weight)));
   makeBar('injWeight', $('str-inj-weight').getContext('2d'), specs, [
-    { label: '?됯퇏 以묐웾', data: wAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
+    { label: '평균 중량', data: wAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'g', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
     plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' } }
@@ -482,7 +482,7 @@ function renderInjTable(rows) {
   const sorted = [...rows].sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
   const tb = $('str-inj-table-body');
   if (!sorted.length) {
-    tb.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:#8a8a9a">寃??寃곌낵媛 ?놁뒿?덈떎</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:#8a8a9a">검색 결과가 없습니다</td></tr>';
     return;
   }
   tb.innerHTML = sorted.slice(0, 500).map(r => {
@@ -496,7 +496,7 @@ function renderInjTable(rows) {
       <td class="highlight">${fmt(r.strength, 1)}</td>
       <td>${fmt(r.threshold, 1)}</td>
       <td><span class="${j === 'NG' ? 'danger' : (j === 'OK' ? 'success' : '')}">${j || '-'}</span></td>
-      <td><button onclick="deleteStrengthRow('strength_injection_base', ${r.id})" class="btn-del" title="??젣" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">?뿊</button></td>
+      <td><button onclick="deleteStrengthRow('strength_injection_base', ${r.id})" class="btn-del" title="삭제" style="background:none;border:1px solid var(--border);color:var(--accent-rose);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:13px">🗑</button></td>
     </tr>`;
   }).join('');
 }
@@ -505,7 +505,7 @@ function initInjDropdowns() {
   const specs = uniq(STATE.inj.map(r => r.spec)).sort();
   const sel = $('str-inj-spec');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">?꾩껜</option>' + specs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+  sel.innerHTML = '<option value="">전체</option>' + specs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   // datalist
   const dlSpec = $('dl-inj-spec');
@@ -522,7 +522,7 @@ function renderInj() {
   renderInjTable(rows);
 }
 
-// ===== 遺덈웾 遺꾩꽍 由ы룷??=====
+// ===== 불량 분석 리포트 =====
 const DIE_SPEC_ORDER_REP = ['4000G', 'S-TILT', 'ITO-TILT', 'CH4800', 'T502F', '700 FLAT (RAW)', '700 FLAT (POL)'];
 
 function renderLabReportDie() {
@@ -533,13 +533,13 @@ function renderLabReportDie() {
   const sources = uniq(rows.map(r => r.source)).sort();
 
   $('rep-die-kpi').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">珥?痢≪젙 嫄댁닔</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">?ъ뼇 ${specsAll.length}醫?/div></div>
-    <div class="kpi-card"><div class="kpi-label">遺?곹빀 嫄댁닔</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">湲곗?媛?誘몃떖 痢≪젙</div></div>
-    <div class="kpi-card"><div class="kpi-label">遺?곹빀瑜?/div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">?꾩껜 痢≪젙 ?鍮?/div></div>
-    <div class="kpi-card"><div class="kpi-label">痢≪젙 二쇱껜</div><div class="kpi-value" style="font-size:18px">${sources.join(' 쨌 ')}</div><div class="kpi-change">${sources.length}媛쒖궗</div></div>
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">사양 ${specsAll.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">기준값 미달 측정</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
+    <div class="kpi-card"><div class="kpi-label">측정 주체</div><div class="kpi-value" style="font-size:18px">${sources.join(' · ')}</div><div class="kpi-change">${sources.length}개사</div></div>
   `;
 
-  // ?ъ뼇蹂??듦퀎
+  // 사양별 통계
   const specStats = {};
   rows.forEach(r => {
     if (!specStats[r.spec]) specStats[r.spec] = { total: 0, ng: 0 };
@@ -547,7 +547,7 @@ function renderLabReportDie() {
     if (judge(r) === 'NG') specStats[r.spec].ng++;
   });
 
-  // TOP10 (媛뺣룄媛 湲곗? ?鍮?媛??留롮씠 誘몃떖????
+  // TOP10 (강도가 기준 대비 가장 많이 미달한 순)
   const topNG = [...ngRows]
     .map(r => ({ ...r, _diff: r.strength - r.threshold }))
     .sort((a, b) => a._diff - b._diff)
@@ -563,9 +563,9 @@ function renderLabReportDie() {
       <td>${fmt(r.threshold, 1)}</td>
       <td><span class="danger">${r._diff.toFixed(1)} kgf</span></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="8" style="padding:40px;text-align:center;color:#8a8a9a">?꾩껜 ?곹빀 ??遺?곹빀 痢≪젙媛믪씠 ?놁뒿?덈떎</td></tr>';
+  }).join('') : '<tr><td colspan="8" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 측정값이 없습니다</td></tr>';
 
-  // ?붾퀎 OK/NG ?ㅽ깮 異붿씠
+  // 월별 OK/NG 스택 추이
   const byMonth = {};
   rows.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
@@ -582,39 +582,39 @@ function renderLabReportDie() {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // ?ъ뼇蹂?NG??(?뺤쓽???쒖꽌濡?
+  // 사양별 NG율 (정의된 순서로)
   const specs = DIE_SPEC_ORDER_REP.filter(s => specStats[s])
     .concat(Object.keys(specStats).filter(s => !DIE_SPEC_ORDER_REP.includes(s)));
   makeBar('repDieSpec', $('rep-die-spec').getContext('2d'), specs, [
-    { label: 'NG??(%)', data: specs.map(s => specStats[s].total ? specStats[s].ng / specStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
+    { label: 'NG율 (%)', data: specs.map(s => specStats[s].total ? specStats[s].ng / specStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
   ], {
     scales: { y: { beginAtZero: true, suggestedMax: 5, grid: { color: C.border } }, x: { grid: { display: false } } },
     plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v.toFixed(2) + '%' } }
   });
 
-  // 沅뚯옣 議곗튂
+  // 권장 조치
   const recs = [];
   topNG.slice(0, 3).forEach(r => {
-    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)} (${escHtml(r.source)})</b> ??媛뺣룄 ${r.strength.toFixed(1)} (湲곗? ${r.threshold} ?鍮?${r._diff.toFixed(1)} kgf 誘몃떖). ?쒗뿕 ?ъ쭊??/ ?됯납 議곗꽦 ?먭? 沅뚯옣.` });
+    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)} (${escHtml(r.source)})</b> — 강도 ${r.strength.toFixed(1)} (기준 ${r.threshold} 대비 ${r._diff.toFixed(1)} kgf 미달). 시험 재진행 / 잉곳 조성 점검 권장.` });
   });
   Object.entries(specStats).forEach(([sp, st]) => {
     if (st.total >= 4 && st.ng / st.total > 0.10) {
-      recs.push({ level: 'warning', text: `?ъ뼇 <b>${escHtml(sp)}</b> ??NG??${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}嫄?. 10% 珥덇낵濡?紐⑤땲?곕쭅 媛뺥솕.` });
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 10% 초과로 모니터링 강화.` });
     }
   });
-  // ?쒕뵒利?vs GCK 媛뺣룄 李⑥씠 遺꾩꽍
+  // 시디즈 vs GCK 강도 차이 분석
   ['4000G', 'S-TILT'].forEach(sp => {
-    const sidiz = avg(rows.filter(r => r.spec === sp && r.source === '?쒕뵒利?).map(r => r.strength));
+    const sidiz = avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength));
     const gck = avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength));
     if (sidiz !== null && gck !== null) {
       const diff = Math.abs(sidiz - gck);
       const pctDiff = diff / Math.min(sidiz, gck) * 100;
       if (pctDiff > 20) {
-        recs.push({ level: 'info', text: `<b>${sp}</b> ???쒕뵒利?${sidiz.toFixed(1)}) vs GCK(${gck.toFixed(1)}) 媛뺣룄 李⑥씠 ${diff.toFixed(1)} kgf (${pctDiff.toFixed(1)}%). 痢≪젙 ?섍꼍/諛⑸쾿 ?먭? 沅뚯옣.` });
+        recs.push({ level: 'info', text: `<b>${sp}</b> — 시디즈(${sidiz.toFixed(1)}) vs GCK(${gck.toFixed(1)}) 강도 차이 ${diff.toFixed(1)} kgf (${pctDiff.toFixed(1)}%). 측정 환경/방법 점검 권장.` });
       }
     }
   });
-  if (recs.length === 0) recs.push({ level: 'info', text: '紐⑤뱺 痢≪젙媛믪씠 湲곗? ?댁긽 ???덉젙???덉쭏 ?좎? 以?' });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
   $('rep-die-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
 }
 
@@ -625,13 +625,13 @@ function renderLabReportInj() {
   const specs = uniq(rows.map(r => r.spec)).sort();
 
   $('rep-inj-kpi').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">珥?痢≪젙 嫄댁닔</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">?ъ뼇 ${specs.length}醫?/div></div>
-    <div class="kpi-card"><div class="kpi-label">遺?곹빀 嫄댁닔</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">湲곗? 1,134.7 kgf 誘몃떖</div></div>
-    <div class="kpi-card"><div class="kpi-label">遺?곹빀瑜?/div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">?꾩껜 痢≪젙 ?鍮?/div></div>
-    <div class="kpi-card"><div class="kpi-label">?됯퇏 媛뺣룄</div><div class="kpi-value">${fmt(avg(rows.map(r => r.strength)), 1)}</div><div class="kpi-change">?⑥쐞: kgf</div></div>
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">사양 ${specs.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="background:linear-gradient(135deg,${ngRows.length>0?C.rose:C.emerald},#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">기준 1,134.7 kgf 미달</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합률</div><div class="kpi-value">${ngRate.toFixed(2)}%</div><div class="kpi-change">전체 측정 대비</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 강도</div><div class="kpi-value">${fmt(avg(rows.map(r => r.strength)), 1)}</div><div class="kpi-change">단위: kgf</div></div>
   `;
 
-  // ?ъ뼇蹂??듦퀎
+  // 사양별 통계
   const specStats = {};
   rows.forEach(r => {
     if (!specStats[r.spec]) specStats[r.spec] = { total: 0, ng: 0 };
@@ -639,7 +639,7 @@ function renderLabReportInj() {
     if (judge(r) === 'NG') specStats[r.spec].ng++;
   });
 
-  // TOP10 (媛뺣룄 誘몃떖 ??
+  // TOP10 (강도 미달 순)
   const topNG = [...ngRows]
     .map(r => ({ ...r, _diff: r.strength - r.threshold }))
     .sort((a, b) => a._diff - b._diff)
@@ -654,9 +654,9 @@ function renderLabReportInj() {
       <td>${fmt(r.threshold, 1)}</td>
       <td><span class="danger">${r._diff.toFixed(1)} kgf</span></td>
     </tr>
-  `).join('') : '<tr><td colspan="7" style="padding:40px;text-align:center;color:#8a8a9a">?꾩껜 ?곹빀 ??遺?곹빀 痢≪젙媛믪씠 ?놁뒿?덈떎</td></tr>';
+  `).join('') : '<tr><td colspan="7" style="padding:40px;text-align:center;color:#8a8a9a">전체 적합 — 부적합 측정값이 없습니다</td></tr>';
 
-  // ?붾퀎 OK/NG
+  // 월별 OK/NG
   const byMonth = {};
   rows.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
@@ -673,36 +673,37 @@ function renderLabReportInj() {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // ?ъ뼇蹂?NG??  const specOrder = Object.keys(specStats).sort();
+  // 사양별 NG율
+  const specOrder = Object.keys(specStats).sort();
   makeBar('repInjSpec', $('rep-inj-spec').getContext('2d'), specOrder, [
-    { label: 'NG??(%)', data: specOrder.map(s => specStats[s].total ? specStats[s].ng / specStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, specOrder.length), borderRadius: 6 }
+    { label: 'NG율 (%)', data: specOrder.map(s => specStats[s].total ? specStats[s].ng / specStats[s].total * 100 : 0), backgroundColor: PALETTE.slice(0, specOrder.length), borderRadius: 6 }
   ], {
     scales: { y: { beginAtZero: true, suggestedMax: 5, grid: { color: C.border } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
     plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v.toFixed(2) + '%' } }
   });
 
-  // 沅뚯옣 議곗튂
+  // 권장 조치
   const recs = [];
   topNG.slice(0, 3).forEach(r => {
-    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)}</b> ??媛뺣룄 ${r.strength.toFixed(1)} (湲곗? 1,134.7 ?鍮?${r._diff.toFixed(1)} kgf 誘몃떖). ?ъ텧 議곌굔/?щ즺 ?먭? 沅뚯옣.` });
+    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)}</b> — 강도 ${r.strength.toFixed(1)} (기준 1,134.7 대비 ${r._diff.toFixed(1)} kgf 미달). 사출 조건/재료 점검 권장.` });
   });
   Object.entries(specStats).forEach(([sp, st]) => {
     if (st.total >= 4 && st.ng / st.total > 0.10) {
-      recs.push({ level: 'warning', text: `?ъ뼇 <b>${escHtml(sp)}</b> ??NG??${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}嫄?. 紐⑤땲?곕쭅 媛뺥솕.` });
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 모니터링 강화.` });
     }
   });
-  // ?됯퇏 媛뺣룄媛 湲곗? +30 誘몃쭔???ъ뼇 (?덉쟾 留덉쭊 遺議?
+  // 평균 강도가 기준 +30 미만인 사양 (안전 마진 부족)
   Object.keys(specStats).forEach(sp => {
     const sAvg = avg(rows.filter(r => r.spec === sp).map(r => r.strength));
     if (sAvg !== null && sAvg < 1134.7 + 30 && sAvg > 1134.7) {
-      recs.push({ level: 'warning', text: `?ъ뼇 <b>${escHtml(sp)}</b> ???됯퇏 媛뺣룄 ${sAvg.toFixed(1)} kgf, 湲곗? ?鍮??덉쟾留덉쭊 30 kgf 誘몃쭔. ?좎옱 NG ?꾪뿕.` });
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — 평균 강도 ${sAvg.toFixed(1)} kgf, 기준 대비 안전마진 30 kgf 미만. 잠재 NG 위험.` });
     }
   });
-  if (recs.length === 0) recs.push({ level: 'info', text: '紐⑤뱺 痢≪젙媛믪씠 湲곗? ?댁긽 ???덉젙???덉쭏 ?좎? 以?' });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
   $('rep-inj-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
 }
 
-// ===== ?낅젰 / ???/ ??젣 =====
+// ===== 입력 / 저장 / 삭제 =====
 window.toggleStrengthForm = function (kind) {
   const el = $(`str-form-${kind}`);
   if (el) el.style.display = (!el.style.display || el.style.display === 'none') ? 'block' : 'none';
@@ -718,7 +719,7 @@ window.submitStrengthDie = async function () {
     strength: parseFloat($('form-die-strength').value) || null,
     threshold: DIE_SPEC_THRESHOLDS[spec] || null,
   };
-  if (!data.measure_date || !spec || !data.source) { alert('痢≪젙???ъ뼇/痢≪젙 二쇱껜???꾩닔'); return; }
+  if (!data.measure_date || !spec || !data.source) { alert('측정일/사양/측정 주체는 필수'); return; }
   await postStrength('strength_diecasting', data, 'die');
 };
 
@@ -731,13 +732,13 @@ window.submitStrengthInj = async function () {
     strength: parseFloat($('form-inj-strength').value) || null,
     threshold: 1134.7,
   };
-  if (!data.measure_date || !data.spec) { alert('痢≪젙???ъ뼇? ?꾩닔'); return; }
+  if (!data.measure_date || !data.spec) { alert('측정일/사양은 필수'); return; }
   await postStrength('strength_injection_base', data, 'inj');
 };
 
 async function postStrength(table, data, kind) {
   try {
-    // ?ㅼ씠罹먯뒪?? (date, spec, source) UNIQUE ??媛숈? ???낅젰 ???먮룞 媛깆떊 (upsert)
+    // 다이캐스팅: (date, spec, source) UNIQUE → 같은 키 입력 시 자동 갱신 (upsert)
     const preferUpsert = (table === 'strength_diecasting');
     const headers = preferUpsert
       ? { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' }
@@ -748,27 +749,27 @@ async function postStrength(table, data, kind) {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-    alert(preferUpsert ? '??????꾨즺 (?숈씪 ?ㅻ뒗 ?먮룞 媛깆떊)' : '??????꾨즺');
+    alert(preferUpsert ? '✅ 저장 완료 (동일 키는 자동 갱신)' : '✅ 저장 완료');
     document.querySelectorAll(`#str-form-${kind} input:not([type="date"])`).forEach(i => i.value = '');
     await loadStrengthData(true);
     if (kind === 'die') renderDie(); else renderInj();
   } catch (e) {
-    console.error(e); alert('??????ㅽ뙣: ' + e.message);
+    console.error(e); alert('❌ 저장 실패: ' + e.message);
   }
 }
 
 window.deleteStrengthRow = async function (table, id) {
-  const pw = prompt('??痢≪젙?대젰????젣?섎젮硫?鍮꾨?踰덊샇瑜??낅젰?섏꽭??');
+  const pw = prompt('이 측정이력을 삭제하려면 비밀번호를 입력하세요:');
   if (pw === null) return;
-  if (pw !== '1234') { alert('??鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎.\n??젣媛 痍⑥냼?섏뿀?듬땲??'); return; }
-  if (!confirm('鍮꾨?踰덊샇 ?뺤씤 ?꾨즺. ?뺣쭚 ??젣?섏떆寃좎뒿?덇퉴?')) return;
+  if (pw !== '1234') { alert('❌ 비밀번호가 일치하지 않습니다.\n삭제가 취소되었습니다.'); return; }
+  if (!confirm('비밀번호 확인 완료. 정말 삭제하시겠습니까?')) return;
   try {
     const res = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method: 'DELETE', headers: SB_HEADERS });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
     await loadStrengthData(true);
     if (table === 'strength_diecasting') renderDie(); else renderInj();
   } catch (e) {
-    console.error(e); alert('????젣 ?ㅽ뙣: ' + e.message);
+    console.error(e); alert('❌ 삭제 실패: ' + e.message);
   }
 };
 
@@ -782,7 +783,7 @@ window.resetStrengthFilter = function (kind) {
   }
 };
 
-// ?? ExcelJS 怨듯넻 ?ㅽ????ы띁 ?????????????????????????????????????
+// ── ExcelJS 공통 스타일 헬퍼 ─────────────────────────────────────
 const _EJS_BORDER = { style: 'thin', color: { argb: 'FFBFBFBF' } };
 const _EJS_BORDER_ALL = { top: _EJS_BORDER, bottom: _EJS_BORDER, left: _EJS_BORDER, right: _EJS_BORDER };
 
@@ -804,25 +805,27 @@ function _ejsStyleCell(cell, opts) {
   }
 }
 
-// ?? 濡쒖슦?곗씠???쒗듃 (ExcelJS) ?????????????????????????????????????
+// ── 로우데이터 시트 (ExcelJS) ─────────────────────────────────────
 function _buildRawSheetEJS(wb, header, data) {
-  const ws = wb.addWorksheet('濡쒖슦?곗씠??);
-  // ???덈퉬 (痢≪젙???ъ뼇|二쇱껜|湲덊삎|以묐웾|媛뺣룄|湲곗?|?먯젙)
+  const ws = wb.addWorksheet('로우데이터');
+  // 열 너비 (측정일|사양|주체|금형|중량|강도|기준|판정)
   const widths = [14, 14, 12, 12, 10, 10, 10, 8];
   header.forEach((_, i) => { ws.getColumn(i + 1).width = widths[i] || 14; });
 
-  // ?ㅻ뜑 ??  const hdrRow = ws.addRow(header);
+  // 헤더 행
+  const hdrRow = ws.addRow(header);
   hdrRow.height = 22;
   header.forEach((_, i) => _ejsStyleCell(hdrRow.getCell(i + 1), { isHdr: true }));
 
-  // ?곗씠????  data.forEach(rowData => {
+  // 데이터 행
+  data.forEach(rowData => {
     const row = ws.addRow(rowData.map(v => v == null ? '' : v));
     row.height = 18;
     header.forEach((_, i) => _ejsStyleCell(row.getCell(i + 1)));
   });
 }
 
-// ?? 李⑦듃 ?대?吏 ?앹꽦 (Chart.js 罹붾쾭????base64 PNG) ?????????????
+// ── 차트 이미지 생성 (Chart.js 캔버스 → base64 PNG) ─────────────
 async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold) {
   const W = 680, H = 340;
   const canvas = document.createElement('canvas');
@@ -830,7 +833,7 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
   canvas.style.cssText = 'position:absolute;visibility:hidden;top:0;left:0;';
   document.body.appendChild(canvas);
 
-  // ?곗씠?곗뀑 援ъ꽦
+  // 데이터셋 구성
   const datasets = [
     {
       label: spec,
@@ -845,7 +848,7 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
       fill: false,
     },
     {
-      label: `湲곗? ${threshold}`,
+      label: `기준 ${threshold}`,
       data: labels.map(() => threshold),
       borderColor: '#FF7043',
       backgroundColor: 'transparent',
@@ -856,7 +859,7 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
       fill: false,
     },
   ];
-  // GCK ?쇱씤 (4000G, S-TILT留?
+  // GCK 라인 (4000G, S-TILT만)
   if (gkValues) {
     datasets.splice(1, 0, {
       label: 'GCK',
@@ -889,7 +892,7 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
         },
         legend: { position: 'top', align: 'end',
           labels: { boxWidth: 16, font: { size: 11 } } },
-        datalabels: { display: false }, // ChartDataLabels ?꾩뿭 ?뚮윭洹몄씤 鍮꾪솢?깊솕
+        datalabels: { display: false }, // ChartDataLabels 전역 플러그인 비활성화
       },
       scales: {
         x: {
@@ -897,7 +900,7 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
           ticks: { color: '#555', font: { size: 11 } },
         },
         y: {
-          title: { display: true, text: '媛뺣룄 (kgf)', color: '#666', font: { size: 11 } },
+          title: { display: true, text: '강도 (kgf)', color: '#666', font: { size: 11 } },
           grid: { color: 'rgba(0,0,0,0.06)' },
           ticks: { color: '#555', font: { size: 11 } },
         },
@@ -905,8 +908,9 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
     },
   });
 
-  await new Promise(r => setTimeout(r, 80)); // ?뚮뜑留??湲?
-  // ?곗깋 諛곌꼍 ?⑹꽦 (李⑦듃??湲곕낯 ?щ챸 諛곌꼍)
+  await new Promise(r => setTimeout(r, 80)); // 렌더링 대기
+
+  // 흰색 배경 합성 (차트는 기본 투명 배경)
   const ctx = canvas.getContext('2d');
   ctx.save();
   ctx.globalCompositeOperation = 'destination-over';
@@ -920,9 +924,9 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
   return b64;
 }
 
-// ?? ?붾퀎 媛뺣룄 異붿씠 ?쒗듃 (?곗씠???뚯씠釉?+ ?ъ뼇蹂?李⑦듃 ?대?吏, ExcelJS) ?????????????
+// ── 월별 강도 추이 시트 (데이터 테이블 + 사양별 차트 이미지, ExcelJS) ─────────────
 async function _buildTrendSheetEJS(wb, rows) {
-  // ?ъ뼇 ?쒖떆 ?쒖꽌 / GCK ?ы븿 ?щ? / ????(GCK ?덉쑝硫?3?? ?놁쑝硫?2??
+  // 사양 표시 순서 / GCK 포함 여부 / 열 수 (GCK 있으면 3열, 없으면 2열)
   const SPEC_DEF = [
     { key: '4000G',      gck: true,  label: '4000G',         cols: 3 },
     { key: 'S-TILT',     gck: true,  label: 'S-TILT',        cols: 3 },
@@ -934,11 +938,12 @@ async function _buildTrendSheetEJS(wb, rows) {
   ];
   function normSpec(s) { return String(s).replace(/[\s\-().]/g, '').toUpperCase(); }
 
-  // DB ?ъ뼇蹂?湲곗?媛?  const specMap = {};
+  // DB 사양별 기준값
+  const specMap = {};
   rows.forEach(r => { if (r.spec && r.threshold != null) specMap[r.spec] = r.threshold; });
   if (!Object.keys(specMap).length) return;
 
-  // ?쒖꽌??留욊쾶 DB ?ъ뼇 留ㅽ븨
+  // 순서에 맞게 DB 사양 매핑
   const orderedSpecs = [];
   SPEC_DEF.forEach(def => {
     const dbSpec = Object.keys(specMap).find(s =>
@@ -948,25 +953,25 @@ async function _buildTrendSheetEJS(wb, rows) {
       cols: def.cols, threshold: specMap[dbSpec],
     });
   });
-  // 紐⑸줉???녿뒗 ?ъ뼇? ?ㅼ뿉 異붽? (GCK ?놁쓬)
+  // 목록에 없는 사양은 뒤에 추가 (GCK 없음)
   Object.keys(specMap).forEach(sp => {
     if (!orderedSpecs.find(o => o.spec === sp))
       orderedSpecs.push({ spec: sp, gck: false, label: sp, cols: 2, threshold: specMap[sp] });
   });
 
-  // ?붾퀎 횞 ?ъ뼇 횞 ?낆껜 吏묎퀎
+  // 월별 × 사양 × 업체 집계
   const agg = {};
   rows.forEach(r => {
     if (!r.measure_date || r.strength == null) return;
     const mo  = r.measure_date.slice(0, 7);
-    const src = r.source || '?쒕뵒利?;
+    const src = r.source || '시디즈';
     if (!agg[mo]) agg[mo] = {};
     if (!agg[mo][r.spec]) agg[mo][r.spec] = {};
     if (!agg[mo][r.spec][src]) agg[mo][r.spec][src] = { sum: 0, cnt: 0 };
     agg[mo][r.spec][src].sum += r.strength;
     agg[mo][r.spec][src].cnt++;
   });
-  // ?곗씠???덈뒗 ?붾퓧 ?꾨땲?? ?대떦 ?곕룄 1~12???꾩껜 ?쒖떆 (鍮????ы븿)
+  // 데이터 있는 월뿐 아니라, 해당 연도 1~12월 전체 표시 (빈 행 포함)
   const dataMonths = Object.keys(agg).sort();
   if (!dataMonths.length) return;
   const year = dataMonths[0].slice(0, 4);
@@ -974,24 +979,26 @@ async function _buildTrendSheetEJS(wb, rows) {
     `${year}-${String(i + 1).padStart(2, '0')}`
   );
 
-  const ws = wb.addWorksheet('?붾퀎 媛뺣룄 異붿씠');
+  const ws = wb.addWorksheet('월별 강도 추이');
   ws.views = [{ showGridLines: false }];
 
-  // ??? ???덈퉬 + ?ъ뼇蹂?1-based ?쒖옉 ??湲곕줉 ?????????????????????
-  // 李⑦듃 433px媛 寃뱀튂吏 ?딆쑝?ㅻ㈃: 3???ъ뼇 ??21???? 2???ъ뼇 ??32????  ws.getColumn(1).width = 12; // A (痢≪젙??洹몃옒??
-  const specColStarts = []; // 媛??ъ뼇??1-based ?쒖옉 ??  let col1 = 2; // 1-based ?꾩옱 ??異붿쟻
+  // ─── 열 너비 + 사양별 1-based 시작 열 기록 ─────────────────────
+  // 차트 433px가 겹치지 않으려면: 3열 사양 ≥ 21자/열, 2열 사양 ≥ 32자/열
+  ws.getColumn(1).width = 12; // A (측정월/그래프)
+  const specColStarts = []; // 각 사양의 1-based 시작 열
+  let col1 = 2; // 1-based 현재 열 추적
   orderedSpecs.forEach(sp => {
     specColStarts.push(col1);
-    const colW = sp.cols === 3 ? 21 : 32; // 3??21????62px), 2??32????53px)
+    const colW = sp.cols === 3 ? 21 : 32; // 3열=21자(≈462px), 2열=32자(≈453px)
     for (let i = 0; i < sp.cols; i++) ws.getColumn(col1 + i).width = colW;
     col1 += sp.cols;
   });
 
-  // ??? ?ㅻ뜑 ??1: 痢≪젙??A1:A2 蹂묓빀) + ?ъ뼇紐?蹂묓빀 ?????????
+  // ─── 헤더 행 1: 측정월(A1:A2 병합) + 사양명 병합 ─────────
   ws.getRow(1).height = 22;
   ws.mergeCells(1, 1, 2, 1);
   const mo1 = ws.getCell(1, 1);
-  mo1.value = '痢≪젙??;
+  mo1.value = '측정월';
   _ejsStyleCell(mo1, { isHdr: true });
 
   orderedSpecs.forEach((sp, si) => {
@@ -1000,27 +1007,27 @@ async function _buildTrendSheetEJS(wb, rows) {
     const hc = ws.getCell(1, sc);
     hc.value = sp.label;
     _ejsStyleCell(hc, { isHdr: true });
-    // 蹂묓빀 ???섎㉧吏 ? 諛곌꼍쨌border ?좎? (Excel ?뚮뜑留??명솚)
+    // 병합 내 나머지 셀 배경·border 유지 (Excel 렌더링 호환)
     for (let c = sc + 1; c <= ec; c++) {
       ws.getCell(1, c).border = _EJS_BORDER_ALL;
       ws.getCell(1, c).fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
     }
   });
 
-  // ??? ?ㅻ뜑 ??2: ?쒕툕 ?ㅻ뜑 (湲곗?(kgf) ?ы븿 紐⑤몢 寃??援듦쾶) ????
+  // ─── 헤더 행 2: 서브 헤더 (기준(kgf) 포함 모두 검정 굵게) ────
   ws.getRow(2).height = 20;
   orderedSpecs.forEach((sp, si) => {
     const subHdrs = sp.gck
-      ? ['?쒕뵒利?, 'GCK', '湲곗?(kgf)']
-      : ['?쒕뵒利?, '湲곗?(kgf)'];
+      ? ['시디즈', 'GCK', '기준(kgf)']
+      : ['시디즈', '기준(kgf)'];
     subHdrs.forEach((h, i) => {
       const cell = ws.getCell(2, specColStarts[si] + i);
       cell.value = h;
-      _ejsStyleCell(cell, { isHdr: true }); // 湲곗?(kgf)??寃??援듦쾶 (redFont ?놁쓬)
+      _ejsStyleCell(cell, { isHdr: true }); // 기준(kgf)도 검정 굵게 (redFont 없음)
     });
   });
 
-  // ??? ?곗씠??????????????????????????????????????????????
+  // ─── 데이터 행 ──────────────────────────────────────────
   months.forEach((mo, mi) => {
     const rowNum = 3 + mi;
     ws.getRow(rowNum).height = 18;
@@ -1031,20 +1038,20 @@ async function _buildTrendSheetEJS(wb, rows) {
 
     orderedSpecs.forEach((sp, si) => {
       const spAgg = agg[mo] && agg[mo][sp.spec];
-      const sdRaw = spAgg && spAgg['?쒕뵒利?];
+      const sdRaw = spAgg && spAgg['시디즈'];
       const gkRaw = spAgg && spAgg['GCK'];
       const sdVal = sdRaw ? Math.round(sdRaw.sum / sdRaw.cnt * 10) / 10 : null;
       const gkVal = gkRaw ? Math.round(gkRaw.sum / gkRaw.cnt * 10) / 10 : null;
       const thr   = sp.threshold;
       let c = specColStarts[si];
 
-      // ?쒕뵒利?(誘몃떖 ??鍮④컙 諛곌꼍)
+      // 시디즈 (미달 시 빨간 배경)
       const sdCell = ws.getCell(rowNum, c);
       sdCell.value = sdVal !== null ? sdVal : '';
       _ejsStyleCell(sdCell, sdVal !== null && sdVal < thr ? { redBg: true } : {});
       c++;
 
-      // GCK (?대떦 ?ъ뼇留? 誘몃떖 ??鍮④컙 諛곌꼍)
+      // GCK (해당 사양만, 미달 시 빨간 배경)
       if (sp.gck) {
         const gkCell = ws.getCell(rowNum, c);
         gkCell.value = gkVal !== null ? gkVal : '';
@@ -1052,38 +1059,39 @@ async function _buildTrendSheetEJS(wb, rows) {
         c++;
       }
 
-      // 湲곗?媛? 寃??援듦쾶 + ?고쉶??諛곌꼍 (?ъ슜???붿껌)
+      // 기준값: 검정 굵게 + 연회색 배경 (사용자 요청)
       const thrCell = ws.getCell(rowNum, c);
       thrCell.value = thr;
       _ejsStyleCell(thrCell, { bold: true, grayBg: true });
     });
   });
 
-  // ??? 李⑦듃 ?곸뿭: ?ъ뼇蹂?蹂묓빀 + ?대?吏 (李멸퀬?뚯씪 湲곗? 諛곗튂) ????
-  // 李멸퀬?뚯씪: 李⑦듃 433횞254px, 紐⑤몢 媛숈? ???뚯씠釉?諛붾줈 ?꾨옒), 媛??ъ뼇 ?쒖옉 ?댁뿉 諛곗튂
-  const CHART_W  = 680, CHART_H  = 340; // 罹붾쾭???뚮뜑 ?ш린 (怨좏솕吏?
-  const DISP_W   = 433, DISP_H   = 254; // ?묒? ?쒖떆 ?ш린 (EMU 4125600횞2422800)
-  const CHART_ROWS = 13;                // 李⑦듃 ?곸뿭 ????(254px 첨 20px/????13)
-  const chartR1  = 3 + months.length;  // 1-based 李⑦듃 ?쒖옉 ??  const chartR2  = chartR1 + CHART_ROWS - 1;
+  // ─── 차트 영역: 사양별 병합 + 이미지 (참고파일 기준 배치) ────
+  // 참고파일: 차트 433×254px, 모두 같은 행(테이블 바로 아래), 각 사양 시작 열에 배치
+  const CHART_W  = 680, CHART_H  = 340; // 캔버스 렌더 크기 (고화질)
+  const DISP_W   = 433, DISP_H   = 254; // 엑셀 표시 크기 (EMU 4125600×2422800)
+  const CHART_ROWS = 13;                // 차트 영역 행 수 (254px ÷ 20px/행 ≈ 13)
+  const chartR1  = 3 + months.length;  // 1-based 차트 시작 행
+  const chartR2  = chartR1 + CHART_ROWS - 1;
 
-  // A?? '洹몃옒?? ?덉씠釉?(痢≪젙???ㅻ뜑? ?숈씪???뚯깋 ?뚯쁺)
+  // A열: '그래프' 레이블 (측정월 헤더와 동일한 회색 음영)
   ws.mergeCells(chartR1, 1, chartR2, 1);
   const aChartCell = ws.getCell(chartR1, 1);
-  aChartCell.value = '洹몃옒??;
-  _ejsStyleCell(aChartCell, { isHdr: true }); // 痢≪젙?붽낵 ?숈씪 ?ㅽ????뚯깋 諛곌꼍+寃??援듦쾶)
+  aChartCell.value = '그래프';
+  _ejsStyleCell(aChartCell, { isHdr: true }); // 측정월과 동일 스타일(회색 배경+검정 굵게)
 
   for (let si = 0; si < orderedSpecs.length; si++) {
     const { spec, gck, threshold, label } = orderedSpecs[si];
     const sc1 = specColStarts[si];
     const ec1 = sc1 + orderedSpecs[si].cols - 1;
 
-    // ?ъ뼇 ??蹂묓빀 (李멸퀬?뚯씪怨??숈씪??援ъ“)
+    // 사양 열 병합 (참고파일과 동일한 구조)
     ws.mergeCells(chartR1, sc1, chartR2, ec1);
     ws.getCell(chartR1, sc1).border = _EJS_BORDER_ALL;
 
-    // 李⑦듃 ?앹꽦
+    // 차트 생성
     const sdValues = months.map(mo => {
-      const d = agg[mo] && agg[mo][spec] && agg[mo][spec]['?쒕뵒利?];
+      const d = agg[mo] && agg[mo][spec] && agg[mo][spec]['시디즈'];
       return d ? Math.round(d.sum / d.cnt * 10) / 10 : null;
     });
     const gkValues = gck ? months.map(mo => {
@@ -1093,7 +1101,7 @@ async function _buildTrendSheetEJS(wb, rows) {
 
     const imgB64 = await _createSpecChartImage(label, months, sdValues, gkValues, threshold);
     const imgId  = wb.addImage({ base64: imgB64, extension: 'png' });
-    // tl: 0-based (1-based sc1 ??sc1-1), 李멸퀬?뚯씪怨??숈씪??col/row蹂?諛곗튂
+    // tl: 0-based (1-based sc1 → sc1-1), 참고파일과 동일한 col/row별 배치
     ws.addImage(imgId, {
       tl: { col: sc1 - 1 + 0.05, row: chartR1 - 1 + 0.1 },
       ext: { width: DISP_W, height: DISP_H },
@@ -1101,15 +1109,15 @@ async function _buildTrendSheetEJS(wb, rows) {
   }
 }
 
-// ?? ?ъ텧 踰좎씠???붾퀎 媛뺣룄 異붿씠 ?쒗듃 ????????????????????????????????
+// ── 사출 베이스 월별 강도 추이 시트 ────────────────────────────────
 async function _buildInjTrendSheetEJS(wb, rows) {
   const INJ_THR = 1134.7;
 
-  // ?ъ뼇 紐⑸줉 (?곗씠???덈뒗 寃껊쭔)
+  // 사양 목록 (데이터 있는 것만)
   const specSet = uniq(rows.map(r => r.spec).filter(Boolean)).sort();
   if (!specSet.length) return;
 
-  // ?붾퀎 횞 ?ъ뼇 吏묎퀎 (?쒕뵒利??⑥씪 ?낆껜)
+  // 월별 × 사양 집계 (시디즈 단일 업체)
   const agg = {};
   rows.forEach(r => {
     if (!r.measure_date || r.strength == null) return;
@@ -1127,23 +1135,25 @@ async function _buildInjTrendSheetEJS(wb, rows) {
     `${year}-${String(i + 1).padStart(2, '0')}`
   );
 
-  const ws = wb.addWorksheet('?붾퀎 媛뺣룄 異붿씠');
+  const ws = wb.addWorksheet('월별 강도 추이');
   ws.views = [{ showGridLines: false }];
 
-  // ???덈퉬: A(痢≪젙?? + ?ъ뼇蹂?2???쒕뵒利댟룰린以)
+  // 열 너비: A(측정월) + 사양별 2열(시디즈·기준)
   ws.getColumn(1).width = 12;
   const specColStarts = [];
   let col1 = 2;
   specSet.forEach(() => {
     specColStarts.push(col1);
-    ws.getColumn(col1).width = 32;     // ?쒕뵒利?    ws.getColumn(col1 + 1).width = 32; // 湲곗?(kgf) ??2???⑷퀎 ??433px(李⑦듃 ?? ?뺣낫
+    ws.getColumn(col1).width = 32;     // 시디즈
+    ws.getColumn(col1 + 1).width = 32; // 기준(kgf) — 2열 합계 ≥ 433px(차트 폭) 확보
     col1 += 2;
   });
 
-  // ?ㅻ뜑 ??1: 痢≪젙??蹂묓빀 + ?ъ뼇紐?  ws.getRow(1).height = 22;
+  // 헤더 행 1: 측정월 병합 + 사양명
+  ws.getRow(1).height = 22;
   ws.mergeCells(1, 1, 2, 1);
   const mo1 = ws.getCell(1, 1);
-  mo1.value = '痢≪젙??; _ejsStyleCell(mo1, { isHdr: true });
+  mo1.value = '측정월'; _ejsStyleCell(mo1, { isHdr: true });
 
   specSet.forEach((sp, si) => {
     const sc = specColStarts[si];
@@ -1154,17 +1164,18 @@ async function _buildInjTrendSheetEJS(wb, rows) {
     ws.getCell(1, sc + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
   });
 
-  // ?ㅻ뜑 ??2: ?쒕툕?ㅻ뜑
+  // 헤더 행 2: 서브헤더
   ws.getRow(2).height = 20;
   specSet.forEach((_, si) => {
     const sc = specColStarts[si];
-    ['?쒕뵒利?, '湲곗?(kgf)'].forEach((h, i) => {
+    ['시디즈', '기준(kgf)'].forEach((h, i) => {
       const cell = ws.getCell(2, sc + i);
       cell.value = h; _ejsStyleCell(cell, { isHdr: true });
     });
   });
 
-  // ?곗씠????  months.forEach((mo, mi) => {
+  // 데이터 행
+  months.forEach((mo, mi) => {
     const rowNum = 3 + mi;
     ws.getRow(rowNum).height = 18;
     const moCell = ws.getCell(rowNum, 1);
@@ -1182,7 +1193,7 @@ async function _buildInjTrendSheetEJS(wb, rows) {
     });
   });
 
-  // 李⑦듃 ?대?吏 (?ъ뼇蹂?
+  // 차트 이미지 (사양별)
   const DISP_W = 433, DISP_H = 254;
   const CHART_ROWS = 13;
   const chartR1 = 3 + months.length;
@@ -1190,7 +1201,7 @@ async function _buildInjTrendSheetEJS(wb, rows) {
 
   ws.mergeCells(chartR1, 1, chartR2, 1);
   const aChartCell = ws.getCell(chartR1, 1);
-  aChartCell.value = '洹몃옒??; _ejsStyleCell(aChartCell, { isHdr: true });
+  aChartCell.value = '그래프'; _ejsStyleCell(aChartCell, { isHdr: true });
 
   for (let si = 0; si < specSet.length; si++) {
     const sp = specSet[si];
@@ -1211,21 +1222,21 @@ async function _buildInjTrendSheetEJS(wb, rows) {
   }
 }
 
-// ?? ?먮즺蹂??吏꾩엯??(ExcelJS) ?????????????????????????????????????
+// ── 자료변환 진입점 (ExcelJS) ─────────────────────────────────────
 window.exportStrength = async function (kind) {
-  if (!window.ExcelJS) { alert('ExcelJS ?쇱씠釉뚮윭由?誘몃줈??); return; }
+  if (!window.ExcelJS) { alert('ExcelJS 라이브러리 미로드'); return; }
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   let rows, header, mapper, filename;
 
   if (kind === 'die') {
     rows     = getDieFiltered();
-    filename = `媛뺣룄?쒗뿕_?ㅼ씠罹먯뒪??${today}.xlsx`;
-    header   = ['痢≪젙??, '?ъ뼇', '痢≪젙 二쇱껜', '湲덊삎踰덊샇', '以묐웾(g)', '媛뺣룄(kgf)', '湲곗?(kgf)', '?먯젙'];
+    filename = `강도시험_다이캐스팅_${today}.xlsx`;
+    header   = ['측정일', '사양', '측정 주체', '금형번호', '중량(g)', '강도(kgf)', '기준(kgf)', '판정'];
     mapper   = r => [r.measure_date, r.spec, r.source, r.mold_number, r.weight, r.strength, r.threshold, judge(r)];
   } else {
     rows     = getInjFiltered();
-    filename = `媛뺣룄?쒗뿕_?ъ텧踰좎씠??${today}.xlsx`;
-    header   = ['痢≪젙??, '?ъ뼇', '?щ즺', '以묐웾(g)', '媛뺣룄(kgf)', '湲곗?(kgf)', '?먯젙'];
+    filename = `강도시험_사출베이스_${today}.xlsx`;
+    header   = ['측정일', '사양', '재료', '중량(g)', '강도(kgf)', '기준(kgf)', '판정'];
     mapper   = r => [r.measure_date, r.spec, r.material, r.weight, r.strength, r.threshold, judge(r)];
   }
 
@@ -1233,13 +1244,14 @@ window.exportStrength = async function (kind) {
     const wb     = new ExcelJS.Workbook();
     const sorted = rows.slice().sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || ''));
 
-    // ?쒗듃 1: ?붾퀎 媛뺣룄 異붿씠
+    // 시트 1: 월별 강도 추이
     if (kind === 'die') await _buildTrendSheetEJS(wb, rows);
     else await _buildInjTrendSheetEJS(wb, rows);
 
-    // ?쒗듃 2(?ㅼ씠) / 2(?ъ텧): 濡쒖슦?곗씠??    _buildRawSheetEJS(wb, header, sorted.map(mapper));
+    // 시트 2(다이) / 2(사출): 로우데이터
+    _buildRawSheetEJS(wb, header, sorted.map(mapper));
 
-    // ?ㅼ슫濡쒕뱶
+    // 다운로드
     const buf  = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url  = URL.createObjectURL(blob);
@@ -1249,16 +1261,16 @@ window.exportStrength = async function (kind) {
     a.click();
     URL.revokeObjectURL(url);
   } catch (e) {
-    console.error('exportStrength ?ㅻ쪟:', e);
-    alert('?먮즺蹂???ㅽ뙣: ' + e.message);
+    console.error('exportStrength 오류:', e);
+    alert('자료변환 실패: ' + e.message);
   }
 };
 
-// ===== GCK ?뚯씪 ?먮룞 ?낅줈??=====
+// ===== GCK 파일 자동 업로드 =====
 window.handleGckUpload = async function (event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (!confirm(`GCK ?뚯씪 "${file.name}"???낅줈?쒗븯???ㅼ씠罹먯뒪???곗씠?곗뿉 諛섏쁺?섏떆寃좎뒿?덇퉴?\n(湲곗〈 GCK ?곗씠?곗? 以묐났?섎뒗 ?쇱옄??異붽??⑸땲??`)) {
+  if (!confirm(`GCK 파일 "${file.name}"을 업로드하여 다이캐스팅 데이터에 반영하시겠습니까?\n(기존 GCK 데이터와 중복되는 일자는 추가됩니다)`)) {
     event.target.value = '';
     return;
   }
@@ -1267,18 +1279,18 @@ window.handleGckUpload = async function (event) {
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     const records = [];
 
-    // S-Tilt ?쒗듃 ??spec='S-TILT', threshold=750
+    // S-Tilt 시트 → spec='S-TILT', threshold=750
     parseGckSheet(wb, 'Raw data (S-Tilt)', 'S-TILT', 750, records);
-    // 4000G Renewal ??spec='4000G', threshold=800
+    // 4000G Renewal → spec='4000G', threshold=800
     parseGckSheet(wb, 'Raw data (4000G Renewal)', '4000G', 800, records);
 
     if (!records.length) {
-      alert('?뚯떛???곗씠?곌? ?놁뒿?덈떎. ?뚯씪 援ъ“瑜??뺤씤?댁＜?몄슂.');
+      alert('파싱된 데이터가 없습니다. 파일 구조를 확인해주세요.');
       event.target.value = '';
       return;
     }
 
-    // ?좉퇋/媛깆떊 遺꾨쪟 (?꾩옱 DB ?곹깭 湲곗?)
+    // 신규/갱신 분류 (현재 DB 상태 기준)
     const existKeys = new Set(STATE.die
       .filter(r => r.source === 'GCK')
       .map(r => `${r.measure_date}|${r.spec}|${r.source}`));
@@ -1286,29 +1298,29 @@ window.handleGckUpload = async function (event) {
     const updateCount = records.length - newCount;
 
     if (!confirm(
-      `GCK ?뚯씪 ?뚯떛 寃곌낵:\n\n` +
-      `??珥?${records.length}嫄?n` +
-      `???좉퇋 異붽?: ${newCount}嫄?n` +
-      `??湲곗〈 媛깆떊: ${updateCount}嫄?(?대? ?깅줉???쇱옄??媛??먮룞 媛깆떊)\n\n` +
-      `吏꾪뻾?섏떆寃좎뒿?덇퉴?`
+      `GCK 파일 파싱 결과:\n\n` +
+      `• 총 ${records.length}건\n` +
+      `• 신규 추가: ${newCount}건\n` +
+      `• 기존 갱신: ${updateCount}건 (이미 등록된 일자는 값 자동 갱신)\n\n` +
+      `진행하시겠습니까?`
     )) {
       event.target.value = '';
       return;
     }
 
-    // upsert: (measure_date, spec, source) UNIQUE ?쒖빟 湲곕컲?쇰줈 ?먮룞 蹂묓빀
+    // upsert: (measure_date, spec, source) UNIQUE 제약 기반으로 자동 병합
     const res = await fetch(`${SB_URL}/rest/v1/strength_diecasting`, {
       method: 'POST',
       headers: { ...SB_HEADERS, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
       body: JSON.stringify(records),
     });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-    alert(`??GCK ?낅줈???꾨즺\n\n???좉퇋 異붽?: ${newCount}嫄?n??湲곗〈 媛깆떊: ${updateCount}嫄?n\n?숈씪 ?쇱옄/?ъ뼇? 理쒖떊 媛믪쑝濡??먮룞 媛깆떊?섏뿀?듬땲??`);
+    alert(`✅ GCK 업로드 완료\n\n• 신규 추가: ${newCount}건\n• 기존 갱신: ${updateCount}건\n\n동일 일자/사양은 최신 값으로 자동 갱신되었습니다.`);
     await loadStrengthData(true);
     renderDie();
   } catch (e) {
     console.error(e);
-    alert('??GCK ?낅줈???ㅽ뙣: ' + e.message);
+    alert('❌ GCK 업로드 실패: ' + e.message);
   }
   event.target.value = '';
 };
@@ -1317,11 +1329,12 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
   const ws = wb.Sheets[sheetName];
   if (!ws) return;
   const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, dateNF: 'yyyy-mm-dd' });
-  // ?ㅻ뜑 R9 (index 8): "?쒗뿕 ?좎쭨", "Sample #1", "Sample #2", "Sample #3", ..., "Weight #1", "Weight #2"
-  // ?곗씠??R10 (index 9) 遺??  const headerRow = json[8] || [];
+  // 헤더 R9 (index 8): "시험 날짜", "Sample #1", "Sample #2", "Sample #3", ..., "Weight #1", "Weight #2"
+  // 데이터 R10 (index 9) 부터
+  const headerRow = json[8] || [];
   const dateIdx = 0;
   const s1Idx = 1, s2Idx = 2, s3Idx = 3;
-  // Weight 而щ읆 ?꾩튂 李얘린
+  // Weight 컬럼 위치 찾기
   let w1Idx = -1, w2Idx = -1;
   for (let i = 0; i < headerRow.length; i++) {
     const h = String(headerRow[i] || '');
@@ -1334,7 +1347,8 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
     let d = row[dateIdx];
     let dateStr;
     if (d instanceof Date) {
-      // SheetJS cellDates:true??UTC ?먯젙 湲곗? Date瑜??앹꽦 ???쒓뎅?쒓컙(UTC+9)?먯꽌 ?섎（ ?욎쑝濡?諛由?      // +1??蹂댁젙 ??UTC 硫붿꽌?쒕줈 ?좎쭨 異붿텧
+      // SheetJS cellDates:true는 UTC 자정 기준 Date를 생성 → 한국시간(UTC+9)에서 하루 앞으로 밀림
+      // +1일 보정 후 UTC 메서드로 날짜 추출
       const fixed = new Date(d.getTime() + 86400000);
       dateStr = `${fixed.getUTCFullYear()}-${String(fixed.getUTCMonth()+1).padStart(2,'0')}-${String(fixed.getUTCDate()).padStart(2,'0')}`;
     } else if (typeof d === 'string') {
@@ -1342,15 +1356,15 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
       if (!m) continue;
       dateStr = `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
     } else continue;
-    // 2026???곗씠?곕쭔 (?ъ슜???붿껌)
+    // 2026년 데이터만 (사용자 요청)
     if (!dateStr.startsWith('2026')) continue;
 
-    // B,C 媛뺣룄 ?됯퇏 (?ъ슜?먭? ?붿껌??B/C ??而щ읆)
+    // B,C 강도 평균 (사용자가 요청한 B/C 두 컬럼)
     const s1 = row[s1Idx], s2 = row[s2Idx];
     const strengths = [s1, s2].filter(v => v !== null && v !== undefined && !isNaN(v));
     const strength = strengths.length ? strengths.reduce((a,b)=>a+b,0)/strengths.length : null;
 
-    // K,L Weight ?됯퇏
+    // K,L Weight 평균
     let weight = null;
     if (w1Idx >= 0 && w2Idx >= 0) {
       const w1 = row[w1Idx], w2 = row[w2Idx];
@@ -1365,12 +1379,12 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
       mold_number: null,
       weight, strength,
       threshold,
-      note: 'GCK ?뚯씪 ?먮룞 ?낅줈??,
+      note: 'GCK 파일 자동 업로드',
     });
   }
 }
 
-// ===== 吏꾩엯??=====
+// ===== 진입점 =====
 window.initLabSection = async function () {
   chartDefault();
   if (!STATE.loaded) {
@@ -1384,9 +1398,9 @@ window.initLabSection = async function () {
   switchLabTab(STATE.currentTab);
 };
 
-// ?? ?ㅼ씠罹먯뒪??媛뺣룄 ?쒗뿕 蹂닿퀬????????????????????????????????????????
+// ── 다이캐스팅 강도 시험 보고서 ──────────────────────────────────────
 
-// 遺꾩꽍 沅뚯옣?ы빆 諛곗뿴 諛섑솚 (?꾩옱 ?꾪꽣 rows 湲곗?)
+// 분석 권장사항 배열 반환 (현재 필터 rows 기준)
 function _getDieDiagRecs(rows) {
   const ngRows = rows.filter(r => judge(r) === 'NG');
   const specStats = {};
@@ -1402,30 +1416,30 @@ function _getDieDiagRecs(rows) {
 
   const recs = [];
   topNG.forEach(r => {
-    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)} (${escHtml(r.source)})</b> ??媛뺣룄 ${r.strength.toFixed(1)} kgf (湲곗? ${r.threshold} kgf ?鍮?${Math.abs(r._diff).toFixed(1)} kgf 誘몃떖). ?쒗뿕 ?ъ쭊??/ ?됯납 議곗꽦 ?먭? 沅뚯옣.` });
+    recs.push({ level: 'critical', text: `<b>${escHtml(r.measure_date)} ${escHtml(r.spec)} (${escHtml(r.source)})</b> — 강도 ${r.strength.toFixed(1)} kgf (기준 ${r.threshold} kgf 대비 ${Math.abs(r._diff).toFixed(1)} kgf 미달). 시험 재진행 / 잉곳 조성 점검 권장.` });
   });
   Object.entries(specStats).forEach(([sp, st]) => {
     if (st.total >= 4 && st.ng / st.total > 0.10) {
-      recs.push({ level: 'warning', text: `?ъ뼇 <b>${escHtml(sp)}</b> ??NG??${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}嫄?. 10% 珥덇낵, 紐⑤땲?곕쭅 媛뺥솕 ?꾩슂.` });
+      recs.push({ level: 'warning', text: `사양 <b>${escHtml(sp)}</b> — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 10% 초과, 모니터링 강화 필요.` });
     }
   });
   ['4000G', 'S-TILT'].forEach(sp => {
-    const sidiz = avg(rows.filter(r => r.spec === sp && r.source === '?쒕뵒利?).map(r => r.strength));
+    const sidiz = avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength));
     const gck   = avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength));
     if (sidiz !== null && gck !== null) {
       const diff = Math.abs(sidiz - gck);
       const pct  = diff / Math.min(sidiz, gck) * 100;
       if (pct > 20) {
-        recs.push({ level: 'info', text: `<b>${escHtml(sp)}</b> ???쒕뵒利?${sidiz.toFixed(1)}) vs GCK(${gck.toFixed(1)}) 媛뺣룄 李⑥씠 ${diff.toFixed(1)} kgf (${pct.toFixed(1)}%). 痢≪젙 ?섍꼍쨌諛⑸쾿 ?먭? 沅뚯옣.` });
+        recs.push({ level: 'info', text: `<b>${escHtml(sp)}</b> — 시디즈(${sidiz.toFixed(1)}) vs GCK(${gck.toFixed(1)}) 강도 차이 ${diff.toFixed(1)} kgf (${pct.toFixed(1)}%). 측정 환경·방법 점검 권장.` });
       }
     }
   });
-  if (recs.length === 0) recs.push({ level: 'info', text: '紐⑤뱺 痢≪젙媛믪씠 湲곗? ?댁긽 ???덉젙???덉쭏 ?좎? 以?' });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
   return recs;
 }
 
-// ?꾩껜 ?곗씠??STATE.die)濡??ㅽ봽?ㅽ겕由?異붿씠 李⑦듃 ?앹꽦 ????諛곌꼍 PNG DataURL
-// 蹂닿퀬???쎌엯 ?꾩슜 ???꾪꽣 湲곌컙怨?臾닿??섍쾶 1???꾩옱 ?꾩껜 湲곌컙???쒖떆
+// 전체 데이터(STATE.die)로 오프스크린 추이 차트 생성 → 흰 배경 PNG DataURL
+// 보고서 삽입 전용 — 필터 기간과 무관하게 1월~현재 전체 기간을 표시
 function _createDieTrendImageFull() {
   const allRows = STATE.die;
   if (!allRows || !allRows.length) return null;
@@ -1446,7 +1460,7 @@ function _createDieTrendImageFull() {
     });
   });
 
-  // ?ㅽ봽?ㅽ겕由?罹붾쾭?ㅼ뿉 Chart.js ?뚮뜑 (animation:false ???숆린)
+  // 오프스크린 캔버스에 Chart.js 렌더 (animation:false → 동기)
   const canvas = document.createElement('canvas');
   canvas.width = 900; canvas.height = 380;
   const tmpChart = new Chart(canvas.getContext('2d'), {
@@ -1458,7 +1472,7 @@ function _createDieTrendImageFull() {
       scales: {
         x: { grid: { display: false } },
         y: { beginAtZero: false, grid: { color: C.border },
-             title: { display: true, text: '媛뺣룄 (kgf)', font: { size: 10 } } }
+             title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
       },
       plugins: {
         legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
@@ -1467,7 +1481,7 @@ function _createDieTrendImageFull() {
     }
   });
 
-  // ??諛곌꼍 ?⑹꽦
+  // 흰 배경 합성
   const off = document.createElement('canvas');
   off.width = canvas.width; off.height = canvas.height;
   const offCtx = off.getContext('2d');
@@ -1479,7 +1493,7 @@ function _createDieTrendImageFull() {
   return off.toDataURL('image/png');
 }
 
-// 罹붾쾭??????諛곌꼍 PNG DataURL
+// 캔버스 → 흰 배경 PNG DataURL
 function _captureChart(canvasId) {
   const c = document.getElementById(canvasId);
   if (!c) return null;
@@ -1496,73 +1510,73 @@ window.generateDieReport = function () {
   const filtered = getDieFiltered();
   const from = $('str-die-from').value;
   const to   = $('str-die-to').value;
-  const period = from && to ? `${from} ~ ${to}` : from ? `${from} ?댄썑` : to ? `~ ${to}` : '?꾩껜 湲곌컙';
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
-  // ?쒕즺紐? ?꾩옱 ?꾪꽣 湲곗? ?ъ뼇 紐⑸줉 (吏???쒖꽌)
+  // 시료명: 현재 필터 기준 사양 목록 (지정 순서)
   const specSet = new Set(filtered.map(r => r.spec).filter(Boolean));
   const specNames = DIE_SPEC_ORDER_REP.filter(s => specSet.has(s))
     .concat([...specSet].filter(s => !DIE_SPEC_ORDER_REP.includes(s)))
-    .join(', ') || '?꾩껜';
+    .join(', ') || '전체';
 
-  // ?? 遺꾩꽍 寃곌낵: ':' ?뺤떇?쇰줈 蹂??????????????????????
+  // ── 분석 결과: ':' 형식으로 변환 ────────────────────
   const recs = _getDieDiagRecs(filtered);
   const recItems = recs.map(r => {
     const prefix = r.level === 'critical'
-      ? '<span style="color:red;font-weight:bold;">[二쇱쓽]</span> '
+      ? '<span style="color:red;font-weight:bold;">[주의]</span> '
       : r.level === 'warning'
-      ? '<span style="color:#CC7700;font-weight:bold;">[寃쎄퀬]</span> '
+      ? '<span style="color:#CC7700;font-weight:bold;">[경고]</span> '
       : '';
     return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">: ${prefix}${r.text}</p>`;
   }).join('\n');
 
-  // ?? 李⑦듃 ?대?吏 罹≪퀜 ?????????????????????????????
-  // 異붿씠 李⑦듃: STATE.die ?꾩껜 ?곗씠???ㅽ봽?ㅽ겕由??ъ깮??(?꾪꽣 湲곌컙 臾닿?)
+  // ── 차트 이미지 캡쳐 ─────────────────────────────
+  // 추이 차트: STATE.die 전체 데이터 오프스크린 재생성 (필터 기간 무관)
   const imgTrend   = _createDieTrendImageFull();
   const imgAvg     = _captureChart('str-die-avg');
   const imgCompare = _captureChart('str-die-compare-strength');
 
-  // ?? EP ?명솚 HTML ?앹꽦 ??諛붾줈 ?ㅼ슫濡쒕뱶 ??????????????
+  // ── EP 호환 HTML 생성 후 바로 다운로드 ──────────────
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>?ㅼ씠罹먯뒪??媛뺣룄 ?쒗뿕 蹂닿퀬??/title>
+<title>다이캐스팅 강도 시험 보고서</title>
 </head>
-<body style="font-family: '留묒? 怨좊뵓', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
 
-<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. ?쒗뿕 ?뺣낫</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) ?쒗뿕 ?댁슜 : ?ㅼ씠罹먯뒪??媛뺣룄 ?쒗뿕 (?됯납)</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) ?쒗뿕 ?λ퉬 : UTM (留뚮뒫 ?щ즺 ?쒗뿕湲?5.0 Ton)</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) ?쒗뿕 ?쇱옄 : ${period}</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) ?쒕즺 : ${specNames}</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 시험 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 시험 내용 : 다이캐스팅 강도 시험 (잉곳)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 시험 장비 : UTM (만능 재료 시험기 5.0 Ton)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 시험 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 시료 : ${specNames}</p>
 
-<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. ?쒗뿕 寃곌낵</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 시험 결과</p>
 ${recItems}
 
-<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 痢≪젙 寃곌낵 洹몃옒??/p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) ?ъ뼇蹂??붾퀎 媛뺣룄 異붿씠 (湲곗????먮룞 ?쒖떆 쨌 ?꾩껜 湲곌컙)</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 측정 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 사양별 월별 강도 추이 (기준선 자동 표시 · 전체 기간)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) ?ъ뼇蹂??됯퇏 媛뺣룄 (湲곗? ?鍮? ${period})</p>
+${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 사양별 평균 강도 (기준 대비, ${period})</p>
 <img src="${imgAvg}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgCompare ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) ?쒕뵒利?vs GCK 媛뺣룄 鍮꾧탳 (4000G / S-TILT, kgf)</p>
+${imgCompare ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 시디즈 vs GCK 강도 비교 (4000G / S-TILT, kgf)</p>
 <img src="${imgCompare}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 
 </body>
 </html>`;
 
-  // ?앹뾽 ?놁씠 諛붾줈 ?ㅼ슫濡쒕뱶
+  // 팝업 없이 바로 다운로드
   var _blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   var _url  = URL.createObjectURL(_blob);
   var _a    = document.createElement('a');
   _a.href   = _url;
-  _a.download = '?ㅼ씠罹먯뒪??媛뺣룄?쒗뿕_蹂닿퀬??html';
+  _a.download = '다이캐스팅_강도시험_보고서.html';
   document.body.appendChild(_a);
   _a.click();
   document.body.removeChild(_a);
   setTimeout(function(){ URL.revokeObjectURL(_url); }, 1000);
 };
 
-// ?꾩껜 ?곗씠??STATE.inj)濡??ㅽ봽?ㅽ겕由?異붿씠 李⑦듃 ?앹꽦 ????諛곌꼍 PNG DataURL
+// 전체 데이터(STATE.inj)로 오프스크린 추이 차트 생성 → 흰 배경 PNG DataURL
 function _createInjTrendImageFull() {
   const allRows = STATE.inj;
   if (!allRows || !allRows.length) return null;
@@ -1583,7 +1597,7 @@ function _createInjTrendImageFull() {
     });
   });
   datasets.push({
-    label: '湲곗? 1,134.7',
+    label: '기준 1,134.7',
     data: months.map(() => 1134.7),
     borderColor: '#dc2626', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false,
   });
@@ -1598,7 +1612,7 @@ function _createInjTrendImageFull() {
       scales: {
         x: { grid: { display: false } },
         y: { beginAtZero: false, grid: { color: C.border },
-             title: { display: true, text: '媛뺣룄 (kgf)', font: { size: 10 } } }
+             title: { display: true, text: '강도 (kgf)', font: { size: 10 } } }
       },
       plugins: {
         legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
@@ -1621,17 +1635,17 @@ window.generateInjReport = function () {
   const filtered = getInjFiltered();
   const from = $('str-inj-from').value;
   const to   = $('str-inj-to').value;
-  const period = from && to ? `${from} ~ ${to}` : from ? `${from} ?댄썑` : to ? `~ ${to}` : '?꾩껜 湲곌컙';
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
-  // ?쒕즺紐? ?ъ뼇 + ?щ즺 議고빀 (以묐났 ?쒓굅, ?? 690 媛?WW SNB240G33)
+  // 시료명: 사양 + 재료 조합 (중복 제거, 예: 690 각 WW SNB240G33)
   const specimenSet = new Set();
   filtered.forEach(r => {
     const key = r.material ? `${r.spec} ${r.material}`.trim() : r.spec;
     specimenSet.add(key);
   });
-  const specimenNames = [...specimenSet].sort().join(', ') || '?꾩껜';
+  const specimenNames = [...specimenSet].sort().join(', ') || '전체';
 
-  // ?먮룞 遺꾩꽍 沅뚯옣 議곗튂?ы빆 (遺덈웾遺꾩꽍 由ы룷?몄? ?숈씪 濡쒖쭅)
+  // 자동 분석 권장 조치사항 (불량분석 리포트와 동일 로직)
   const INJ_THR = 1134.7;
   const ngRows = filtered.filter(r => judge(r) === 'NG');
   const specStats = {};
@@ -1647,31 +1661,31 @@ window.generateInjReport = function () {
 
   const recs = [];
   topNG.forEach(r => {
-    recs.push({ level: 'critical', text: `${r.measure_date} ${r.spec} ??媛뺣룄 ${r.strength.toFixed(1)} kgf (湲곗? ${INJ_THR} ?鍮?${r._diff.toFixed(1)} kgf 誘몃떖). ?ъ텧 議곌굔/?щ즺 ?먭? 沅뚯옣.` });
+    recs.push({ level: 'critical', text: `${r.measure_date} ${r.spec} — 강도 ${r.strength.toFixed(1)} kgf (기준 ${INJ_THR} 대비 ${r._diff.toFixed(1)} kgf 미달). 사출 조건/재료 점검 권장.` });
   });
   Object.entries(specStats).forEach(([sp, st]) => {
     if (st.total >= 4 && st.ng / st.total > 0.10) {
-      recs.push({ level: 'warning', text: `?ъ뼇 ${sp} ??NG??${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}嫄?. 紐⑤땲?곕쭅 媛뺥솕.` });
+      recs.push({ level: 'warning', text: `사양 ${sp} — NG율 ${(st.ng/st.total*100).toFixed(1)}% (${st.ng}/${st.total}건). 모니터링 강화.` });
     }
   });
   Object.keys(specStats).forEach(sp => {
     const sAvg = avg(filtered.filter(r => r.spec === sp).map(r => r.strength));
     if (sAvg !== null && sAvg < INJ_THR + 30 && sAvg > INJ_THR) {
-      recs.push({ level: 'warning', text: `?ъ뼇 ${sp} ???됯퇏 媛뺣룄 ${sAvg.toFixed(1)} kgf, 湲곗? ?鍮??덉쟾留덉쭊 30 kgf 誘몃쭔. ?좎옱 NG ?꾪뿕.` });
+      recs.push({ level: 'warning', text: `사양 ${sp} — 평균 강도 ${sAvg.toFixed(1)} kgf, 기준 대비 안전마진 30 kgf 미만. 잠재 NG 위험.` });
     }
   });
-  if (recs.length === 0) recs.push({ level: 'info', text: '紐⑤뱺 痢≪젙媛믪씠 湲곗? ?댁긽 ???덉젙???덉쭏 ?좎? 以?' });
+  if (recs.length === 0) recs.push({ level: 'info', text: '모든 측정값이 기준 이상 — 안정적 품질 유지 중.' });
 
   const recItems = recs.map(r => {
     const prefix = r.level === 'critical'
-      ? '<span style="color:red;font-weight:bold;">[二쇱쓽]</span> '
+      ? '<span style="color:red;font-weight:bold;">[주의]</span> '
       : r.level === 'warning'
-      ? '<span style="color:#CC7700;font-weight:bold;">[寃쎄퀬]</span> '
+      ? '<span style="color:#CC7700;font-weight:bold;">[경고]</span> '
       : '';
     return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">: ${prefix}${r.text}</p>`;
   }).join('\n');
 
-  // 李⑦듃 罹≪퀜: ?꾩껜湲곌컙 異붿씠(?ㅽ봽?ㅽ겕由? + ?꾪꽣湲곌컙 ?됯퇏媛뺣룄 + ?ъ뼇蹂??됯퇏 以묐웾
+  // 차트 캡쳐: 전체기간 추이(오프스크린) + 필터기간 평균강도 + 사양별 평균 중량
   const imgTrend  = _createInjTrendImageFull();
   const imgAvg    = _captureChart('str-inj-avg');
   const imgWeight = _captureChart('str-inj-weight');
@@ -1680,25 +1694,25 @@ window.generateInjReport = function () {
 <html>
 <head>
 <meta charset="UTF-8">
-<title>?ъ텧 踰좎씠??媛뺣룄 ?쒗뿕 蹂닿퀬??/title>
+<title>사출 베이스 강도 시험 보고서</title>
 </head>
-<body style="font-family: '留묒? 怨좊뵓', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
 
-<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. ?쒗뿕 ?뺣낫</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) ?쒗뿕 ?댁슜 : ?ъ텧 踰좎씠??媛뺣룄 ?쒗뿕</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) ?쒗뿕 ?λ퉬 : UTM (留뚮뒫 ?щ즺 ?쒗뿕湲?5.0 Ton)</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) ?쒗뿕 ?쇱옄 : ${period}</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) ?쒕즺紐?: ${specimenNames}</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 시험 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 시험 내용 : 사출 베이스 강도 시험</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 시험 장비 : UTM (만능 재료 시험기 5.0 Ton)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 시험 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 시료명 : ${specimenNames}</p>
 
-<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. ?쒗뿕 寃곌낵</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 시험 결과</p>
 ${recItems}
 
-<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 痢≪젙 寃곌낵 洹몃옒??/p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) ?ъ뼇蹂??붾퀎 媛뺣룄 異붿씠 (湲곗? 1,134.7 kgf 쨌 ?꾩껜 湲곌컙)</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 측정 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 사양별 월별 강도 추이 (기준 1,134.7 kgf · 전체 기간)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) ?ъ뼇蹂??됯퇏 媛뺣룄 (湲곗? ?鍮? ${period})</p>
+${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 사양별 평균 강도 (기준 대비, ${period})</p>
 <img src="${imgAvg}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgWeight ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) ?ъ뼇蹂??됯퇏 以묐웾 (g, ${period})</p>
+${imgWeight ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 사양별 평균 중량 (g, ${period})</p>
 <img src="${imgWeight}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 
 </body>
@@ -1708,7 +1722,7 @@ ${imgWeight ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) ?ъ뼇蹂?
   var _url  = URL.createObjectURL(_blob);
   var _a    = document.createElement('a');
   _a.href   = _url;
-  _a.download = '?ъ텧踰좎씠??媛뺣룄?쒗뿕_蹂닿퀬??html';
+  _a.download = '사출베이스_강도시험_보고서.html';
   document.body.appendChild(_a);
   _a.click();
   document.body.removeChild(_a);
@@ -1716,4 +1730,3 @@ ${imgWeight ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) ?ъ뼇蹂?
 };
 
 })();
-
