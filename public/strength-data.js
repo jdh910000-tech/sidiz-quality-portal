@@ -777,6 +777,7 @@ function _ejsStyleCell(cell, opts) {
       color: o.redFont ? { argb: 'FFCC0000' } : { argb: 'FF000000' } };
     if (o.pinkBg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2F2' } };
     if (o.redBg)  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' } };
+    if (o.grayBg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E8E8' } };
   }
 }
 
@@ -952,11 +953,15 @@ async function _buildTrendSheetEJS(wb, rows) {
   const ws = wb.addWorksheet('월별 강도 추이');
   ws.views = [{ showGridLines: false }];
 
-  // ─── 열 너비 ────────────────────────────────────────────
-  ws.getColumn(1).width = 12; // 측정월
-  let colIdx = 2;
+  // ─── 열 너비 + 사양별 1-based 시작 열 기록 ─────────────────────
+  // 참고파일 기준: 각 사양 열 너비 ≈ 11 (차트 크기 433px에 맞춤)
+  ws.getColumn(1).width = 10; // A (측정월)
+  const specColStarts = []; // 각 사양의 1-based 시작 열
+  let col1 = 2; // 1-based 현재 열 추적
   orderedSpecs.forEach(sp => {
-    for (let i = 0; i < sp.cols; i++) ws.getColumn(colIdx++).width = 11;
+    specColStarts.push(col1);
+    for (let i = 0; i < sp.cols; i++) ws.getColumn(col1 + i).width = 11;
+    col1 += sp.cols;
   });
 
   // ─── 헤더 행 1: 측정월(A1:A2 병합) + 사양명 병합 ─────────
@@ -966,34 +971,30 @@ async function _buildTrendSheetEJS(wb, rows) {
   mo1.value = '측정월';
   _ejsStyleCell(mo1, { isHdr: true });
 
-  colIdx = 2;
-  orderedSpecs.forEach(sp => {
-    const sc = colIdx, ec = colIdx + sp.cols - 1;
+  orderedSpecs.forEach((sp, si) => {
+    const sc = specColStarts[si], ec = sc + sp.cols - 1;
     if (sp.cols > 1) ws.mergeCells(1, sc, 1, ec);
     const hc = ws.getCell(1, sc);
     hc.value = sp.label;
     _ejsStyleCell(hc, { isHdr: true });
-    // 병합 내 나머지 셀에도 배경·border 유지 (Excel 렌더링 호환)
+    // 병합 내 나머지 셀 배경·border 유지 (Excel 렌더링 호환)
     for (let c = sc + 1; c <= ec; c++) {
       ws.getCell(1, c).border = _EJS_BORDER_ALL;
       ws.getCell(1, c).fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
     }
-    colIdx = ec + 1;
   });
 
-  // ─── 헤더 행 2: 서브 헤더 ────────────────────────────────
+  // ─── 헤더 행 2: 서브 헤더 (기준(kgf) 포함 모두 검정 굵게) ────
   ws.getRow(2).height = 20;
-  colIdx = 2;
-  orderedSpecs.forEach(sp => {
+  orderedSpecs.forEach((sp, si) => {
     const subHdrs = sp.gck
       ? ['시디즈', 'GCK', '기준(kgf)']
       : ['시디즈', '기준(kgf)'];
     subHdrs.forEach((h, i) => {
-      const cell = ws.getCell(2, colIdx + i);
+      const cell = ws.getCell(2, specColStarts[si] + i);
       cell.value = h;
-      _ejsStyleCell(cell, { isHdr: true, redFont: h === '기준(kgf)' });
+      _ejsStyleCell(cell, { isHdr: true }); // 기준(kgf)도 검정 굵게 (redFont 없음)
     });
-    colIdx += sp.cols;
   });
 
   // ─── 데이터 행 ──────────────────────────────────────────
@@ -1005,14 +1006,14 @@ async function _buildTrendSheetEJS(wb, rows) {
     moCell.value = mo;
     _ejsStyleCell(moCell);
 
-    let c = 2;
-    orderedSpecs.forEach(sp => {
+    orderedSpecs.forEach((sp, si) => {
       const spAgg = agg[mo] && agg[mo][sp.spec];
       const sdRaw = spAgg && spAgg['시디즈'];
       const gkRaw = spAgg && spAgg['GCK'];
       const sdVal = sdRaw ? Math.round(sdRaw.sum / sdRaw.cnt * 10) / 10 : null;
       const gkVal = gkRaw ? Math.round(gkRaw.sum / gkRaw.cnt * 10) / 10 : null;
       const thr   = sp.threshold;
+      let c = specColStarts[si];
 
       // 시디즈 (미달 시 빨간 배경)
       const sdCell = ws.getCell(rowNum, c);
@@ -1028,28 +1029,35 @@ async function _buildTrendSheetEJS(wb, rows) {
         c++;
       }
 
-      // 기준값 (빨간 폰트)
+      // 기준값: 검정 굵게 + 연회색 배경 (사용자 요청)
       const thrCell = ws.getCell(rowNum, c);
       thrCell.value = thr;
-      _ejsStyleCell(thrCell, { redFont: true });
-      c++;
+      _ejsStyleCell(thrCell, { bold: true, grayBg: true });
     });
   });
 
-  // ─── 차트 이미지 (데이터 테이블 아래) ────────────────────
-  const CHART_W  = 680;
-  const CHART_H  = 340;
-  const ROWS_PER = 22; // 차트 하나당 엑셀 행 수 (행 높이 15pt × 22 ≈ 330px)
-  // 0-based 시작행: 2(헤더) + months.length(데이터) + 1(여백)
-  const chartStart = 2 + months.length + 1;
+  // ─── 차트 영역: 사양별 병합 + 이미지 (참고파일 기준 배치) ────
+  // 참고파일: 차트 433×254px, 모두 같은 행(테이블 바로 아래), 각 사양 시작 열에 배치
+  const CHART_W  = 680, CHART_H  = 340; // 캔버스 렌더 크기 (고화질)
+  const DISP_W   = 433, DISP_H   = 254; // 엑셀 표시 크기 (EMU 4125600×2422800)
+  const CHART_ROWS = 13;                // 차트 영역 행 수 (254px ÷ 20px/행 ≈ 13)
+  const chartR1  = 3 + months.length;  // 1-based 차트 시작 행
+  const chartR2  = chartR1 + CHART_ROWS - 1;
 
-  // 차트 영역 행 높이 설정
-  for (let i = 0; i < orderedSpecs.length * ROWS_PER + 2; i++) {
-    ws.getRow(chartStart + 1 + i).height = 15; // getRow는 1-based
-  }
+  // A열 (측정월) 차트 영역 병합
+  ws.mergeCells(chartR1, 1, chartR2, 1);
+  ws.getCell(chartR1, 1).border = _EJS_BORDER_ALL;
 
   for (let si = 0; si < orderedSpecs.length; si++) {
     const { spec, gck, threshold, label } = orderedSpecs[si];
+    const sc1 = specColStarts[si];
+    const ec1 = sc1 + orderedSpecs[si].cols - 1;
+
+    // 사양 열 병합 (참고파일과 동일한 구조)
+    ws.mergeCells(chartR1, sc1, chartR2, ec1);
+    ws.getCell(chartR1, sc1).border = _EJS_BORDER_ALL;
+
+    // 차트 생성
     const sdValues = months.map(mo => {
       const d = agg[mo] && agg[mo][spec] && agg[mo][spec]['시디즈'];
       return d ? Math.round(d.sum / d.cnt * 10) / 10 : null;
@@ -1061,9 +1069,10 @@ async function _buildTrendSheetEJS(wb, rows) {
 
     const imgB64 = await _createSpecChartImage(label, months, sdValues, gkValues, threshold);
     const imgId  = wb.addImage({ base64: imgB64, extension: 'png' });
+    // tl: 0-based (1-based sc1 → sc1-1), 참고파일과 동일한 col/row별 배치
     ws.addImage(imgId, {
-      tl: { col: 0.1, row: chartStart + 0.3 + si * ROWS_PER },
-      ext: { width: CHART_W, height: CHART_H },
+      tl: { col: sc1 - 1 + 0.05, row: chartR1 - 1 + 0.1 },
+      ext: { width: DISP_W, height: DISP_H },
     });
   }
 }
