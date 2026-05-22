@@ -252,7 +252,9 @@ function renderDieCharts(rows) {
     },
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } }, x: { grid: { display: false } } },
-    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+    plugins: { legend: { display: true, position: 'top', align: 'end' },
+      datalabels: { anchor: 'end', align: 'start', color: '#fff', font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' }
+    }
   });
 
   // 시디즈 vs GCK 강도 비교 (4000G / S-TILT) — 막대 + 기준선 + OK/NG 색상
@@ -292,7 +294,7 @@ function renderDieCharts(rows) {
     },
     plugins: {
       legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
+      datalabels: { anchor: 'end', align: 'start', color: '#fff', font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 
@@ -315,7 +317,7 @@ function renderDieCharts(rows) {
     },
     plugins: {
       legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } },
-      datalabels: { anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
+      datalabels: { anchor: 'end', align: 'start', color: '#fff', font: { weight: 700, size: 11 }, formatter: v => v ? v.toFixed(1) : '-' }
     }
   });
 }
@@ -457,13 +459,18 @@ function renderInjCharts(rows) {
     },
   ], {
     scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
-    plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
+    plugins: { legend: { display: true, position: 'top', align: 'end' },
+      datalabels: { anchor: 'end', align: 'start', color: '#fff', font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' }
+    }
   });
 
   const wAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.weight)));
   makeBar('injWeight', $('str-inj-weight').getContext('2d'), specs, [
     { label: '평균 중량', data: wAvgs, backgroundColor: PALETTE.slice(0, specs.length), borderRadius: 6 }
-  ], { scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'g', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } });
+  ], {
+    scales: { y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'g', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
+    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'start', color: '#fff', font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' } }
+  });
 
   const ok = rows.filter(r => judge(r) === 'OK').length;
   const ng = rows.filter(r => judge(r) === 'NG').length;
