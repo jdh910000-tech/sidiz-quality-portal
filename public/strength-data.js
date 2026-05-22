@@ -1137,8 +1137,8 @@ async function _buildInjTrendSheetEJS(wb, rows) {
   let col1 = 2;
   specSet.forEach(() => {
     specColStarts.push(col1);
-    ws.getColumn(col1).width = 30;
-    ws.getColumn(col1 + 1).width = 14;
+    ws.getColumn(col1).width = 32;     // 시디즈
+    ws.getColumn(col1 + 1).width = 32; // 기준(kgf) — 2열 합계 ≥ 433px(차트 폭) 확보
     col1 += 2;
   });
 
