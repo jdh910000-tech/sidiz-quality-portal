@@ -899,17 +899,17 @@ async function _createSpecChartImage(spec, labels, sdValues, gkValues, threshold
   return b64;
 }
 
-// ── 월별 강도 추이 시트 (사양별 차트 이미지, ExcelJS) ─────────────
+// ── 월별 강도 추이 시트 (데이터 테이블 + 사양별 차트 이미지, ExcelJS) ─────────────
 async function _buildTrendSheetEJS(wb, rows) {
-  // 사양 표시 순서 (사용자 지정) / GCK 포함 여부
+  // 사양 표시 순서 / GCK 포함 여부 / 열 수 (GCK 있으면 3열, 없으면 2열)
   const SPEC_DEF = [
-    { key: '4000G',       gck: true  },
-    { key: 'S-TILT',      gck: true  },
-    { key: 'OTOTILT',     gck: false, alias: 'ITO-TILT' },
-    { key: 'CH4800',      gck: false },
-    { key: 'T502F',       gck: false },
-    { key: '700FLATRAW',  gck: false, alias: '700 FLAT (RAW)' },
-    { key: '700FLATPOL',  gck: false, alias: '700 FLAT (POL)' },
+    { key: '4000G',      gck: true,  label: '4000G',         cols: 3 },
+    { key: 'S-TILT',     gck: true,  label: 'S-TILT',        cols: 3 },
+    { key: 'OTOTILT',    gck: false, label: 'ITO-TILT',       cols: 2 },
+    { key: 'CH4800',     gck: false, label: 'CH4800',         cols: 2 },
+    { key: 'T502F',      gck: false, label: 'T502F',          cols: 2 },
+    { key: '700FLATRAW', gck: false, label: '700 FLAT (RAW)', cols: 2 },
+    { key: '700FLATPOL', gck: false, label: '700 FLAT (POL)', cols: 2 },
   ];
   function normSpec(s) { return String(s).replace(/[\s\-().]/g, '').toUpperCase(); }
 
@@ -921,20 +921,24 @@ async function _buildTrendSheetEJS(wb, rows) {
   // 순서에 맞게 DB 사양 매핑
   const orderedSpecs = [];
   SPEC_DEF.forEach(def => {
-    const dbSpec = Object.keys(specMap).find(s => normSpec(s) === normSpec(def.alias || def.key));
-    if (dbSpec) orderedSpecs.push({ spec: dbSpec, gck: def.gck, threshold: specMap[dbSpec] });
+    const dbSpec = Object.keys(specMap).find(s =>
+      normSpec(s) === normSpec(def.label) || normSpec(s) === normSpec(def.key));
+    if (dbSpec) orderedSpecs.push({
+      spec: dbSpec, gck: def.gck, label: def.label,
+      cols: def.cols, threshold: specMap[dbSpec],
+    });
   });
   // 목록에 없는 사양은 뒤에 추가 (GCK 없음)
   Object.keys(specMap).forEach(sp => {
     if (!orderedSpecs.find(o => o.spec === sp))
-      orderedSpecs.push({ spec: sp, gck: false, threshold: specMap[sp] });
+      orderedSpecs.push({ spec: sp, gck: false, label: sp, cols: 2, threshold: specMap[sp] });
   });
 
   // 월별 × 사양 × 업체 집계
   const agg = {};
   rows.forEach(r => {
     if (!r.measure_date || r.strength == null) return;
-    const mo = r.measure_date.slice(0, 7);
+    const mo  = r.measure_date.slice(0, 7);
     const src = r.source || '시디즈';
     if (!agg[mo]) agg[mo] = {};
     if (!agg[mo][r.spec]) agg[mo][r.spec] = {};
@@ -948,16 +952,104 @@ async function _buildTrendSheetEJS(wb, rows) {
   const ws = wb.addWorksheet('월별 강도 추이');
   ws.views = [{ showGridLines: false }];
 
-  const CHART_W = 680, CHART_H = 340;
-  const ROWS_PER = 22; // 차트 하나당 행 수 (~15pt × 22 ≈ 330px)
+  // ─── 열 너비 ────────────────────────────────────────────
+  ws.getColumn(1).width = 12; // 측정월
+  let colIdx = 2;
+  orderedSpecs.forEach(sp => {
+    for (let i = 0; i < sp.cols; i++) ws.getColumn(colIdx++).width = 11;
+  });
 
-  // 행 높이 통일
-  for (let i = 1; i <= orderedSpecs.length * ROWS_PER + 2; i++) {
-    ws.getRow(i).height = 15;
+  // ─── 헤더 행 1: 측정월(A1:A2 병합) + 사양명 병합 ─────────
+  ws.getRow(1).height = 22;
+  ws.mergeCells(1, 1, 2, 1);
+  const mo1 = ws.getCell(1, 1);
+  mo1.value = '측정월';
+  _ejsStyleCell(mo1, { isHdr: true });
+
+  colIdx = 2;
+  orderedSpecs.forEach(sp => {
+    const sc = colIdx, ec = colIdx + sp.cols - 1;
+    if (sp.cols > 1) ws.mergeCells(1, sc, 1, ec);
+    const hc = ws.getCell(1, sc);
+    hc.value = sp.label;
+    _ejsStyleCell(hc, { isHdr: true });
+    // 병합 내 나머지 셀에도 배경·border 유지 (Excel 렌더링 호환)
+    for (let c = sc + 1; c <= ec; c++) {
+      ws.getCell(1, c).border = _EJS_BORDER_ALL;
+      ws.getCell(1, c).fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+    }
+    colIdx = ec + 1;
+  });
+
+  // ─── 헤더 행 2: 서브 헤더 ────────────────────────────────
+  ws.getRow(2).height = 20;
+  colIdx = 2;
+  orderedSpecs.forEach(sp => {
+    const subHdrs = sp.gck
+      ? ['시디즈', 'GCK', '기준(kgf)']
+      : ['시디즈', '기준(kgf)'];
+    subHdrs.forEach((h, i) => {
+      const cell = ws.getCell(2, colIdx + i);
+      cell.value = h;
+      _ejsStyleCell(cell, { isHdr: true, redFont: h === '기준(kgf)' });
+    });
+    colIdx += sp.cols;
+  });
+
+  // ─── 데이터 행 ──────────────────────────────────────────
+  months.forEach((mo, mi) => {
+    const rowNum = 3 + mi;
+    ws.getRow(rowNum).height = 18;
+
+    const moCell = ws.getCell(rowNum, 1);
+    moCell.value = mo;
+    _ejsStyleCell(moCell);
+
+    let c = 2;
+    orderedSpecs.forEach(sp => {
+      const spAgg = agg[mo] && agg[mo][sp.spec];
+      const sdRaw = spAgg && spAgg['시디즈'];
+      const gkRaw = spAgg && spAgg['GCK'];
+      const sdVal = sdRaw ? Math.round(sdRaw.sum / sdRaw.cnt * 10) / 10 : null;
+      const gkVal = gkRaw ? Math.round(gkRaw.sum / gkRaw.cnt * 10) / 10 : null;
+      const thr   = sp.threshold;
+
+      // 시디즈 (미달 시 빨간 배경)
+      const sdCell = ws.getCell(rowNum, c);
+      sdCell.value = sdVal !== null ? sdVal : '';
+      _ejsStyleCell(sdCell, sdVal !== null && sdVal < thr ? { redBg: true } : {});
+      c++;
+
+      // GCK (해당 사양만, 미달 시 빨간 배경)
+      if (sp.gck) {
+        const gkCell = ws.getCell(rowNum, c);
+        gkCell.value = gkVal !== null ? gkVal : '';
+        _ejsStyleCell(gkCell, gkVal !== null && gkVal < thr ? { redBg: true } : {});
+        c++;
+      }
+
+      // 기준값 (빨간 폰트)
+      const thrCell = ws.getCell(rowNum, c);
+      thrCell.value = thr;
+      _ejsStyleCell(thrCell, { redFont: true });
+      c++;
+    });
+  });
+
+  // ─── 차트 이미지 (데이터 테이블 아래) ────────────────────
+  const CHART_W  = 680;
+  const CHART_H  = 340;
+  const ROWS_PER = 22; // 차트 하나당 엑셀 행 수 (행 높이 15pt × 22 ≈ 330px)
+  // 0-based 시작행: 2(헤더) + months.length(데이터) + 1(여백)
+  const chartStart = 2 + months.length + 1;
+
+  // 차트 영역 행 높이 설정
+  for (let i = 0; i < orderedSpecs.length * ROWS_PER + 2; i++) {
+    ws.getRow(chartStart + 1 + i).height = 15; // getRow는 1-based
   }
 
   for (let si = 0; si < orderedSpecs.length; si++) {
-    const { spec, gck, threshold } = orderedSpecs[si];
+    const { spec, gck, threshold, label } = orderedSpecs[si];
     const sdValues = months.map(mo => {
       const d = agg[mo] && agg[mo][spec] && agg[mo][spec]['시디즈'];
       return d ? Math.round(d.sum / d.cnt * 10) / 10 : null;
@@ -967,10 +1059,10 @@ async function _buildTrendSheetEJS(wb, rows) {
       return d ? Math.round(d.sum / d.cnt * 10) / 10 : null;
     }) : null;
 
-    const imgB64 = await _createSpecChartImage(spec, months, sdValues, gkValues, threshold);
+    const imgB64 = await _createSpecChartImage(label, months, sdValues, gkValues, threshold);
     const imgId  = wb.addImage({ base64: imgB64, extension: 'png' });
     ws.addImage(imgId, {
-      tl: { col: 0.1, row: 0.3 + si * ROWS_PER },
+      tl: { col: 0.1, row: chartStart + 0.3 + si * ROWS_PER },
       ext: { width: CHART_W, height: CHART_H },
     });
   }
