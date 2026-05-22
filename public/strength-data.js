@@ -1380,148 +1380,77 @@ window.generateDieReport = function () {
     .concat([...specSet].filter(s => !DIE_SPEC_ORDER_REP.includes(s)))
     .join(', ') || '전체';
 
-  // 분석 결과
+  // ── 분석 결과: EP 2단계 항목(1) 형식으로 변환 ──────
   const recs = _getDieDiagRecs(filtered);
-  const recRows = recs.map(r => {
-    const dot = r.level === 'critical' ? '#E53935' : r.level === 'warning' ? '#FF8F00' : '#1E88E5';
-    return `<tr>
-      <td style="width:14px;padding:5px 6px 5px 0;vertical-align:top">
-        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-top:5px"></span>
-      </td>
-      <td style="padding:5px 0;font-size:13px;line-height:1.75;color:#222">${r.text}</td>
-    </tr>`;
-  }).join('');
+  const recItems = recs.map((r, i) => {
+    const prefix = r.level === 'critical'
+      ? '<span style="color:red;font-weight:bold;">[주의]</span> '
+      : r.level === 'warning'
+      ? '<span style="color:#CC7700;font-weight:bold;">[경고]</span> '
+      : '';
+    return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">${i + 1}) ${prefix}${r.text}</p>`;
+  }).join('\n');
 
-  // 차트 이미지
-  // ※ 추이 차트: STATE.die 전체 데이터로 오프스크린 재생성 (필터 기간 무관 — 전체 기간 표시)
+  // ── 차트 이미지 캡쳐 ─────────────────────────────
+  // 추이 차트: STATE.die 전체 데이터 오프스크린 재생성 (필터 기간 무관)
   const imgTrend   = _createDieTrendImageFull();
   const imgAvg     = _captureChart('str-die-avg');
   const imgCompare = _captureChart('str-die-compare-strength');
 
-  const today = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit' });
+  // ── EP 호환 HTML 생성 ─────────────────────────────
+  // 규칙 (ep-report-generator 스킬 기준):
+  //   · 결재란·문서정보 헤더는 EP 자동 생성 → 본문 미포함
+  //   · body: 맑은 고딕 10pt, 여백 없음 (EP 자체 적용)
+  //   · 대항목: <p font-weight:bold margin:25px 0 8px>
+  //   · 중항목: <p margin:3px 0 3px 15px> (1) 2) 형식)
+  //   · 표: border 1px solid #000, th/td 9pt
+  //   · 도구바(.ep-tools)는 브라우저 편의용, 인쇄 시 숨김
 
   const html = `<!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>다이캐스팅 강도 시험 보고서</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;background:#eef0f5;color:#111}
-.page{max-width:900px;margin:32px auto 48px;background:#fff;padding:52px 58px;box-shadow:0 4px 28px rgba(0,0,0,.12)}
-.hdr{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:3px solid #002BD2;padding-bottom:18px;margin-bottom:36px}
-.hdr-logo{font-size:22px;font-weight:900;color:#002BD2;letter-spacing:-.5px}.hdr-logo em{color:#FF6C39;font-style:normal}
-.hdr-right{text-align:right}
-.hdr-title{font-size:20px;font-weight:700;color:#111}
-.hdr-sub{font-size:12px;color:#999;margin-top:3px}
-.sec{margin-bottom:34px}
-.sec-h{font-size:14px;font-weight:700;color:#002BD2;border-left:4px solid #002BD2;padding:2px 0 2px 11px;margin-bottom:15px}
-.info-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.info-tbl td{padding:11px 16px;border:1px solid #dde1ee;vertical-align:top;line-height:1.55}
-.info-tbl .lbl{background:#f3f5fb;font-weight:600;width:150px;color:#002BD2;white-space:nowrap}
-.ana{background:#f7f8ff;border:1px solid #dce0f0;border-radius:10px;padding:18px 20px}
-.ana table{border-collapse:collapse;width:100%}
-.chart-blk{margin-bottom:30px}
-.chart-lbl{font-size:13px;font-weight:600;color:#333;border-left:3px solid #3C7DFF;padding:2px 0 2px 9px;margin-bottom:10px}
-.chart-lbl small{font-size:11px;font-weight:400;color:#888;margin-left:6px}
-.chart-img{width:100%;border:1px solid #dde1ee;border-radius:8px;display:block}
-.sign-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.sign-tbl td{border:1px solid #cdd1e0;text-align:center;padding:10px 12px}
-.sign-lbl{background:#f3f5fb;font-weight:600;color:#555;width:25%}
-.sign-area{height:56px;vertical-align:bottom;padding-bottom:8px}
-.footer{border-top:1px solid #e0e4ee;margin-top:44px;padding-top:12px;font-size:11px;color:#bbb;text-align:center}
-.print-area{text-align:center;margin-top:30px;display:flex;gap:12px;justify-content:center}
-.print-btn{padding:12px 36px;background:#002BD2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
-.print-btn:hover{background:#1A59FF}
-.save-btn{padding:12px 36px;background:#7c5fe6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
-.save-btn:hover{background:#6246ca}
-@media print{
-  body{background:#fff}
-  .page{padding:24px 28px;box-shadow:none;margin:0;max-width:100%}
-  .print-area{display:none}
-}
-</style>
+<style>@media print{.ep-tools{display:none!important}}</style>
 </head>
-<body>
-<div class="page">
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
 
-  <div class="hdr">
-    <div class="hdr-logo">SIDIZ<em>.</em> 품질관리</div>
-    <div class="hdr-right">
-      <div class="hdr-title">다이캐스팅 강도 시험 보고서</div>
-      <div class="hdr-sub">작성일: ${today}</div>
-    </div>
-  </div>
-
-  <div class="sec">
-    <div class="sec-h">1. 시험 정보</div>
-    <table class="info-tbl">
-      <tr><td class="lbl">시험 내용</td><td>다이캐스팅 강도 시험 (잉곳)</td></tr>
-      <tr><td class="lbl">시험 장비</td><td>UTM (만능 재료 시험기 5.0 Ton)</td></tr>
-      <tr><td class="lbl">시험 일자</td><td>${period}</td></tr>
-      <tr><td class="lbl">시료</td><td>${specNames}</td></tr>
-    </table>
-  </div>
-
-  <div class="sec">
-    <div class="sec-h">2. 시험 결과</div>
-    <div class="ana"><table><tbody>${recRows}</tbody></table></div>
-  </div>
-
-  <div class="sec">
-    <div class="sec-h">3. 측정 결과 그래프</div>
-    ${imgTrend ? `<div class="chart-blk">
-      <div class="chart-lbl">사양별 월별 강도 추이<small>(기준선 자동 표시 · 전체 기간)</small></div>
-      <img class="chart-img" src="${imgTrend}" alt="월별 강도 추이">
-    </div>` : ''}
-    ${imgAvg ? `<div class="chart-blk">
-      <div class="chart-lbl">사양별 평균 강도 (기준 대비)<small>(${period})</small></div>
-      <img class="chart-img" src="${imgAvg}" alt="사양별 평균 강도">
-    </div>` : ''}
-    ${imgCompare ? `<div class="chart-blk">
-      <div class="chart-lbl">시디즈 vs GCK 강도 비교<small>(4000G / S-TILT, kgf)</small></div>
-      <img class="chart-img" src="${imgCompare}" alt="시디즈 vs GCK 강도 비교">
-    </div>` : ''}
-  </div>
-
-  <div class="sec">
-    <div class="sec-h">4. 검토 · 확인</div>
-    <table class="sign-tbl">
-      <tr>
-        <td class="sign-lbl">작성</td>
-        <td class="sign-lbl">검토</td>
-        <td class="sign-lbl">승인</td>
-      </tr>
-      <tr>
-        <td class="sign-area"></td>
-        <td class="sign-area"></td>
-        <td class="sign-area"></td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="footer">SIDIZ 품질관리 포털 — 자동 생성 보고서 | ${today}</div>
-
-  <div class="print-area">
-    <button class="print-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
-    <button class="save-btn" onclick="downloadReport()">⬇ HTML 저장</button>
-  </div>
-
+<div class="ep-tools" style="padding:10px 16px;background:#f0f0f0;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+  <span style="font-size:10px;color:#888;flex:1;">EP 업로드: 파일 → 열기 → HTML Document</span>
+  <button onclick="window.print()" style="padding:6px 20px;background:#002BD2;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:bold;">🖨️ 인쇄 / PDF</button>
+  <button onclick="downloadReport()" style="padding:6px 20px;background:#7c5fe6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:bold;">⬇ HTML 저장</button>
 </div>
+
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 시험 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 시험 내용 : 다이캐스팅 강도 시험 (잉곳)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 시험 장비 : UTM (만능 재료 시험기 5.0 Ton)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 시험 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 시료 : ${specNames}</p>
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 시험 결과</p>
+${recItems}
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 측정 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 사양별 월별 강도 추이 (기준선 자동 표시 · 전체 기간)</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 사양별 평균 강도 (기준 대비, ${period})</p>
+<img src="${imgAvg}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgCompare ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 시디즈 vs GCK 강도 비교 (4000G / S-TILT, kgf)</p>
+<img src="${imgCompare}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+
 <script>
 function downloadReport() {
-  var html = document.documentElement.outerHTML;
-  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href   = url;
+  var blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
   a.download = '다이캐스팅_강도시험_보고서.html';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  setTimeout(function(){URL.revokeObjectURL(url);}, 1000);
 }
-</script>
+<\/script>
 </body>
 </html>`;
 
