@@ -255,18 +255,35 @@ function renderDieCharts(rows) {
     plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } }
   });
 
-  // 시디즈 vs GCK 강도 비교 (4000G / S-TILT) — 막대
+  // 시디즈 vs GCK 강도 비교 (4000G / S-TILT) — 막대 + 기준선 + OK/NG 색상
   const compareSpecs = ['4000G', 'S-TILT'];
+  const _cmpSidizData = compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength)));
+  const _cmpGckData   = compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength)));
+  const _cmpThres     = compareSpecs.map(sp => DIE_SPEC_THRESHOLDS[sp] || 0);
+  // 기준 미달(NG)이면 빨간색, 기준 이상(OK)이면 원색 유지
+  const _cmpSidizColors = compareSpecs.map((sp, i) =>
+    (_cmpSidizData[i] !== null && _cmpSidizData[i] >= _cmpThres[i]) ? C.blue : '#FF4C6A');
+  const _cmpGckColors = compareSpecs.map((sp, i) =>
+    (_cmpGckData[i] !== null && _cmpGckData[i] >= _cmpThres[i]) ? C.amber : '#FF4C6A');
   makeBar('dieCompareStrength', $('str-die-compare-strength').getContext('2d'), compareSpecs, [
+    { label: '시디즈', data: _cmpSidizData, backgroundColor: _cmpSidizColors, borderRadius: 6 },
+    { label: 'GCK',   data: _cmpGckData,   backgroundColor: _cmpGckColors,   borderRadius: 6 },
     {
-      label: '시디즈',
-      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === '시디즈').map(r => r.strength))),
-      backgroundColor: C.blue, borderRadius: 6,
-    },
-    {
-      label: 'GCK',
-      data: compareSpecs.map(sp => avg(rows.filter(r => r.spec === sp && r.source === 'GCK').map(r => r.strength))),
-      backgroundColor: C.amber, borderRadius: 6,
+      label: '기준',
+      data: _cmpThres,
+      type: 'line',
+      borderColor: '#dc2626', borderWidth: 2, borderDash: [6, 4],
+      pointRadius: 7, pointHoverRadius: 9,
+      pointBackgroundColor: '#dc2626', pointBorderColor: '#fff', pointBorderWidth: 2,
+      fill: false, order: 0,
+      datalabels: {
+        display: true, color: '#dc2626',
+        backgroundColor: '#fff', borderColor: '#dc2626', borderWidth: 1, borderRadius: 4,
+        padding: { top: 2, bottom: 2, left: 5, right: 5 },
+        font: { weight: 800, size: 11 },
+        align: 'top', anchor: 'end', offset: 4,
+        formatter: v => v ? v.toLocaleString() : ''
+      }
     },
   ], {
     scales: {
@@ -1407,24 +1424,10 @@ window.generateDieReport = function () {
 <body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
 
 <p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 시험 정보</p>
-<table style="border-collapse: collapse; width: 100%; margin: 10px 0 15px 0;">
-  <tr>
-    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2; width: 28%;">시험 내용</td>
-    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">다이캐스팅 강도 시험 (잉곳)</td>
-  </tr>
-  <tr>
-    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2;">시험 장비</td>
-    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">UTM (만능 재료 시험기 5.0 Ton)</td>
-  </tr>
-  <tr>
-    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2;">시험 일자</td>
-    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">${period}</td>
-  </tr>
-  <tr>
-    <td style="border: 1px solid #000; padding: 6px 10px; font-size: 9pt; font-weight: bold; background-color: #f2f2f2;">시료</td>
-    <td style="border: 1px solid #000; padding: 5px 10px; font-size: 9pt;">${specNames}</td>
-  </tr>
-</table>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 시험 내용 : 다이캐스팅 강도 시험 (잉곳)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 시험 장비 : UTM (만능 재료 시험기 5.0 Ton)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 시험 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 시료 : ${specNames}</p>
 
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 시험 결과</p>
 ${recItems}
