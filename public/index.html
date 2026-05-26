@@ -88,12 +88,47 @@ body::before {
 
 /* ===== EMBED MODE (iframe 삽입 시) ===== */
 body.embed-mode .sidebar { display: none !important; }
-body.embed-mode .main { margin-left: 0 !important; padding: 16px 20px !important; }
+body.embed-mode .main { margin-left: 0 !important; padding: 20px 28px !important; }
 body.embed-mode .back-btn { display: none !important; }
 body.embed-mode #section-kpi > .header { margin-bottom: 16px !important; }
 body.embed-mode #section-kpi > .header .header-left p { display: none; }
 body.embed-mode #confluenceUploadBtn,
 body.embed-mode #confluenceUploadBtn + button { display: none !important; }
+
+/* ── embed-mode: 전체 폰트/수치 확대 ─────────────────────── */
+/* KPI 카드 */
+body.embed-mode .kpi-label  { font-size: 14px !important; letter-spacing: 0.3px !important; }
+body.embed-mode .kpi-value  { font-size: 40px !important; }
+body.embed-mode .kpi-change { font-size: 15px !important; }
+body.embed-mode .kpi-card   { padding: 26px 22px !important; }
+
+/* 섹션 제목 · 서브탭 */
+body.embed-mode .section-title { font-size: 20px !important; margin-bottom: 20px !important; }
+body.embed-mode .sub-tab       { font-size: 15px !important; padding: 11px 22px !important; }
+
+/* 차트 카드 제목 */
+body.embed-mode .chart-card h3 { font-size: 16px !important; }
+body.embed-mode .chart-card h3::before { height: 17px !important; }
+
+/* 데이터 테이블 */
+body.embed-mode .data-table-header h3 { font-size: 20px !important; }
+body.embed-mode .data-table th        { font-size: 14px !important; padding: 13px 16px !important; }
+body.embed-mode .data-table td        { font-size: 14px !important; padding: 11px 16px !important; }
+
+/* 분석·권장조치 텍스트 */
+body.embed-mode .analysis-item  { font-size: 14px !important; line-height: 1.8 !important; }
+body.embed-mode .analysis-box h4 { font-size: 15px !important; }
+
+/* 헤더 제목 */
+body.embed-mode .header-left h1 { font-size: 30px !important; }
+
+/* 코스트 카드 */
+body.embed-mode .cost-value { font-size: 26px !important; }
+body.embed-mode .cost-sub   { font-size: 14px !important; }
+
+/* stat 블록 (월별 소계 등) */
+body.embed-mode .stat-value { font-size: 28px !important; }
+body.embed-mode .stat-sub   { font-size: 13px !important; }
 
 /* ===== SHARE MODE (공유 링크 접근 시) ===== */
 body.share-mode .sidebar { display: none !important; }
@@ -5505,13 +5540,18 @@ document.addEventListener('DOMContentLoaded', () => setTimeout(initSupabase, 300
 
 // ─── iframe 감지 → embed-mode 적용 ─────────────────────────────────────────
 (function detectEmbed() {
+  let isEmbed = false;
   try {
-    if (window.self !== window.top) {
-      document.body.classList.add('embed-mode');
-    }
+    if (window.self !== window.top) isEmbed = true;
   } catch(e) {
-    // cross-origin iframe에서 window.top 접근 시 오류 → iframe 안에 있는 것
+    isEmbed = true; // cross-origin iframe
+  }
+  if (isEmbed) {
     document.body.classList.add('embed-mode');
+    // Chart.js 전역 폰트 크기 확대 (차트 축 레이블·툴팁 등)
+    if (typeof Chart !== 'undefined') {
+      Chart.defaults.font.size = 14;
+    }
   }
 })();
 
