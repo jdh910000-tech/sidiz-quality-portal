@@ -73,14 +73,19 @@ async function loadIncomingData(force = false) {
       }
       return all;
     }
+    // 테이블 미생성 시 빈 배열로 graceful 처리 (404 등)
+    async function fetchAllSafe(table) {
+      try { return await fetchAll(table); }
+      catch(e) { console.warn(`[인수검사] ${table} 테이블 없음 — SQL로 생성 필요:`, e.message); return []; }
+    }
 
     const [bolts, rods, sponges, reamers, roughness, colorimetry] = await Promise.all([
       fetchAll('incoming_bolts'),
       fetchAll('incoming_rods'),
       fetchAll('incoming_sponges'),
-      fetchAll('incoming_reamers'),
-      fetchAll('incoming_roughness'),
-      fetchAll('incoming_colorimetry'),
+      fetchAllSafe('incoming_reamers'),
+      fetchAllSafe('incoming_roughness'),
+      fetchAllSafe('incoming_colorimetry'),
     ]);
     STATE.bolts = bolts;
     STATE.rods = rods;
