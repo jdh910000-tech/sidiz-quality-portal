@@ -4,7 +4,7 @@
 
 // ===== 전역 상태 =====
 const STATE = {
-  bolts: [], rods: [], sponges: [],
+  bolts: [], rods: [], sponges: [], reamers: [], roughness: [], colorimetry: [],
   loaded: false,
   currentTab: 'bolt',
   charts: {}, // chart instance 보관
@@ -74,16 +74,22 @@ async function loadIncomingData(force = false) {
       return all;
     }
 
-    const [bolts, rods, sponges] = await Promise.all([
+    const [bolts, rods, sponges, reamers, roughness, colorimetry] = await Promise.all([
       fetchAll('incoming_bolts'),
       fetchAll('incoming_rods'),
       fetchAll('incoming_sponges'),
+      fetchAll('incoming_reamers'),
+      fetchAll('incoming_roughness'),
+      fetchAll('incoming_colorimetry'),
     ]);
     STATE.bolts = bolts;
     STATE.rods = rods;
     STATE.sponges = sponges;
+    STATE.reamers = reamers;
+    STATE.roughness = roughness;
+    STATE.colorimetry = colorimetry;
     STATE.loaded = true;
-    console.log(`[인수검사] 볼트=${bolts.length}, 중심봉=${rods.length}, 스폰지=${sponges.length}`);
+    console.log(`[인수검사] 볼트=${bolts.length}, 중심봉=${rods.length}, 스폰지=${sponges.length}, 리머=${reamers.length}, 조도=${roughness.length}, 색차=${colorimetry.length}`);
   } catch (e) {
     console.error('[인수검사] 로드 실패:', e);
     alert('인수검사 데이터 로드 실패: ' + e.message);
@@ -115,6 +121,9 @@ window.switchInspectTab = function (tab) {
   if (tab === 'bolt') renderBolt();
   else if (tab === 'rod') renderRod();
   else if (tab === 'sponge') renderSponge();
+  else if (tab === 'reamer') renderReamer();
+  else if (tab === 'roughness') renderRoughness();
+  else if (tab === 'colorimetry') renderColorimetry();
   else if (tab === 'report') {
     // 리포트 진입 시 현재 카테고리 유지 (기본: 볼트)
     switchReportCat(STATE.reportCat || 'bolt');
@@ -1099,6 +1108,9 @@ function refreshDatalists() {
   fillDatalist('dl-sponge-code', STATE.sponges.map(r => r.code));
   fillDatalist('dl-sponge-color', STATE.sponges.map(r => r.color));
   fillDatalist('dl-sponge-name', STATE.sponges.map(r => r.name));
+  // 색차
+  fillDatalist('dl-color-supplier', (STATE.colorimetry || []).map(r => r.supplier));
+  fillDatalist('dl-color-code', (STATE.colorimetry || []).map(r => r.color_code));
 }
 
 async function postRow(table, data, kind) {
@@ -1143,11 +1155,26 @@ window.exportInspect = function (kind) {
     filename = `인수검사_중심봉_${today}.xlsx`;
     header = ['측정일', '공급업체', '자재코드', '색상', '자재명', '높이1', '높이2', '높이평균', '와블', '판정'];
     mapper = r => [r.measure_date, r.supplier, r.code, r.color, r.name, r.h1, r.h2, rodH(r), r.wobble, rodJudge(r)];
-  } else {
+  } else if (kind === 'sponge') {
     rows = getSpongeFiltered();
     filename = `인수검사_스폰지_${today}.xlsx`;
     header = ['측정일', '자재코드', '자재명', '규격', '중앙(1)', '좌(1)', '우(1)', '중앙(2)', '좌(2)', '우(2)', '평균', '판정'];
     mapper = r => [r.measure_date, r.code, r.name, r.spec_target ? `${r.spec_target}±${r.spec_tol || 5}` : '', r.m1_center, r.m1_left, r.m1_right, r.m2_center, r.m2_left, r.m2_right, spongeAvg(r), spongeJudge(r)];
+  } else if (kind === 'reamer') {
+    rows = getReamerFiltered();
+    filename = `인수검사_리머_${today}.xlsx`;
+    header = ['측정일', '공급업체', '기종', '측정값(mm)', '기준범위', '판정', '비고'];
+    mapper = r => [r.measure_date, r.supplier, r.product_code, r.value, (REAMER_SPECS[r.product_code]?.label || '-'), reamerJudge(r.product_code, r.value), r.note || ''];
+  } else if (kind === 'roughness') {
+    rows = getRoughnessFiltered();
+    filename = `인수검사_조도_${today}.xlsx`;
+    header = ['측정일', '공급업체', '기종', '측정값(μm)', '기준(μm)', '판정', '비고'];
+    mapper = r => [r.measure_date, r.supplier, r.product_code, r.value, '≤ 1.0', roughnessJudge(r.value), r.note || ''];
+  } else if (kind === 'colorimetry') {
+    rows = getColorimetryFiltered();
+    filename = `인수검사_색차_${today}.xlsx`;
+    header = ['검사일', '공급처', '색상', 'LOT', '생산량(Yd)', 'ΔE(마스터)', 'ΔE(전lot)', '판정', '비고'];
+    mapper = r => [r.measure_date, r.supplier, r.color_code, r.lot || '', r.quantity_yd || '', r.delta_e_master, r.delta_e_prev || '', colorJudge(r.delta_e_master, r.delta_e_prev), r.note || ''];
   }
   const aoa = [header, ...rows.sort((a, b) => (b.measure_date || '').localeCompare(a.measure_date || '')).map(mapper)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -1167,8 +1194,489 @@ window.resetInspectFilter = function (kind) {
   } else if (kind === 'sponge') {
     ['inq-sponge-judge', 'inq-sponge-code', 'inq-sponge-from', 'inq-sponge-to'].forEach(id => $(id).value = '');
     renderSponge();
+  } else if (kind === 'reamer') {
+    ['inq-reamer-supplier', 'inq-reamer-product', 'inq-reamer-judge', 'inq-reamer-from', 'inq-reamer-to'].forEach(id => { const el=$(id); if(el) el.value=''; });
+    renderReamer();
+  } else if (kind === 'roughness') {
+    ['inq-rough-supplier', 'inq-rough-product', 'inq-rough-judge', 'inq-rough-from', 'inq-rough-to'].forEach(id => { const el=$(id); if(el) el.value=''; });
+    renderRoughness();
+  } else if (kind === 'colorimetry') {
+    ['inq-color-supplier', 'inq-color-code', 'inq-color-judge', 'inq-color-from', 'inq-color-to'].forEach(id => { const el=$(id); if(el) el.value=''; });
+    renderColorimetry();
   }
 };
+
+// ======================================================================
+// ============ 리머 / 조도 / 색차 ============
+// ======================================================================
+
+const REAMER_SPECS = {
+  '4000G':    { lo: 5.50, hi: 6.00, nom: 5.75,  label: '5.75±0.25 mm' },
+  'CH4800':   { lo: 2.20, hi: 3.30, nom: 2.75,  label: '2.5~3.0±0.3 mm' },
+  'ITO-TILT': { lo: 4.70, hi: 5.30, nom: 5.00,  label: '5.0±0.3 mm' },
+  'S-TILT':   { lo: 4.50, hi: 5.00, nom: 4.75,  label: '4.75±0.25 mm' },
+};
+const ROUGH_THR = 1.0;
+const COLOR_THR = 1.0;
+const INSP_PRODUCTS = ['4000G', 'CH4800', 'ITO-TILT', 'S-TILT'];
+
+// ===== 판정 =====
+function reamerJudge(product, value) {
+  if (value === null || value === undefined || isNaN(+value)) return '';
+  const s = REAMER_SPECS[product]; if (!s) return '';
+  return (+value >= s.lo && +value <= s.hi) ? 'OK' : 'NG';
+}
+function roughnessJudge(value) {
+  if (value === null || value === undefined || isNaN(+value)) return '';
+  return +value <= ROUGH_THR ? 'OK' : 'NG';
+}
+function colorJudge(de_master, de_prev) {
+  const m = +de_master;
+  if (isNaN(m)) return '';
+  const mOk = m <= COLOR_THR;
+  const p = +de_prev;
+  const pOk = isNaN(p) || p <= COLOR_THR;
+  return (mOk && pOk) ? 'OK' : 'NG';
+}
+function judgeTag(j) {
+  if (j === 'OK') return `<span style="color:var(--accent-emerald);font-weight:700">OK</span>`;
+  if (j === 'NG') return `<span style="color:var(--accent-rose);font-weight:700">NG</span>`;
+  return '<span style="color:var(--text-muted)">-</span>';
+}
+
+// ============ 리머 탭 ============
+function getReamerFiltered() {
+  const supplier = $('inq-reamer-supplier')?.value || '';
+  const product  = $('inq-reamer-product')?.value  || '';
+  const judge    = $('inq-reamer-judge')?.value    || '';
+  const from     = $('inq-reamer-from')?.value     || '';
+  const to       = $('inq-reamer-to')?.value       || '';
+  return STATE.reamers.filter(r => {
+    if (supplier && r.supplier !== supplier) return false;
+    if (product  && r.product_code !== product)  return false;
+    if (from && (!r.measure_date || r.measure_date < from)) return false;
+    if (to   && (!r.measure_date || r.measure_date > to))   return false;
+    if (judge && reamerJudge(r.product_code, r.value) !== judge) return false;
+    return true;
+  });
+}
+function renderReamerKPI(rows) {
+  const total = rows.length;
+  const now = new Date().toISOString().slice(0,7);
+  const thisMonth = rows.filter(r => r.measure_date?.slice(0,7) === now).length;
+  const ngCount = rows.filter(r => reamerJudge(r.product_code, r.value) === 'NG').length;
+  const okRate = total ? Math.round((total - ngCount) / total * 100) : 0;
+  const pAvgs = INSP_PRODUCTS.map(p => {
+    const vals = rows.filter(r => r.product_code === p).map(r => +r.value).filter(v => !isNaN(v));
+    return { p, a: vals.length ? avg(vals) : null };
+  });
+  const el = $('inq-reamer-kpi'); if (!el) return;
+  el.innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">이번 달 ${thisMonth}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">합격률</div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">NG ${ngCount}건</div></div>
+    ${pAvgs.map(({p,a})=>{
+      const s=REAMER_SPECS[p]; const ok=a!==null&&a>=s.lo&&a<=s.hi;
+      return `<div class="kpi-card"><div class="kpi-label">${p} 평균</div><div class="kpi-value" style="${a===null?'':(ok?'color:var(--accent-emerald)':'color:var(--accent-rose)')}">${a!==null?a.toFixed(3):'-'}</div><div class="kpi-change">기준 ${s.label}</div></div>`;
+    }).join('')}
+  `;
+}
+function renderReamerCharts(rows) {
+  const months = [...new Set(rows.map(r=>r.measure_date?.slice(0,7)).filter(Boolean))].sort();
+  const clrs = [SIDIZ_COLORS.blue, SIDIZ_COLORS.cyan, SIDIZ_COLORS.emerald, SIDIZ_COLORS.amber];
+  // 월별 추이
+  const tCtx = document.getElementById('inq-reamer-trend')?.getContext('2d');
+  if (tCtx) {
+    const datasets = INSP_PRODUCTS.map((p,i)=>({
+      label: p,
+      data: months.map(m=>{
+        const vals=rows.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
+        return vals.length ? +avg(vals).toFixed(3) : null;
+      }),
+      borderColor:clrs[i], backgroundColor:clrs[i]+'20', tension:0.3, pointRadius:3, borderWidth:2, spanGaps:true,
+    }));
+    makeLine('reamer-trend', tCtx, months, datasets, {
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:9}}},
+        y:{min:2,max:7,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'mm',font:{size:10}}}
+      }
+    });
+  }
+  // 기종별 평균 (가로 막대)
+  const aCtx = document.getElementById('inq-reamer-avg')?.getContext('2d');
+  if (aCtx) {
+    const avgs = INSP_PRODUCTS.map(p=>{
+      const vals=rows.filter(r=>r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
+      return vals.length?+avg(vals).toFixed(3):null;
+    });
+    const bclrs = INSP_PRODUCTS.map((p,i)=>{const s=REAMER_SPECS[p];return(avgs[i]!==null&&avgs[i]>=s.lo&&avgs[i]<=s.hi)?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose;});
+    makeBar('reamer-avg', aCtx, INSP_PRODUCTS, [{label:'평균값',data:avgs,backgroundColor:bclrs,borderRadius:6}], {
+      indexAxis:'y',
+      scales:{
+        x:{min:2,max:7,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'mm',font:{size:10}}},
+        y:{grid:{display:false}}
+      },
+      plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:SIDIZ_COLORS.text,font:{weight:700,size:11},formatter:v=>v!==null?v.toFixed(3):'-'}}
+    });
+  }
+  // 공급업체별 비교
+  const sCtx = document.getElementById('inq-reamer-supplier')?.getContext('2d');
+  if (sCtx) {
+    const sups = uniq(rows.map(r=>r.supplier).filter(Boolean)).sort();
+    const datasets = INSP_PRODUCTS.map((p,i)=>({
+      label:p,
+      data:sups.map(s=>{
+        const vals=rows.filter(r=>r.supplier===s&&r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
+        return vals.length?+avg(vals).toFixed(3):null;
+      }),
+      backgroundColor:clrs[i], borderRadius:4,
+    }));
+    makeBar('reamer-supplier', sCtx, sups.length?sups:['(데이터없음)'], datasets, {
+      plugins:{legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}},datalabels:{display:false}},
+      scales:{x:{grid:{display:false}},y:{min:2,max:7,grid:{color:SIDIZ_COLORS.border}}}
+    });
+  }
+  // 판정 도넛
+  const jCtx = document.getElementById('inq-reamer-judge')?.getContext('2d');
+  if (jCtx) {
+    const ok=rows.filter(r=>reamerJudge(r.product_code,r.value)==='OK').length;
+    const ng=rows.filter(r=>reamerJudge(r.product_code,r.value)==='NG').length;
+    const lb=[],dt=[],cl=[];
+    if(ok){lb.push('OK');dt.push(ok);cl.push(SIDIZ_COLORS.emerald);}
+    if(ng){lb.push('NG');dt.push(ng);cl.push(SIDIZ_COLORS.rose);}
+    if(!ok&&!ng){lb.push('데이터없음');dt.push(1);cl.push(SIDIZ_COLORS.muted);}
+    makeDoughnut('reamer-judge', jCtx, lb, dt, cl);
+  }
+}
+function renderReamerTable(rows) {
+  const cnt=$('inq-reamer-count'); if(cnt) cnt.textContent=rows.length.toLocaleString();
+  const tbody=$('inq-reamer-table-body'); if(!tbody) return;
+  const sorted=[...rows].sort((a,b)=>(b.measure_date||'').localeCompare(a.measure_date||''));
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted)">데이터가 없습니다</td></tr>`;return;}
+  tbody.innerHTML=sorted.map(r=>{
+    const j=reamerJudge(r.product_code,r.value);
+    const spec=REAMER_SPECS[r.product_code];
+    return `<tr>
+      <td>${r.measure_date||'-'}</td>
+      <td>${escHtml(r.supplier||'-')}</td>
+      <td><b>${escHtml(r.product_code||'-')}</b></td>
+      <td style="font-weight:600;text-align:right">${r.value!==null?Number(r.value).toFixed(3):'-'} mm</td>
+      <td style="font-size:11px;color:var(--text-muted)">${spec?spec.label:'-'}</td>
+      <td>${judgeTag(j)}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${escHtml(r.note||'-')}</td>
+      <td><button class="btn-del" onclick="deleteReamer('${r.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+function renderReamer() {
+  if (!STATE.reamers) return;
+  const rows=getReamerFiltered();
+  renderReamerKPI(rows); renderReamerCharts(rows); renderReamerTable(rows);
+}
+window.deleteReamer = async function(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  try {
+    const res=await fetch(`${SB_URL}/rest/v1/incoming_reamers?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS});
+    if(!res.ok) throw new Error(res.status);
+    STATE.reamers=STATE.reamers.filter(r=>r.id!==id); renderReamer();
+  } catch(e){alert('삭제 실패: '+e.message);}
+};
+window.submitInspectReamer = async function(){
+  const date=$('form-reamer-date').value, supplier=$('form-reamer-supplier').value,
+        product=$('form-reamer-product').value, value=$('form-reamer-value').value;
+  if(!date||!supplier||!product||!value){alert('측정일, 공급업체, 기종, 측정값은 필수입니다');return;}
+  await postRowExt('incoming_reamers',{measure_date:date,supplier,product_code:product,value:+value,note:$('form-reamer-note').value||null},'reamer');
+};
+
+// ============ 조도 탭 ============
+function getRoughnessFiltered() {
+  const supplier=$('inq-rough-supplier')?.value||'';
+  const product =$('inq-rough-product')?.value ||'';
+  const judge   =$('inq-rough-judge')?.value   ||'';
+  const from    =$('inq-rough-from')?.value    ||'';
+  const to      =$('inq-rough-to')?.value      ||'';
+  return STATE.roughness.filter(r=>{
+    if(supplier&&r.supplier!==supplier) return false;
+    if(product&&r.product_code!==product) return false;
+    if(from&&(!r.measure_date||r.measure_date<from)) return false;
+    if(to&&(!r.measure_date||r.measure_date>to)) return false;
+    if(judge&&roughnessJudge(r.value)!==judge) return false;
+    return true;
+  });
+}
+function renderRoughnessKPI(rows) {
+  const total=rows.length, now=new Date().toISOString().slice(0,7);
+  const thisMonth=rows.filter(r=>r.measure_date?.slice(0,7)===now).length;
+  const ngCount=rows.filter(r=>roughnessJudge(r.value)==='NG').length;
+  const okRate=total?Math.round((total-ngCount)/total*100):0;
+  const pAvgs=INSP_PRODUCTS.map(p=>{
+    const vals=rows.filter(r=>r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
+    return{p,a:vals.length?avg(vals):null};
+  });
+  const el=$('inq-rough-kpi'); if(!el) return;
+  el.innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">이번 달 ${thisMonth}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">합격률 <span style="font-size:11px">(≤1.0μm)</span></div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">NG ${ngCount}건</div></div>
+    ${pAvgs.map(({p,a})=>{
+      const ok=a!==null&&a<=ROUGH_THR;
+      return `<div class="kpi-card"><div class="kpi-label">${p} 평균 Ra</div><div class="kpi-value" style="${a===null?'':(ok?'color:var(--accent-emerald)':'color:var(--accent-rose)')}">${a!==null?a.toFixed(3):'-'}</div><div class="kpi-change">기준 ≤ 1.0 μm</div></div>`;
+    }).join('')}
+  `;
+}
+function renderRoughnessCharts(rows) {
+  const months=[...new Set(rows.map(r=>r.measure_date?.slice(0,7)).filter(Boolean))].sort();
+  const clrs=[SIDIZ_COLORS.blue,SIDIZ_COLORS.cyan,SIDIZ_COLORS.emerald,SIDIZ_COLORS.amber];
+  // 월별 추이
+  const tCtx=document.getElementById('inq-rough-trend')?.getContext('2d');
+  if(tCtx){
+    const datasets=[
+      ...INSP_PRODUCTS.map((p,i)=>({
+        label:p,
+        data:months.map(m=>{
+          const vals=rows.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
+          return vals.length?+avg(vals).toFixed(4):null;
+        }),
+        borderColor:clrs[i],backgroundColor:clrs[i]+'20',tension:0.3,pointRadius:3,borderWidth:2,spanGaps:true,fill:false,
+      })),
+      {label:'기준 1.0μm',data:months.map(()=>ROUGH_THR),borderColor:SIDIZ_COLORS.rose,borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false},
+    ];
+    makeLine('rough-trend',tCtx,months,datasets,{
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:9}}},
+        y:{min:0,suggestedMax:2.0,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'μm',font:{size:10}}}
+      }
+    });
+  }
+  // 기종별 평균 막대
+  const aCtx=document.getElementById('inq-rough-avg')?.getContext('2d');
+  if(aCtx){
+    const avgs=INSP_PRODUCTS.map(p=>{
+      const vals=rows.filter(r=>r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
+      return vals.length?+avg(vals).toFixed(4):null;
+    });
+    const bclrs=avgs.map(v=>(v!==null&&v<=ROUGH_THR)?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose);
+    const refLine=INSP_PRODUCTS.map(()=>ROUGH_THR);
+    makeBar('rough-avg',aCtx,INSP_PRODUCTS,[
+      {label:'평균 Ra',data:avgs,backgroundColor:bclrs,borderRadius:6,order:2},
+      {label:'기준 1.0μm',data:refLine,type:'line',borderColor:SIDIZ_COLORS.rose,borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,order:1},
+    ],{
+      scales:{y:{min:0,suggestedMax:2.0,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'μm',font:{size:10}}},x:{grid:{display:false}}},
+      plugins:{legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}},datalabels:{display:true,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:11},formatter:(v,ctx)=>ctx.datasetIndex===0&&v!==null?v.toFixed(3):null}}
+    });
+  }
+  // 공급업체별 비교
+  const sCtx=document.getElementById('inq-rough-supplier')?.getContext('2d');
+  if(sCtx){
+    const sups=uniq(rows.map(r=>r.supplier).filter(Boolean)).sort();
+    const datasets=INSP_PRODUCTS.map((p,i)=>({
+      label:p,
+      data:sups.map(s=>{
+        const vals=rows.filter(r=>r.supplier===s&&r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
+        return vals.length?+avg(vals).toFixed(4):null;
+      }),
+      backgroundColor:clrs[i],borderRadius:4,
+    }));
+    makeBar('rough-supplier',sCtx,sups.length?sups:['(데이터없음)'],datasets,{
+      plugins:{legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}},datalabels:{display:false}},
+      scales:{x:{grid:{display:false}},y:{min:0,suggestedMax:2.0,grid:{color:SIDIZ_COLORS.border}}}
+    });
+  }
+  // 판정 도넛
+  const jCtx=document.getElementById('inq-rough-judge')?.getContext('2d');
+  if(jCtx){
+    const ok=rows.filter(r=>roughnessJudge(r.value)==='OK').length;
+    const ng=rows.filter(r=>roughnessJudge(r.value)==='NG').length;
+    const lb=[],dt=[],cl=[];
+    if(ok){lb.push('OK (≤1.0μm)');dt.push(ok);cl.push(SIDIZ_COLORS.emerald);}
+    if(ng){lb.push('NG (>1.0μm)');dt.push(ng);cl.push(SIDIZ_COLORS.rose);}
+    if(!ok&&!ng){lb.push('데이터없음');dt.push(1);cl.push(SIDIZ_COLORS.muted);}
+    makeDoughnut('rough-judge',jCtx,lb,dt,cl);
+  }
+}
+function renderRoughnessTable(rows) {
+  const cnt=$('inq-rough-count'); if(cnt) cnt.textContent=rows.length.toLocaleString();
+  const tbody=$('inq-rough-table-body'); if(!tbody) return;
+  const sorted=[...rows].sort((a,b)=>(b.measure_date||'').localeCompare(a.measure_date||''));
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted)">데이터가 없습니다</td></tr>`;return;}
+  tbody.innerHTML=sorted.map(r=>{
+    const j=roughnessJudge(r.value);
+    return `<tr>
+      <td>${r.measure_date||'-'}</td>
+      <td>${escHtml(r.supplier||'-')}</td>
+      <td><b>${escHtml(r.product_code||'-')}</b></td>
+      <td style="font-weight:600;text-align:right">${r.value!==null?Number(r.value).toFixed(4):'-'} μm</td>
+      <td style="font-size:11px;color:var(--text-muted)">≤ 1.0 μm</td>
+      <td>${judgeTag(j)}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${escHtml(r.note||'-')}</td>
+      <td><button class="btn-del" onclick="deleteRoughness('${r.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+function renderRoughness() {
+  if(!STATE.roughness) return;
+  const rows=getRoughnessFiltered();
+  renderRoughnessKPI(rows); renderRoughnessCharts(rows); renderRoughnessTable(rows);
+}
+window.deleteRoughness = async function(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  try {
+    const res=await fetch(`${SB_URL}/rest/v1/incoming_roughness?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS});
+    if(!res.ok) throw new Error(res.status);
+    STATE.roughness=STATE.roughness.filter(r=>r.id!==id); renderRoughness();
+  } catch(e){alert('삭제 실패: '+e.message);}
+};
+window.submitInspectRoughness = async function(){
+  const date=$('form-rough-date').value, supplier=$('form-rough-supplier').value,
+        product=$('form-rough-product').value, value=$('form-rough-value').value;
+  if(!date||!supplier||!product||!value){alert('측정일, 공급업체, 기종, 측정값은 필수입니다');return;}
+  await postRowExt('incoming_roughness',{measure_date:date,supplier,product_code:product,value:+value,note:$('form-rough-note').value||null},'roughness');
+};
+
+// ============ 색차 탭 ============
+function getColorimetryFiltered() {
+  const supplier=$('inq-color-supplier')?.value||'';
+  const color   =$('inq-color-code')?.value   ||'';
+  const judge   =$('inq-color-judge')?.value  ||'';
+  const from    =$('inq-color-from')?.value   ||'';
+  const to      =$('inq-color-to')?.value     ||'';
+  return STATE.colorimetry.filter(r=>{
+    if(supplier&&r.supplier!==supplier) return false;
+    if(color&&r.color_code!==color) return false;
+    if(from&&(!r.measure_date||r.measure_date<from)) return false;
+    if(to&&(!r.measure_date||r.measure_date>to)) return false;
+    if(judge&&colorJudge(r.delta_e_master,r.delta_e_prev)!==judge) return false;
+    return true;
+  });
+}
+function renderColorimetryKPI(rows) {
+  const total=rows.length, now=new Date().toISOString().slice(0,7);
+  const thisMonth=rows.filter(r=>r.measure_date?.slice(0,7)===now).length;
+  const ngCount=rows.filter(r=>colorJudge(r.delta_e_master,r.delta_e_prev)==='NG').length;
+  const okRate=total?Math.round((total-ngCount)/total*100):0;
+  const mVals=rows.map(r=>+r.delta_e_master).filter(v=>!isNaN(v));
+  const pVals=rows.map(r=>+r.delta_e_prev).filter(v=>!isNaN(v));
+  const mAvg=mVals.length?avg(mVals):null;
+  const pAvg=pVals.length?avg(pVals):null;
+  const el=$('inq-color-kpi'); if(!el) return;
+  el.innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">총 검사 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">이번 달 ${thisMonth}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">합격률 <span style="font-size:11px">(ΔE≤1.0)</span></div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">NG ${ngCount}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 ΔE (마스터)</div><div class="kpi-value" style="${mAvg!==null?(mAvg<=COLOR_THR?'color:var(--accent-emerald)':'color:var(--accent-rose)'):''}">${mAvg!==null?mAvg.toFixed(2):'-'}</div><div class="kpi-change">기준 ≤ 1.0</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 ΔE (전lot)</div><div class="kpi-value" style="${pAvg!==null?(pAvg<=COLOR_THR?'color:var(--accent-emerald)':'color:var(--accent-rose)'):''}">${pAvg!==null?pAvg.toFixed(2):'-'}</div><div class="kpi-change">기준 ≤ 1.0</div></div>
+  `;
+}
+function renderColorimetryCharts(rows) {
+  const months=[...new Set(rows.map(r=>r.measure_date?.slice(0,7)).filter(Boolean))].sort();
+  // 월별 ΔE 추이
+  const tCtx=document.getElementById('inq-color-trend')?.getContext('2d');
+  if(tCtx){
+    const datasets=[
+      {label:'ΔE 마스터 비교',data:months.map(m=>{const v=rows.filter(r=>r.measure_date?.startsWith(m)).map(r=>+r.delta_e_master).filter(v=>!isNaN(v));return v.length?+avg(v).toFixed(2):null;}),borderColor:SIDIZ_COLORS.blue,backgroundColor:SIDIZ_COLORS.blue+'20',tension:0.3,pointRadius:3,borderWidth:2,spanGaps:true},
+      {label:'ΔE 전lot 비교',data:months.map(m=>{const v=rows.filter(r=>r.measure_date?.startsWith(m)).map(r=>+r.delta_e_prev).filter(v=>!isNaN(v));return v.length?+avg(v).toFixed(2):null;}),borderColor:SIDIZ_COLORS.cyan,backgroundColor:SIDIZ_COLORS.cyan+'20',tension:0.3,pointRadius:3,borderWidth:2,spanGaps:true},
+      {label:'기준 1.0',data:months.map(()=>COLOR_THR),borderColor:SIDIZ_COLORS.rose,borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false},
+    ];
+    makeLine('color-trend',tCtx,months,datasets,{
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'ΔE',font:{size:10}}}}
+    });
+  }
+  // 색상별 마스터 ΔE
+  const sCtx=document.getElementById('inq-color-spec')?.getContext('2d');
+  if(sCtx){
+    const colors=uniq(rows.map(r=>r.color_code).filter(Boolean)).sort();
+    const avgs=colors.map(c=>{const v=rows.filter(r=>r.color_code===c).map(r=>+r.delta_e_master).filter(v=>!isNaN(v));return v.length?+avg(v).toFixed(2):null;});
+    const bclrs=avgs.map(v=>(v!==null&&v<=COLOR_THR)?SIDIZ_COLORS.blue:SIDIZ_COLORS.rose);
+    makeBar('color-spec',sCtx,colors.length?colors:['(없음)'],[{label:'마스터 ΔE',data:avgs,backgroundColor:bclrs,borderRadius:4}],{
+      plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:10},formatter:v=>v!==null?v.toFixed(2):'-'}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border}}}
+    });
+  }
+  // 공급처별 파이
+  const pCtx=document.getElementById('inq-color-supplier-pie')?.getContext('2d');
+  if(pCtx){
+    const sups=uniq(rows.map(r=>r.supplier).filter(Boolean));
+    const counts=sups.map(s=>rows.filter(r=>r.supplier===s).length);
+    makeDoughnut('color-supplier-pie',pCtx,sups,counts,PALETTE.slice(0,sups.length));
+  }
+  // 판정 도넛
+  const jCtx=document.getElementById('inq-color-judge')?.getContext('2d');
+  if(jCtx){
+    const ok=rows.filter(r=>colorJudge(r.delta_e_master,r.delta_e_prev)==='OK').length;
+    const ng=rows.filter(r=>colorJudge(r.delta_e_master,r.delta_e_prev)==='NG').length;
+    const lb=[],dt=[],cl=[];
+    if(ok){lb.push('OK');dt.push(ok);cl.push(SIDIZ_COLORS.emerald);}
+    if(ng){lb.push('NG');dt.push(ng);cl.push(SIDIZ_COLORS.rose);}
+    if(!ok&&!ng){lb.push('데이터없음');dt.push(1);cl.push(SIDIZ_COLORS.muted);}
+    makeDoughnut('color-judge',jCtx,lb,dt,cl);
+  }
+}
+function renderColorimetryTable(rows) {
+  const cnt=$('inq-color-count'); if(cnt) cnt.textContent=rows.length.toLocaleString();
+  const tbody=$('inq-color-table-body'); if(!tbody) return;
+  const sorted=[...rows].sort((a,b)=>(b.measure_date||'').localeCompare(a.measure_date||''));
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-muted)">데이터가 없습니다</td></tr>`;return;}
+  tbody.innerHTML=sorted.map(r=>{
+    const j=colorJudge(r.delta_e_master,r.delta_e_prev);
+    const mNG=+r.delta_e_master>COLOR_THR;
+    const pNG=!isNaN(+r.delta_e_prev)&&+r.delta_e_prev>COLOR_THR;
+    return `<tr>
+      <td>${r.measure_date||'-'}</td>
+      <td>${escHtml(r.supplier||'-')}</td>
+      <td><b>${escHtml(r.color_code||'-')}</b></td>
+      <td>${escHtml(r.lot||'-')}</td>
+      <td style="text-align:right">${r.quantity_yd!=null?Number(r.quantity_yd).toLocaleString():'-'} Yd</td>
+      <td style="font-weight:600;text-align:right;${mNG?'color:var(--accent-rose)':''}">${r.delta_e_master!=null?Number(r.delta_e_master).toFixed(2):'-'}</td>
+      <td style="font-weight:600;text-align:right;${pNG?'color:var(--accent-rose)':''}">${r.delta_e_prev!=null?Number(r.delta_e_prev).toFixed(2):'-'}</td>
+      <td>${judgeTag(j)}</td>
+      <td style="font-size:12px;color:var(--text-muted);text-align:left">${escHtml(r.note||'-')}</td>
+      <td><button class="btn-del" onclick="deleteColorimetry('${r.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+function renderColorimetry() {
+  if(!STATE.colorimetry) return;
+  const rows=getColorimetryFiltered();
+  renderColorimetryKPI(rows); renderColorimetryCharts(rows); renderColorimetryTable(rows);
+}
+window.deleteColorimetry = async function(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  try {
+    const res=await fetch(`${SB_URL}/rest/v1/incoming_colorimetry?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS});
+    if(!res.ok) throw new Error(res.status);
+    STATE.colorimetry=STATE.colorimetry.filter(r=>r.id!==id); renderColorimetry();
+  } catch(e){alert('삭제 실패: '+e.message);}
+};
+window.submitInspectColorimetry = async function(){
+  const date=$('form-color-date').value, supplier=$('form-color-supplier').value,
+        color=$('form-color-code').value, master=$('form-color-master').value;
+  if(!date||!supplier||!color||!master){alert('검사일, 공급처, 색상, ΔE(마스터)는 필수입니다');return;}
+  const prev=$('form-color-prev').value, qty=$('form-color-qty').value;
+  await postRowExt('incoming_colorimetry',{
+    measure_date:date, supplier, color_code:color,
+    lot:$('form-color-lot').value||null,
+    quantity_yd:qty?+qty:null,
+    delta_e_master:+master,
+    delta_e_prev:prev?+prev:null,
+    note:$('form-color-note').value||null
+  },'colorimetry');
+};
+
+// ===== 공통 postRowExt (신규 3개 탭용) =====
+async function postRowExt(table, data, kind) {
+  try {
+    const res=await fetch(`${SB_URL}/rest/v1/${table}`,{
+      method:'POST', headers:{...SB_HEADERS,'Prefer':'return=representation'}, body:JSON.stringify(data),
+    });
+    if(!res.ok){const txt=await res.text();throw new Error(`${res.status}: ${txt}`);}
+    alert('✅ 저장되었습니다');
+    document.querySelectorAll(`#inq-form-${kind} input:not([type="date"])`).forEach(i=>i.value='');
+    document.querySelectorAll(`#inq-form-${kind} select`).forEach(s=>{if(!s.id.includes('supplier')&&!s.id.includes('product')) s.selectedIndex=0;});
+    STATE.loaded=false;
+    await loadIncomingData();
+    refreshDatalists();
+    if(kind==='reamer') renderReamer();
+    else if(kind==='roughness') renderRoughness();
+    else if(kind==='colorimetry') renderColorimetry();
+  } catch(e){console.error(e);alert('❌ 저장 실패: '+e.message);}
+}
 
 // ============ 진입점 ============
 window.initInspectSection = async function () {
@@ -1186,6 +1694,15 @@ window.initInspectSection = async function () {
       $(id).addEventListener('input', renderRod));
     ['inq-sponge-judge', 'inq-sponge-code', 'inq-sponge-from', 'inq-sponge-to'].forEach(id =>
       $(id).addEventListener('input', renderSponge));
+    ['inq-reamer-supplier','inq-reamer-product','inq-reamer-judge','inq-reamer-from','inq-reamer-to'].forEach(id => {
+      const el=$(id); if(el) el.addEventListener('input', renderReamer);
+    });
+    ['inq-rough-supplier','inq-rough-product','inq-rough-judge','inq-rough-from','inq-rough-to'].forEach(id => {
+      const el=$(id); if(el) el.addEventListener('input', renderRoughness);
+    });
+    ['inq-color-supplier','inq-color-code','inq-color-judge','inq-color-from','inq-color-to'].forEach(id => {
+      const el=$(id); if(el) el.addEventListener('input', renderColorimetry);
+    });
     STATE.bound = true;
   }
   refreshDatalists();
