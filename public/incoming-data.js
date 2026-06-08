@@ -1664,6 +1664,295 @@ window.submitInspectColorimetry = async function(){
   },'colorimetry');
 };
 
+// ======================================================================
+// ============ 보고서 생성 (리머 / 조도 / 색차) ============
+// ======================================================================
+
+// 차트 캡처 헬퍼 (canvas id → PNG dataURL)
+function _captureInspectChart(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return null;
+  try {
+    const off = document.createElement('canvas');
+    off.width = canvas.width; off.height = canvas.height;
+    const ctx = off.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, off.width, off.height);
+    ctx.drawImage(canvas, 0, 0);
+    return off.toDataURL('image/png');
+  } catch(e) { return null; }
+}
+
+// 보고서 HTML 다운로드 공통 함수
+function _downloadInspectReport(html, filename) {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// 보고서 결과 항목 → HTML 변환
+function _recToHtml(recs) {
+  return recs.map(r => {
+    const prefix = r.level === 'critical'
+      ? '<span style="color:red;font-weight:bold;">[주의]</span> '
+      : r.level === 'warning'
+      ? '<span style="color:#CC7700;font-weight:bold;">[경고]</span> '
+      : '';
+    return `<p style="margin: 3px 0 3px 15px; font-size: 10pt;">: ${prefix}${r.text}</p>`;
+  }).join('\n');
+}
+
+// ── 리머 자동 분석 ──────────────────────────────────────
+function _getReamerAnalysis(rows) {
+  const recs = [];
+  const total = rows.length;
+  if (!total) { recs.push({ level:'info', text:'측정 데이터가 없습니다.' }); return recs; }
+
+  const ngRows = rows.filter(r => reamerJudge(r.product_code, r.value) === 'NG');
+  const okRate = Math.round((total - ngRows.length) / total * 100);
+
+  if (ngRows.length === 0) {
+    recs.push({ level:'info', text:`전체 ${total}건 측정 결과 모두 기준 범위 내 — 양호한 치수 관리 상태입니다.` });
+  } else {
+    recs.push({ level:'warning', text:`전체 ${total}건 중 ${ngRows.length}건 기준 이탈 (합격률 ${okRate}%).` });
+    INSP_PRODUCTS.forEach(p => {
+      const pNG = rows.filter(r => r.product_code === p && reamerJudge(r.product_code, r.value) === 'NG');
+      if (pNG.length > 0) {
+        const spec = REAMER_SPECS[p];
+        const vals = pNG.map(r => Number(r.value).toFixed(3)).join(', ');
+        recs.push({ level:'critical', text:`${p}: ${pNG.length}건 기준 이탈 (기준 ${spec.label}) — 이탈값: ${vals}` });
+      }
+    });
+  }
+  INSP_PRODUCTS.forEach(p => {
+    const vals = rows.filter(r => r.product_code === p).map(r => +r.value).filter(v => !isNaN(v));
+    if (!vals.length) return;
+    const avgVal = avg(vals);
+    const spec = REAMER_SPECS[p];
+    const ok = avgVal >= spec.lo && avgVal <= spec.hi;
+    recs.push({ level: ok ? 'info' : 'warning', text:`${p} 평균 ${avgVal.toFixed(3)} mm (기준 ${spec.label}) — ${ok ? '기준 범위 내 정상' : '기준 이탈 확인 필요'}` });
+  });
+  return recs;
+}
+
+// ── 조도 자동 분석 ──────────────────────────────────────
+function _getRoughnessAnalysis(rows) {
+  const recs = [];
+  const total = rows.length;
+  if (!total) { recs.push({ level:'info', text:'측정 데이터가 없습니다.' }); return recs; }
+
+  const ngRows = rows.filter(r => roughnessJudge(r.value) === 'NG');
+  const okRate = Math.round((total - ngRows.length) / total * 100);
+
+  if (ngRows.length === 0) {
+    recs.push({ level:'info', text:`전체 ${total}건 측정 결과 모두 기준 이하 (Ra ≤ 1.0 μm) — 표면 조도 양호.` });
+  } else {
+    recs.push({ level:'warning', text:`전체 ${total}건 중 ${ngRows.length}건 기준 초과 (합격률 ${okRate}%).` });
+    INSP_PRODUCTS.forEach(p => {
+      const pNG = rows.filter(r => r.product_code === p && roughnessJudge(r.value) === 'NG');
+      if (pNG.length > 0) {
+        const vals = pNG.map(r => Number(r.value).toFixed(4)).join(', ');
+        recs.push({ level:'critical', text:`${p}: ${pNG.length}건 기준 초과 (기준 ≤ 1.0 μm) — 초과값: ${vals} μm` });
+      }
+    });
+  }
+  INSP_PRODUCTS.forEach(p => {
+    const vals = rows.filter(r => r.product_code === p).map(r => +r.value).filter(v => !isNaN(v));
+    if (!vals.length) return;
+    const avgVal = avg(vals);
+    const ok = avgVal <= ROUGH_THR;
+    recs.push({ level: ok ? 'info' : 'warning', text:`${p} 평균 Ra ${avgVal.toFixed(4)} μm (기준 ≤ 1.0 μm) — ${ok ? '기준 이하 정상' : '기준 초과 — 가공면 점검 권장'}` });
+  });
+  return recs;
+}
+
+// ── 색차 자동 분석 ──────────────────────────────────────
+function _getColorimetryAnalysis(rows) {
+  const recs = [];
+  const total = rows.length;
+  if (!total) { recs.push({ level:'info', text:'검사 데이터가 없습니다.' }); return recs; }
+
+  const ngRows = rows.filter(r => colorJudge(r.delta_e_master, r.delta_e_prev) === 'NG');
+  const okRate = Math.round((total - ngRows.length) / total * 100);
+
+  if (ngRows.length === 0) {
+    recs.push({ level:'info', text:`전체 ${total}건 검사 결과 모두 ΔE ≤ 1.0 — 원단 색차 기준 적합 상태입니다.` });
+  } else {
+    recs.push({ level:'warning', text:`전체 ${total}건 중 ${ngRows.length}건 기준 초과 (합격률 ${okRate}%).` });
+    ngRows.forEach(r => {
+      const mNG = +r.delta_e_master > COLOR_THR;
+      const pNG = !isNaN(+r.delta_e_prev) && +r.delta_e_prev > COLOR_THR;
+      const detail = [mNG ? `마스터 ΔE ${Number(r.delta_e_master).toFixed(2)}` : '', pNG ? `전lot ΔE ${Number(r.delta_e_prev).toFixed(2)}` : ''].filter(Boolean).join(', ');
+      recs.push({ level:'critical', text:`${r.measure_date} ${r.supplier||''} ${r.color_code||''} (${r.lot||'-'}) — ${detail} 기준(1.0) 초과.` });
+    });
+  }
+  // 색상별 평균
+  const colors = uniq(rows.map(r => r.color_code).filter(Boolean)).sort();
+  colors.forEach(c => {
+    const cVals = rows.filter(r => r.color_code === c).map(r => +r.delta_e_master).filter(v => !isNaN(v));
+    if (!cVals.length) return;
+    const avgVal = avg(cVals);
+    const ok = avgVal <= COLOR_THR;
+    if (!ok) recs.push({ level:'warning', text:`색상 ${c} — 마스터 비교 평균 ΔE ${avgVal.toFixed(2)} (기준 ≤ 1.0) 초과. 색상 관리 주의.` });
+  });
+  return recs;
+}
+
+// ── 리머 보고서 생성 ────────────────────────────────────
+window.generateReamerReport = function () {
+  const rows = getReamerFiltered();
+  const from = $('inq-reamer-from')?.value || '';
+  const to   = $('inq-reamer-to')?.value   || '';
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+  const supplier = $('inq-reamer-supplier')?.value || '전체';
+  const product  = $('inq-reamer-product')?.value  || '전체 기종';
+
+  const recs = _getReamerAnalysis(rows);
+  const recHtml = _recToHtml(recs);
+
+  const imgTrend   = _captureInspectChart('inq-reamer-trend');
+  const imgAvg     = _captureInspectChart('inq-reamer-avg');
+  const imgSupplier = _captureInspectChart('inq-reamer-supplier');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>리머 치수 측정 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 측정 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 측정 내용 : 리머 치수 측정 (다이캐스팅 리머 홀 내경)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 버니어캘리퍼스 / 마이크로미터</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 측정 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 공급업체 : ${supplier}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 대상 기종 : ${product}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">6) 관리 기준 : 4000G 5.75±0.25 mm / CH4800 2.5~3.0±0.3 mm / ITO-TILT 5.0±0.3 mm / S-TILT 4.75±0.25 mm</p>
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 측정 결과</p>
+${recHtml}
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 측정 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 기종별 월별 치수 추이 (mm)</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 기종별 평균 치수 vs 기준범위 (${period})</p>
+<img src="${imgAvg}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 공급업체별 기종 평균 비교</p>
+<img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+
+</body>
+</html>`;
+  _downloadInspectReport(html, '리머_치수측정_보고서.html');
+};
+
+// ── 조도 보고서 생성 ────────────────────────────────────
+window.generateRoughnessReport = function () {
+  const rows = getRoughnessFiltered();
+  const from = $('inq-rough-from')?.value || '';
+  const to   = $('inq-rough-to')?.value   || '';
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+  const supplier = $('inq-rough-supplier')?.value || '전체';
+  const product  = $('inq-rough-product')?.value  || '전체 기종';
+
+  const recs = _getRoughnessAnalysis(rows);
+  const recHtml = _recToHtml(recs);
+
+  const imgTrend    = _captureInspectChart('inq-rough-trend');
+  const imgAvg      = _captureInspectChart('inq-rough-avg');
+  const imgSupplier = _captureInspectChart('inq-rough-supplier');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>표면 조도 측정 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 측정 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 측정 내용 : 표면 조도 측정 (Ra — 산술평균 조도)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 표면조도 측정기</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 측정 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 공급업체 : ${supplier}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 대상 기종 : ${product}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">6) 관리 기준 : Ra ≤ 1.0 μm (전 기종 공통)</p>
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 측정 결과</p>
+${recHtml}
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 측정 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 기종별 월별 조도 추이 (μm, 기준선 1.0)</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgAvg ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 기종별 평균 Ra vs 기준 1.0 μm (${period})</p>
+<img src="${imgAvg}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 공급업체별 기종 평균 Ra 비교</p>
+<img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+
+</body>
+</html>`;
+  _downloadInspectReport(html, '조도_표면조도측정_보고서.html');
+};
+
+// ── 색차 보고서 생성 ────────────────────────────────────
+window.generateColorimetryReport = function () {
+  const rows = getColorimetryFiltered();
+  const from = $('inq-color-from')?.value || '';
+  const to   = $('inq-color-to')?.value   || '';
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+  const supplier  = $('inq-color-supplier')?.value || '전체';
+  const colorCode = $('inq-color-code')?.value     || '전체 색상';
+
+  const recs = _getColorimetryAnalysis(rows);
+  const recHtml = _recToHtml(recs);
+
+  // 검사 건수 요약
+  const total = rows.length;
+  const ngCount = rows.filter(r => colorJudge(r.delta_e_master, r.delta_e_prev) === 'NG').length;
+  const mVals = rows.map(r => +r.delta_e_master).filter(v => !isNaN(v));
+  const mAvg = mVals.length ? avg(mVals).toFixed(2) : '-';
+
+  const imgTrend   = _captureInspectChart('inq-color-trend');
+  const imgSpec    = _captureInspectChart('inq-color-spec');
+  const imgJudge   = _captureInspectChart('inq-color-judge');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>원단 색차 검사 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 검사 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 검사 내용 : 원단 색차 검사 (마스터 비교 및 전lot 비교)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 색차계 (ΔE CIE 기준)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 검사 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 공급처 : ${supplier}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 색상 : ${colorCode}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">6) 관리 기준 : ΔE ≤ 1.0 (마스터 비교 및 전lot 비교 모두 적용)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">7) 검사 건수 : 총 ${total}건 (합격 ${total - ngCount}건 / 불합격 ${ngCount}건) / 평균 ΔE ${mAvg}</p>
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
+${recHtml}
+
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 ΔE 추이 (마스터 / 전lot 비교, 기준선 1.0)</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgSpec ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 색상별 평균 ΔE (마스터 비교, ${period})</p>
+<img src="${imgSpec}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgJudge ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 판정 분포 (기준 적합 / 초과)</p>
+<img src="${imgJudge}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+
+</body>
+</html>`;
+  _downloadInspectReport(html, '색차_원단검사_보고서.html');
+};
+
 // ===== 공통 postRowExt (신규 3개 탭용) =====
 async function postRowExt(table, data, kind) {
   try {
