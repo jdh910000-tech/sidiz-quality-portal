@@ -1527,12 +1527,15 @@ function renderReamerCharts(rows) {
   const allLo = Math.min(...INSP_PRODUCTS.map(p => REAMER_SPECS[p].lo));
   const allHi = Math.max(...INSP_PRODUCTS.map(p => REAMER_SPECS[p].hi));
   const axisPad = (allHi - allLo) * 0.10;
+  const NPRODS = INSP_PRODUCTS.length;
+  const SPEC_HI_IDX = NPRODS, SPEC_LO_IDX = NPRODS+1, SPEC_NOM_IDX = NPRODS+2;
 
   // ① 기종별 월별 추이 — 날짜 필터 무관, 전체 누적 데이터 사용
   const tCtx = document.getElementById('inq-reamer-trend')?.getContext('2d');
   if (tCtx) {
-    const allData = STATE.reamers; // 필터링된 rows가 아닌 전체 데이터
-    const datasets = INSP_PRODUCTS.map((p, i) => {
+    const allData = STATE.reamers;
+    // 이슈1: NG만 빨강, OK는 기본 계열 색상
+    const productDatasets = INSP_PRODUCTS.map((p, i) => {
       const s = REAMER_SPECS[p];
       const monthAvgs = monthsFixed.map(m => {
         const vals = allData.filter(r => r.product_code===p && r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
@@ -1543,91 +1546,137 @@ function renderReamerCharts(rows) {
         data: monthAvgs,
         borderColor: clrs[i],
         backgroundColor: clrs[i]+'20',
-        tension: 0.3,
-        borderWidth: 2,
-        spanGaps: true,
+        tension: 0.3, borderWidth: 2, spanGaps: true,
         pointRadius: monthAvgs.map(v => v!==null ? 5 : 0),
         pointHoverRadius: 7,
-        // 합격=녹색, 불합격=빨강 점 색상
-        pointBackgroundColor: monthAvgs.map(v => {
-          if (v===null) return clrs[i];
-          return (v>=s.lo && v<=s.hi) ? SIDIZ_COLORS.emerald : SIDIZ_COLORS.rose;
-        }),
-        pointBorderColor: monthAvgs.map(v => {
-          if (v===null) return clrs[i];
-          return (v>=s.lo && v<=s.hi) ? SIDIZ_COLORS.emerald : SIDIZ_COLORS.rose;
-        }),
+        // NG만 빨강 원, OK는 기본 계열색 원
+        pointBackgroundColor: monthAvgs.map(v => (v!==null && (v<s.lo||v>s.hi)) ? SIDIZ_COLORS.rose : clrs[i]),
+        pointBorderColor:     monthAvgs.map(v => (v!==null && (v<s.lo||v>s.hi)) ? SIDIZ_COLORS.rose : clrs[i]),
         pointBorderWidth: 2,
       };
     });
+    // 이슈2: 범례 클릭 시 표시될 스펙 라인 (초기 숨김)
+    const specDatasets = [
+      { label:'_spec상한', data:monthsFixed.map(()=>null), borderColor:SIDIZ_COLORS.rose+'DD', borderDash:[5,5], borderWidth:2, pointRadius:0, fill:false, tension:0, hidden:true, spanGaps:true },
+      { label:'_spec하한', data:monthsFixed.map(()=>null), borderColor:SIDIZ_COLORS.blue+'DD', borderDash:[5,5], borderWidth:2, pointRadius:0, fill:false, tension:0, hidden:true, spanGaps:true },
+      { label:'_spec중심', data:monthsFixed.map(()=>null), borderColor:SIDIZ_COLORS.navy+'99', borderDash:[3,3], borderWidth:1.5, pointRadius:0, fill:false, tension:0, hidden:true, spanGaps:true },
+    ];
     destroyChart('reamer-trend');
     STATE.charts['reamer-trend'] = new Chart(tCtx, {
       type: 'line',
-      data: { labels: monthLabels, datasets },
+      data: { labels: monthLabels, datasets: [...productDatasets, ...specDatasets] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        interaction: { mode:'index', intersect:false },
         plugins: {
-          legend: { position:'top', align:'end', labels:{boxWidth:12, font:{size:10}} },
+          legend: {
+            position:'top', align:'end',
+            labels: {
+              boxWidth:12, font:{size:10},
+              filter: (item) => !String(item.text).startsWith('_'), // 스펙 라인 범례 숨김
+            },
+            // 이슈2: 범례 클릭 → 단일 기종 + 스펙범위 + Y축 조정
+            onClick: (e, legendItem, legend) => {
+              const chart = legend.chart;
+              const idx = legendItem.datasetIndex;
+              if (idx >= NPRODS) return;
+              const clickedMeta = chart.getDatasetMeta(idx);
+              const onlyThis = INSP_PRODUCTS.every((_,i) => i===idx || chart.getDatasetMeta(i).hidden);
+              if (!clickedMeta.hidden && onlyThis) {
+                // 단독 상태 → 전체 복귀
+                INSP_PRODUCTS.forEach((_,i) => { chart.getDatasetMeta(i).hidden = false; });
+                [SPEC_HI_IDX, SPEC_LO_IDX, SPEC_NOM_IDX].forEach(si => { chart.getDatasetMeta(si).hidden = true; });
+                chart.options.scales.y.min = allLo - axisPad;
+                chart.options.scales.y.max = allHi + axisPad;
+              } else {
+                // 해당 기종만 표시 + 스펙 범위
+                INSP_PRODUCTS.forEach((_,i) => { chart.getDatasetMeta(i).hidden = (i!==idx); });
+                const prod = INSP_PRODUCTS[idx];
+                const s = REAMER_SPECS[prod];
+                chart.data.datasets[SPEC_HI_IDX].data = monthsFixed.map(() => s.hi);
+                chart.data.datasets[SPEC_LO_IDX].data = monthsFixed.map(() => s.lo);
+                chart.data.datasets[SPEC_NOM_IDX].data = monthsFixed.map(() => s.nom);
+                [SPEC_HI_IDX, SPEC_LO_IDX, SPEC_NOM_IDX].forEach(si => { chart.getDatasetMeta(si).hidden = false; });
+                const pad2 = Math.max((s.hi - s.lo) * 0.6, 0.2);
+                chart.options.scales.y.min = s.lo - pad2;
+                chart.options.scales.y.max = s.hi + pad2;
+              }
+              chart.update();
+            }
+          },
           datalabels: { display: false },
           tooltip: {
             callbacks: {
               label: (item) => {
                 const v = item.raw;
-                if (v===null||v===undefined) return `${item.dataset.label}: -`;
-                const p = INSP_PRODUCTS[item.datasetIndex];
+                if (v===null||v===undefined) return null;
+                const dsIdx = item.datasetIndex;
+                if (dsIdx === SPEC_HI_IDX) return `스펙 상한: ${(+v).toFixed(3)} mm`;
+                if (dsIdx === SPEC_LO_IDX) return `스펙 하한: ${(+v).toFixed(3)} mm`;
+                if (dsIdx === SPEC_NOM_IDX) return `스펙 중심: ${(+v).toFixed(3)} mm`;
+                const p = INSP_PRODUCTS[dsIdx];
+                if (!p) return null;
                 const s = REAMER_SPECS[p];
                 const ok = +v>=s.lo && +v<=s.hi;
-                return `${item.dataset.label}: ${(+v).toFixed(3)} mm [기준 ${s.label}] → ${ok?'✓ OK':'✗ NG'}`;
+                return `${p}: ${(+v).toFixed(3)} mm [${s.label}] → ${ok?'✓ OK':'✗ NG'}`;
               }
             }
           }
         },
         scales: {
           x: { grid:{display:false}, ticks:{font:{size:9}} },
-          y: {
-            min: allLo - axisPad,
-            max: allHi + axisPad,
-            grid: { color: SIDIZ_COLORS.border },
-            title: { display:true, text:'mm', font:{size:10} }
-          }
+          y: { min:allLo-axisPad, max:allHi+axisPad, grid:{color:SIDIZ_COLORS.border}, title:{display:true, text:'mm', font:{size:10}} }
         }
       }
     });
   }
 
-  // ② 기종별 평균 vs 관리기준 (관리기준 범위 + 측정 평균 레이어)
+  // ② 기종별 평균 vs 관리기준 (이슈3: ◆ 기준 중심값 마커 플러그인)
   const aCtx = document.getElementById('inq-reamer-avg')?.getContext('2d');
   if (aCtx) {
     const avgs = INSP_PRODUCTS.map(p => {
       const vals = rows.filter(r=>r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
       return vals.length ? +avg(vals).toFixed(3) : null;
     });
-    const bclrs = INSP_PRODUCTS.map((p, i) => {
+    const bclrs = INSP_PRODUCTS.map((p,i) => {
       const s = REAMER_SPECS[p];
       return (avgs[i]!==null && avgs[i]>=s.lo && avgs[i]<=s.hi) ? SIDIZ_COLORS.emerald : SIDIZ_COLORS.rose;
     });
     const xPad = (allHi - allLo) * 0.12;
+
+    // 기준 중심값 ◆ 마커 (커스텀 플러그인)
+    const nomPlugin = {
+      id: 'reamerNomMarkers',
+      afterDatasetsDraw(chart) {
+        const {ctx: c2, chartArea, scales} = chart;
+        if (!chartArea || !scales.x || !scales.y) return;
+        INSP_PRODUCTS.forEach((p) => {
+          const s = REAMER_SPECS[p];
+          const x = scales.x.getPixelForValue(s.nom);
+          const y = scales.y.getPixelForValue(p);
+          if (!isFinite(x) || !isFinite(y)) return;
+          c2.save();
+          c2.fillStyle = SIDIZ_COLORS.navy;
+          c2.strokeStyle = '#fff'; c2.lineWidth = 1.5;
+          const d = 7;
+          c2.beginPath();
+          c2.moveTo(x, y-d); c2.lineTo(x+d, y);
+          c2.lineTo(x, y+d); c2.lineTo(x-d, y);
+          c2.closePath(); c2.fill(); c2.stroke();
+          c2.restore();
+        });
+      }
+    };
+
     destroyChart('reamer-avg');
     STATE.charts['reamer-avg'] = new Chart(aCtx, {
       type: 'bar',
       data: {
         labels: INSP_PRODUCTS,
         datasets: [
-          {
-            label: '관리기준 범위',
-            data: INSP_PRODUCTS.map(p => [REAMER_SPECS[p].lo, REAMER_SPECS[p].hi]),
-            backgroundColor: 'rgba(0,43,210,0.08)',
-            borderColor: 'rgba(0,43,210,0.28)',
-            borderWidth: 1, borderSkipped: false, borderRadius: 2, order: 2,
-          },
-          {
-            label: '측정 평균 (mm)',
-            data: avgs,
-            backgroundColor: bclrs.map(c => c+'CC'),
-            borderColor: bclrs,
-            borderWidth: 1, borderRadius: 4, order: 1,
-          }
+          { label:'관리기준 범위', data:INSP_PRODUCTS.map(p=>[REAMER_SPECS[p].lo,REAMER_SPECS[p].hi]), backgroundColor:'rgba(0,43,210,0.08)', borderColor:'rgba(0,43,210,0.28)', borderWidth:1, order:3 },
+          { label:'측정 평균 (mm)', data:avgs, backgroundColor:bclrs.map(c=>c+'CC'), borderColor:bclrs, borderWidth:1, borderRadius:4, order:1 },
+          { label:'기준 중심값 ◆', data:[], backgroundColor:'transparent', borderWidth:0, pointRadius:0 }, // 범례 항목용 더미
         ]
       },
       options: {
@@ -1635,29 +1684,57 @@ function renderReamerCharts(rows) {
         indexAxis: 'y',
         interaction: { mode:'index', intersect:false },
         scales: {
-          x: { min: allLo-xPad, max: allHi+xPad, grid:{color:SIDIZ_COLORS.border}, title:{display:true, text:'mm', font:{size:10}} },
-          y: { grid: { display: false } }
+          x: { min:allLo-xPad, max:allHi+xPad, grid:{color:SIDIZ_COLORS.border}, title:{display:true, text:'mm', font:{size:10}} },
+          y: { grid:{display:false} }
         },
         plugins: {
-          legend: { display:true, position:'top', align:'end', labels:{boxWidth:10, font:{size:10}} },
-          datalabels: {
-            display: true,
-            formatter: (v, ctx) => {
-              if (ctx.datasetIndex === 0) {
-                // 관리기준 범위 레이블
-                if (!Array.isArray(v)) return null;
-                return REAMER_SPECS[INSP_PRODUCTS[ctx.dataIndex]].label;
+          legend: {
+            display: true, position:'top', align:'end',
+            labels: {
+              boxWidth:10, font:{size:10},
+              generateLabels: (chart) => {
+                const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                // 기준 중심값 더미 항목의 색상을 navy로 변경
+                const nomItem = base.find(item => item.text && item.text.includes('◆'));
+                if (nomItem) { nomItem.fillStyle = SIDIZ_COLORS.navy; nomItem.strokeStyle = '#fff'; }
+                return base;
               }
-              // 측정 평균 값
-              return v!==null ? Number(v).toFixed(3) : null;
             },
-            anchor: (ctx) => ctx.datasetIndex===0 ? 'center' : 'end',
-            align: (ctx) => ctx.datasetIndex===0 ? 'center' : 'right',
-            color: (ctx) => ctx.datasetIndex===0 ? '#888' : SIDIZ_COLORS.text,
-            font: (ctx) => ctx.datasetIndex===0 ? {size:9, weight:400} : {size:11, weight:700},
+          },
+          datalabels: {
+            display: (ctx) => ctx.datasetIndex===1 && ctx.dataset.data[ctx.dataIndex]!==null,
+            formatter: v => v!==null ? Number(v).toFixed(3) : null,
+            anchor:'end', align:'right',
+            color: SIDIZ_COLORS.text, font:{size:11, weight:700},
+          },
+          tooltip: {
+            callbacks: {
+              label: (item) => {
+                if (item.datasetIndex === 0) {
+                  const p = INSP_PRODUCTS[item.dataIndex];
+                  const s = REAMER_SPECS[p];
+                  return `관리기준: ${s.lo.toFixed(2)} ~ ${s.hi.toFixed(2)} mm`;
+                }
+                if (item.datasetIndex === 1 && item.raw!==null) {
+                  const p = INSP_PRODUCTS[item.dataIndex];
+                  const s = REAMER_SPECS[p];
+                  const ok = +item.raw>=s.lo && +item.raw<=s.hi;
+                  return `측정 평균: ${(+item.raw).toFixed(3)} mm → ${ok?'✓ OK':'✗ NG'}`;
+                }
+                return null;
+              },
+              afterLabel: (item) => {
+                if (item.datasetIndex <= 1) {
+                  const p = INSP_PRODUCTS[item.dataIndex];
+                  if (p) return `  ◆ 기준 중심값: ${REAMER_SPECS[p].nom.toFixed(3)} mm`;
+                }
+                return null;
+              }
+            }
           }
         }
-      }
+      },
+      plugins: [nomPlugin]  // 기준 중심값 ◆ 마커 인라인 플러그인
     });
   }
 
@@ -1665,7 +1742,7 @@ function renderReamerCharts(rows) {
   const sCtx = document.getElementById('inq-reamer-supplier')?.getContext('2d');
   if (sCtx) {
     const sups = uniq(rows.map(r=>r.supplier).filter(Boolean)).sort();
-    const datasets = INSP_PRODUCTS.map((p, i) => ({
+    const supDatasets = INSP_PRODUCTS.map((p, i) => ({
       label: p,
       data: sups.map(s => {
         const vals = rows.filter(r=>r.supplier===s&&r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
@@ -1673,13 +1750,13 @@ function renderReamerCharts(rows) {
       }),
       backgroundColor: clrs[i], borderRadius: 4,
     }));
-    makeBar('reamer-supplier', sCtx, sups.length?sups:['(데이터없음)'], datasets, {
+    makeBar('reamer-supplier', sCtx, sups.length?sups:['(데이터없음)'], supDatasets, {
       plugins: { legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}}, datalabels:{display:false} },
       scales: { x:{grid:{display:false}}, y:{suggestedMin:allLo-0.3, suggestedMax:allHi+0.3, grid:{color:SIDIZ_COLORS.border}} }
     });
   }
 
-  // ④ 판정 도넛 (수정된 ID: inq-reamer-judge-pie)
+  // ④ 판정 도넛
   const jCtx = document.getElementById('inq-reamer-judge-pie')?.getContext('2d');
   if (jCtx) {
     const ok = rows.filter(r=>reamerJudge(r.product_code,r.value)==='OK').length;
@@ -1714,7 +1791,9 @@ function renderReamerTable(rows) {
 function renderReamer() {
   if (!STATE.reamers) return;
   const rows=getReamerFiltered();
-  renderReamerKPI(rows); renderReamerCharts(rows); renderReamerTable(rows);
+  renderReamerKPI(rows);
+  try { renderReamerCharts(rows); } catch(e) { console.error('[리머 차트 오류]', e); }
+  renderReamerTable(rows);
 }
 window.deleteReamer = async function(id){
   if(!confirm('삭제하시겠습니까?')) return;
@@ -1866,7 +1945,9 @@ function renderRoughnessTable(rows) {
 function renderRoughness() {
   if(!STATE.roughness) return;
   const rows=getRoughnessFiltered();
-  renderRoughnessKPI(rows); renderRoughnessCharts(rows); renderRoughnessTable(rows);
+  renderRoughnessKPI(rows);
+  try { renderRoughnessCharts(rows); } catch(e) { console.error('[조도 차트 오류]', e); }
+  renderRoughnessTable(rows);
 }
 window.deleteRoughness = async function(id){
   if(!confirm('삭제하시겠습니까?')) return;
@@ -1986,7 +2067,9 @@ function renderColorimetryTable(rows) {
 function renderColorimetry() {
   if(!STATE.colorimetry) return;
   const rows=getColorimetryFiltered();
-  renderColorimetryKPI(rows); renderColorimetryCharts(rows); renderColorimetryTable(rows);
+  renderColorimetryKPI(rows);
+  try { renderColorimetryCharts(rows); } catch(e) { console.error('[색차 차트 오류]', e); }
+  renderColorimetryTable(rows);
 }
 window.deleteColorimetry = async function(id){
   if(!confirm('삭제하시겠습니까?')) return;
