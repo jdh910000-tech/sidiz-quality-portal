@@ -1540,6 +1540,19 @@ function renderReamerCharts(rows) {
   const NPRODS = INSP_PRODUCTS.length;
   const SPEC_HI_IDX = NPRODS, SPEC_LO_IDX = NPRODS+1, SPEC_NOM_IDX = NPRODS+2;
 
+  // 테이블 컬럼 하이라이트 헬퍼
+  function _hlReamerCol(colIdx) {
+    const tbl = document.getElementById('inq-reamer-trend-table');
+    if (!tbl) return;
+    tbl.querySelectorAll('[data-col]').forEach(el => {
+      const isHl = colIdx >= 0 && parseInt(el.getAttribute('data-col')) === colIdx;
+      el.style.boxShadow = isHl ? 'inset 0 0 0 2px rgba(230,168,0,0.9)' : '';
+      if (!el.getAttribute('data-ng') && !el.getAttribute('data-spec')) {
+        el.style.background = isHl ? 'rgba(230,168,0,0.12)' : '';
+      }
+    });
+  }
+
   // ① 기종별 월별 추이 — 날짜 필터 무관, 전체 누적 데이터 사용
   const tCtx = document.getElementById('inq-reamer-trend')?.getContext('2d');
   if (tCtx) {
@@ -1612,6 +1625,9 @@ function renderReamerCharts(rows) {
                 chart.options.scales.y.max = s.hi + pad2;
               }
               chart.update();
+              // 테이블 컬럼 하이라이트
+              const nowAllVisible = INSP_PRODUCTS.every((_,i) => !chart.getDatasetMeta(i).hidden);
+              _hlReamerCol(nowAllVisible ? -1 : idx);
             }
           },
           datalabels: { display: false },
@@ -1689,6 +1705,8 @@ function renderReamerCharts(rows) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
+        clip: false,
+        layout: { padding: { right: 25, left: 5 } },
         indexAxis: 'y',
         interaction: { mode:'index', intersect:false },
         scales: {
@@ -1733,7 +1751,7 @@ function renderReamerCharts(rows) {
             font: (ctx) => ctx.datasetIndex === 0
               ? { size: 9, weight: 500 }
               : { size: 11, weight: 700 },
-            clamp: true,
+            clamp: false,
           },
           tooltip: {
             callbacks: {
@@ -1769,7 +1787,7 @@ function renderReamerCharts(rows) {
     });
   }
 
-  // ③ 기종별 월별 데이터 표 (월별 추이 카드 하단)
+  // ③ 기종별 월별 데이터 표 (월별 추이 카드 하단, 12개월 고정)
   const tblDiv = document.getElementById('inq-reamer-trend-table');
   if (tblDiv) {
     const allData3 = STATE.reamers;
@@ -1781,33 +1799,30 @@ function renderReamerCharts(rows) {
         const ng = v !== null && (v < s.lo || v > s.hi);
         return { v, ng };
       });
-      return { label: monthLabels[mi], cells, hasData: cells.some(c=>c.v!==null) };
+      return { label: monthLabels[mi], cells };
     });
-    const dataRows = monthRows.filter(r=>r.hasData);
     let th = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">`;
     th += `<thead><tr>`;
     th += `<th style="padding:4px 8px;text-align:left;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;color:var(--text-muted);white-space:nowrap">구분</th>`;
-    INSP_PRODUCTS.forEach(p => {
-      th += `<th style="padding:4px 8px;text-align:center;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:700">${p}</th>`;
+    INSP_PRODUCTS.forEach((p, ci) => {
+      th += `<th data-col="${ci}" style="padding:4px 8px;text-align:center;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:700">${p}</th>`;
     });
     th += `</tr><tr>`;
     th += `<td style="padding:3px 8px;font-size:9px;color:var(--text-muted);background:#fafafa">관리기준</td>`;
-    INSP_PRODUCTS.forEach(p => {
-      th += `<td style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text-muted);background:#fafafa">${REAMER_SPECS[p].label}</td>`;
+    INSP_PRODUCTS.forEach((p, ci) => {
+      th += `<td data-col="${ci}" data-spec="1" style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text-muted);background:#fafafa">${REAMER_SPECS[p].label}</td>`;
     });
     th += `</tr></thead><tbody>`;
-    dataRows.forEach(({label, cells}) => {
+    monthRows.forEach(({label, cells}) => {
       th += `<tr>`;
-      th += `<td style="padding:4px 8px;font-weight:600;font-size:11px;color:var(--text-secondary);white-space:nowrap">${label}</td>`;
-      cells.forEach(({v, ng}) => {
+      th += `<td style="padding:4px 8px;font-weight:600;font-size:11px;color:var(--text-secondary);white-space:nowrap;border-bottom:1px solid var(--border)">${label}</td>`;
+      cells.forEach(({v, ng}, ci) => {
+        const ngAttr = ng ? ' data-ng="1"' : '';
         const bgStyle = ng ? 'background:rgba(255,108,57,0.18);color:var(--accent-rose);' : '';
-        th += `<td style="padding:4px 8px;text-align:center;${bgStyle}font-weight:${v!==null?600:400}">${v!==null?v.toFixed(3):'-'}</td>`;
+        th += `<td data-col="${ci}"${ngAttr} style="padding:4px 8px;text-align:center;${bgStyle}font-weight:${v!==null?600:400};border-bottom:1px solid var(--border)">${v!==null?v.toFixed(3):'-'}</td>`;
       });
       th += `</tr>`;
     });
-    if (!dataRows.length) {
-      th += `<tr><td colspan="${INSP_PRODUCTS.length+1}" style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">데이터 없음</td></tr>`;
-    }
     th += `</tbody></table>`;
     tblDiv.innerHTML = th;
   }
@@ -2072,7 +2087,7 @@ function renderRoughnessCharts(rows) {
       plugins: [rough2025Plugin]
     });
   }
-  // 기종별 월별 조도 데이터 표 (추이 카드 하단)
+  // 기종별 월별 조도 데이터 표 (추이 카드 하단, 12개월 고정)
   const rTblDiv = document.getElementById('inq-rough-trend-table');
   if(rTblDiv){
     const allR3 = STATE.roughness;
@@ -2083,33 +2098,30 @@ function renderRoughnessCharts(rows) {
         const ng = v !== null && v > ROUGH_THR;
         return { v, ng };
       });
-      return { label: monthLabels2[mi], cells, hasData: cells.some(c=>c.v!==null) };
+      return { label: monthLabels2[mi], cells };
     });
-    const rDataRows = rMonthRows.filter(r=>r.hasData);
     let rth = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">`;
     rth += `<thead><tr>`;
     rth += `<th style="padding:4px 8px;text-align:left;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;color:var(--text-muted)">구분</th>`;
-    INSP_PRODUCTS.forEach(p => {
-      rth += `<th style="padding:4px 8px;text-align:center;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:700">${p}</th>`;
+    INSP_PRODUCTS.forEach((p, ci) => {
+      rth += `<th data-col="${ci}" style="padding:4px 8px;text-align:center;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:700">${p}</th>`;
     });
     rth += `</tr><tr>`;
     rth += `<td style="padding:3px 8px;font-size:9px;color:var(--text-muted);background:#fafafa">관리기준</td>`;
-    INSP_PRODUCTS.forEach(() => {
-      rth += `<td style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text-muted);background:#fafafa">≤ 1.0 μm</td>`;
+    INSP_PRODUCTS.forEach((_p, ci) => {
+      rth += `<td data-col="${ci}" data-spec="1" style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text-muted);background:#fafafa">≤ 1.0 μm</td>`;
     });
     rth += `</tr></thead><tbody>`;
-    rDataRows.forEach(({label, cells}) => {
+    rMonthRows.forEach(({label, cells}) => {
       rth += `<tr>`;
-      rth += `<td style="padding:4px 8px;font-weight:600;font-size:11px;color:var(--text-secondary);white-space:nowrap">${label}</td>`;
-      cells.forEach(({v, ng}) => {
+      rth += `<td style="padding:4px 8px;font-weight:600;font-size:11px;color:var(--text-secondary);white-space:nowrap;border-bottom:1px solid var(--border)">${label}</td>`;
+      cells.forEach(({v, ng}, ci) => {
+        const ngAttr = ng ? ' data-ng="1"' : '';
         const bgStyle = ng ? 'background:rgba(255,108,57,0.18);color:var(--accent-rose);' : '';
-        rth += `<td style="padding:4px 8px;text-align:center;${bgStyle}font-weight:${v!==null?600:400}">${v!==null?v.toFixed(4):'-'}</td>`;
+        rth += `<td data-col="${ci}"${ngAttr} style="padding:4px 8px;text-align:center;${bgStyle}font-weight:${v!==null?600:400};border-bottom:1px solid var(--border)">${v!==null?v.toFixed(4):'-'}</td>`;
       });
       rth += `</tr>`;
     });
-    if(!rDataRows.length){
-      rth += `<tr><td colspan="${INSP_PRODUCTS.length+1}" style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">데이터 없음</td></tr>`;
-    }
     rth += `</tbody></table>`;
     rTblDiv.innerHTML = rth;
   }
