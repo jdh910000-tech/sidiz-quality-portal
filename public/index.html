@@ -1795,12 +1795,11 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>기종별 월별 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(mm)</span></h3><div style="position:relative;height:280px"><canvas id="inq-reamer-trend"></canvas></div></div>
-      <div class="chart-card"><h3>기종별 평균 vs 기준범위 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(녹색=합격)</span></h3><div style="position:relative;height:280px"><canvas id="inq-reamer-avg"></canvas></div></div>
+      <div class="chart-card"><h3>기종별 월별 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(mm)</span></h3><div style="position:relative;height:240px"><canvas id="inq-reamer-trend"></canvas></div><div id="inq-reamer-trend-table" style="overflow-x:auto;margin-top:10px"></div></div>
+      <div class="chart-card"><h3>기종별 평균 vs 기준범위 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(녹색=합격)</span></h3><div style="position:relative;height:320px"><canvas id="inq-reamer-avg"></canvas></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>공급업체별 기종 평균 비교 (mm)</h3><div style="position:relative;height:240px"><canvas id="inq-reamer-supplier-chart"></canvas></div></div>
-      <div class="chart-card"><h3>판정 분포 (기준 내/외)</h3><div style="position:relative;height:240px"><canvas id="inq-reamer-judge-pie"></canvas></div></div>
+      <div class="chart-card" style="grid-column:1/-1"><h3>판정 분포 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(전체 및 공급업체별 합격·불합격률)</span></h3><div style="position:relative;height:280px"><canvas id="inq-reamer-judge-pie"></canvas></div></div>
     </div>
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-reamer-count">0</span>건)</h3></div>
@@ -1864,12 +1863,11 @@ body.share-mode .section > .header .header-left p { display: none; }
       </div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>기종별 월별 조도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(μm, 기준선 1.0)</span></h3><div style="position:relative;height:280px"><canvas id="inq-rough-trend"></canvas></div></div>
-      <div class="chart-card"><h3>기종별 평균 Ra (기준 1.0μm) <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(녹색=합격)</span></h3><div style="position:relative;height:280px"><canvas id="inq-rough-avg"></canvas></div></div>
+      <div class="chart-card"><h3>기종별 월별 조도 추이 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(μm, 기준선 1.0)</span></h3><div style="position:relative;height:240px"><canvas id="inq-rough-trend"></canvas></div><div id="inq-rough-trend-table" style="overflow-x:auto;margin-top:10px"></div></div>
+      <div class="chart-card"><h3>기종별 평균 Ra (기준 1.0μm) <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(녹색=합격)</span></h3><div style="position:relative;height:320px"><canvas id="inq-rough-avg"></canvas></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>공급업체별 기종 평균 Ra 비교 (μm)</h3><div style="position:relative;height:240px"><canvas id="inq-rough-supplier-chart"></canvas></div></div>
-      <div class="chart-card"><h3>판정 분포 (기준 내/외)</h3><div style="position:relative;height:240px"><canvas id="inq-rough-judge-pie"></canvas></div></div>
+      <div class="chart-card" style="grid-column:1/-1"><h3>판정 분포 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(전체 및 공급업체별 합격·불합격률)</span></h3><div style="position:relative;height:280px"><canvas id="inq-rough-judge-pie"></canvas></div></div>
     </div>
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-rough-count">0</span>건)</h3></div>

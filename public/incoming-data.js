@@ -1682,8 +1682,8 @@ function renderReamerCharts(rows) {
       data: {
         labels: INSP_PRODUCTS,
         datasets: [
-          { label:'관리기준 범위', data:INSP_PRODUCTS.map(p=>[REAMER_SPECS[p].lo,REAMER_SPECS[p].hi]), backgroundColor:'rgba(0,43,210,0.08)', borderColor:'rgba(0,43,210,0.28)', borderWidth:1, order:3 },
-          { label:'측정 평균 (mm)', data:avgs, backgroundColor:bclrs.map(c=>c+'CC'), borderColor:bclrs, borderWidth:1, borderRadius:4, order:1 },
+          { label:'관리기준 범위', data:INSP_PRODUCTS.map(p=>[REAMER_SPECS[p].lo,REAMER_SPECS[p].hi]), backgroundColor:'rgba(0,43,210,0.08)', borderColor:'rgba(0,43,210,0.28)', borderWidth:1, order:3, barThickness:32 },
+          { label:'측정 평균 (mm)', data:avgs, backgroundColor:bclrs.map(c=>c+'CC'), borderColor:bclrs, borderWidth:1, borderRadius:4, order:1, barThickness:22 },
           { label:'2025년 평균 ●', data:[], backgroundColor:'transparent', borderWidth:0, pointRadius:0 }, // 범례용 더미
         ]
       },
@@ -1769,48 +1769,107 @@ function renderReamerCharts(rows) {
     });
   }
 
-  // ③ 공급업체별 비교 (STATE.reamers 전체 데이터 기반)
-  const sCtx = document.getElementById('inq-reamer-supplier-chart')?.getContext('2d');
-  if (sCtx) {
-    const allForSup = STATE.reamers;
-    const sups = ['GCK', '동진다이캐스팅']; // 고정 공급업체 순서
-    const supDatasets = INSP_PRODUCTS.map((p, i) => ({
-      label: p,
-      data: sups.map(s => {
-        const vals = allForSup.filter(r=>r.supplier===s&&r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
-        return vals.length ? +avg(vals).toFixed(3) : null;
-      }),
-      backgroundColor: clrs[i], borderRadius: 4,
-    }));
-    destroyChart('reamer-supplier-chart');
-    STATE.charts['reamer-supplier-chart'] = new Chart(sCtx, {
+  // ③ 기종별 월별 데이터 표 (월별 추이 카드 하단)
+  const tblDiv = document.getElementById('inq-reamer-trend-table');
+  if (tblDiv) {
+    const allData3 = STATE.reamers;
+    const monthRows = monthsFixed.map((m, mi) => {
+      const cells = INSP_PRODUCTS.map(p => {
+        const s = REAMER_SPECS[p];
+        const vals = allData3.filter(r=>r.product_code===p && r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
+        const v = vals.length ? +avg(vals).toFixed(3) : null;
+        const ng = v !== null && (v < s.lo || v > s.hi);
+        return { v, ng };
+      });
+      return { label: monthLabels[mi], cells, hasData: cells.some(c=>c.v!==null) };
+    });
+    const dataRows = monthRows.filter(r=>r.hasData);
+    let th = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">`;
+    th += `<thead><tr>`;
+    th += `<th style="padding:4px 8px;text-align:left;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;color:var(--text-muted);white-space:nowrap">구분</th>`;
+    INSP_PRODUCTS.forEach(p => {
+      th += `<th style="padding:4px 8px;text-align:center;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:700">${p}</th>`;
+    });
+    th += `</tr><tr>`;
+    th += `<td style="padding:3px 8px;font-size:9px;color:var(--text-muted);background:#fafafa">관리기준</td>`;
+    INSP_PRODUCTS.forEach(p => {
+      th += `<td style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text-muted);background:#fafafa">${REAMER_SPECS[p].label}</td>`;
+    });
+    th += `</tr></thead><tbody>`;
+    dataRows.forEach(({label, cells}) => {
+      th += `<tr>`;
+      th += `<td style="padding:4px 8px;font-weight:600;font-size:11px;color:var(--text-secondary);white-space:nowrap">${label}</td>`;
+      cells.forEach(({v, ng}) => {
+        const bgStyle = ng ? 'background:rgba(255,108,57,0.18);color:var(--accent-rose);' : '';
+        th += `<td style="padding:4px 8px;text-align:center;${bgStyle}font-weight:${v!==null?600:400}">${v!==null?v.toFixed(3):'-'}</td>`;
+      });
+      th += `</tr>`;
+    });
+    if (!dataRows.length) {
+      th += `<tr><td colspan="${INSP_PRODUCTS.length+1}" style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">데이터 없음</td></tr>`;
+    }
+    th += `</tbody></table>`;
+    tblDiv.innerHTML = th;
+  }
+
+  // ④ 판정 분포 — 스택 바 (전체 + 공급업체별)
+  const jCtx = document.getElementById('inq-reamer-judge-pie')?.getContext('2d');
+  if (jCtx) {
+    const allJ = STATE.reamers;
+    const calcJ = (data) => ({
+      ok: data.filter(r=>reamerJudge(r.product_code,r.value)==='OK').length,
+      ng: data.filter(r=>reamerJudge(r.product_code,r.value)==='NG').length,
+    });
+    const jTotal = calcJ(allJ);
+    const jGCK   = calcJ(allJ.filter(r=>r.supplier==='GCK'));
+    const jDJ    = calcJ(allJ.filter(r=>r.supplier==='동진다이캐스팅'));
+    const cats = ['전체', 'GCK', '동진다이캐스팅'];
+    const okArr = [jTotal.ok, jGCK.ok, jDJ.ok];
+    const ngArr = [jTotal.ng, jGCK.ng, jDJ.ng];
+    const totArr = cats.map((_,i)=>okArr[i]+ngArr[i]);
+    destroyChart('reamer-judge-pie');
+    STATE.charts['reamer-judge-pie'] = new Chart(jCtx, {
       type: 'bar',
-      data: { labels: sups, datasets: supDatasets },
+      data: {
+        labels: cats,
+        datasets: [
+          { label:'합격 (OK)', data:okArr, backgroundColor:SIDIZ_COLORS.emerald+'CC', borderColor:SIDIZ_COLORS.emerald, borderWidth:1, borderRadius:4, stack:'s' },
+          { label:'불합격 (NG)', data:ngArr, backgroundColor:SIDIZ_COLORS.rose+'CC', borderColor:SIDIZ_COLORS.rose, borderWidth:1, borderRadius:4, stack:'s' },
+        ]
+      },
       options: {
         responsive: true, maintainAspectRatio: false,
+        interaction: { mode:'index', intersect:false },
         scales: {
-          x: { grid:{display:false} },
-          y: { min: allLo-0.3, suggestedMax: allHi+0.3, grid:{color:SIDIZ_COLORS.border}, title:{display:true,text:'mm',font:{size:10}} }
+          x: { stacked:true, grid:{display:false}, ticks:{font:{size:12, weight:600}} },
+          y: { stacked:true, beginAtZero:true, grid:{color:SIDIZ_COLORS.border}, title:{display:true,text:'건',font:{size:10}} }
         },
         plugins: {
-          legend: { display:true, position:'top', align:'end', labels:{boxWidth:10,font:{size:10}} },
-          datalabels: { display:true, anchor:'end', align:'top', color:SIDIZ_COLORS.text, font:{weight:700,size:10}, formatter:v=>v!=null?v.toFixed(3):null }
+          legend: { display:true, position:'top', align:'end', labels:{boxWidth:10,font:{size:11}} },
+          datalabels: {
+            display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
+            formatter: (v, ctx) => {
+              const tot = totArr[ctx.dataIndex];
+              const pct = tot > 0 ? Math.round(v/tot*100) : 0;
+              return `${v}건\n${pct}%`;
+            },
+            color: '#fff', font:{weight:700, size:11},
+            anchor:'center', align:'center',
+            textAlign: 'center',
+          },
+          tooltip: {
+            callbacks: {
+              label: (item) => {
+                const v = item.raw;
+                const tot = totArr[item.dataIndex];
+                const pct = tot > 0 ? Math.round(v/tot*100) : 0;
+                return `${item.dataset.label}: ${v}건 (${pct}%)`;
+              }
+            }
+          }
         }
       }
     });
-  }
-
-  // ④ 판정 도넛 (필터된 rows 기반)
-  const jCtx = document.getElementById('inq-reamer-judge-pie')?.getContext('2d');
-  if (jCtx) {
-    const allForJudge = STATE.reamers;
-    const ok = allForJudge.filter(r=>reamerJudge(r.product_code,r.value)==='OK').length;
-    const ng = allForJudge.filter(r=>reamerJudge(r.product_code,r.value)==='NG').length;
-    const lb=[],dt=[],cl=[];
-    if(ok){ lb.push('합격 (OK)'); dt.push(ok); cl.push(SIDIZ_COLORS.emerald); }
-    if(ng){ lb.push('불합격 (NG)'); dt.push(ng); cl.push(SIDIZ_COLORS.rose); }
-    if(!ok&&!ng){ lb.push('데이터없음'); dt.push(1); cl.push(SIDIZ_COLORS.muted); }
-    makeDoughnut('reamer-judge-pie', jCtx, lb, dt, cl);
   }
 }
 function renderReamerTable(rows) {
@@ -2013,47 +2072,87 @@ function renderRoughnessCharts(rows) {
       plugins: [rough2025Plugin]
     });
   }
-  // 공급업체별 비교 (STATE.roughness 전체 데이터 기반)
-  const sCtx=document.getElementById('inq-rough-supplier-chart')?.getContext('2d');
-  if(sCtx){
-    const allForSup2 = STATE.roughness;
-    const sups2 = ['GCK', '동진다이캐스팅'];
-    const supDs2=INSP_PRODUCTS.map((p,i)=>({
-      label:p,
-      data:sups2.map(s=>{
-        const vals=allForSup2.filter(r=>r.supplier===s&&r.product_code===p).map(r=>+r.value).filter(v=>!isNaN(v));
-        return vals.length?+avg(vals).toFixed(4):null;
-      }),
-      backgroundColor:clrs[i],borderRadius:4,
-    }));
-    destroyChart('rough-supplier-chart');
-    STATE.charts['rough-supplier-chart'] = new Chart(sCtx, {
-      type: 'bar',
-      data: { labels: sups2, datasets: supDs2 },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        scales: {
-          x: { grid:{display:false} },
-          y: { min:0, suggestedMax:2.0, grid:{color:SIDIZ_COLORS.border}, title:{display:true,text:'μm',font:{size:10}} }
+  // 기종별 월별 조도 데이터 표 (추이 카드 하단)
+  const rTblDiv = document.getElementById('inq-rough-trend-table');
+  if(rTblDiv){
+    const allR3 = STATE.roughness;
+    const rMonthRows = monthsFixed2.map((m, mi) => {
+      const cells = INSP_PRODUCTS.map(p => {
+        const vals = allR3.filter(r=>r.product_code===p && r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
+        const v = vals.length ? +avg(vals).toFixed(4) : null;
+        const ng = v !== null && v > ROUGH_THR;
+        return { v, ng };
+      });
+      return { label: monthLabels2[mi], cells, hasData: cells.some(c=>c.v!==null) };
+    });
+    const rDataRows = rMonthRows.filter(r=>r.hasData);
+    let rth = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">`;
+    rth += `<thead><tr>`;
+    rth += `<th style="padding:4px 8px;text-align:left;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;color:var(--text-muted)">구분</th>`;
+    INSP_PRODUCTS.forEach(p => {
+      rth += `<th style="padding:4px 8px;text-align:center;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;font-weight:700">${p}</th>`;
+    });
+    rth += `</tr><tr>`;
+    rth += `<td style="padding:3px 8px;font-size:9px;color:var(--text-muted);background:#fafafa">관리기준</td>`;
+    INSP_PRODUCTS.forEach(() => {
+      rth += `<td style="padding:3px 8px;text-align:center;font-size:9px;color:var(--text-muted);background:#fafafa">≤ 1.0 μm</td>`;
+    });
+    rth += `</tr></thead><tbody>`;
+    rDataRows.forEach(({label, cells}) => {
+      rth += `<tr>`;
+      rth += `<td style="padding:4px 8px;font-weight:600;font-size:11px;color:var(--text-secondary);white-space:nowrap">${label}</td>`;
+      cells.forEach(({v, ng}) => {
+        const bgStyle = ng ? 'background:rgba(255,108,57,0.18);color:var(--accent-rose);' : '';
+        rth += `<td style="padding:4px 8px;text-align:center;${bgStyle}font-weight:${v!==null?600:400}">${v!==null?v.toFixed(4):'-'}</td>`;
+      });
+      rth += `</tr>`;
+    });
+    if(!rDataRows.length){
+      rth += `<tr><td colspan="${INSP_PRODUCTS.length+1}" style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">데이터 없음</td></tr>`;
+    }
+    rth += `</tbody></table>`;
+    rTblDiv.innerHTML = rth;
+  }
+  // 판정 분포 — 스택 바 (전체 + 공급업체별)
+  const jCtx=document.getElementById('inq-rough-judge-pie')?.getContext('2d');
+  if(jCtx){
+    const allJ2 = STATE.roughness;
+    const calcRJ = (data) => ({
+      ok: data.filter(r=>roughnessJudge(r.value)==='OK').length,
+      ng: data.filter(r=>roughnessJudge(r.value)==='NG').length,
+    });
+    const jT2=calcRJ(allJ2), jG2=calcRJ(allJ2.filter(r=>r.supplier==='GCK')), jD2=calcRJ(allJ2.filter(r=>r.supplier==='동진다이캐스팅'));
+    const cats2=['전체','GCK','동진다이캐스팅'];
+    const okArr2=[jT2.ok,jG2.ok,jD2.ok], ngArr2=[jT2.ng,jG2.ng,jD2.ng];
+    const totArr2=cats2.map((_,i)=>okArr2[i]+ngArr2[i]);
+    destroyChart('rough-judge-pie');
+    STATE.charts['rough-judge-pie'] = new Chart(jCtx, {
+      type:'bar',
+      data:{
+        labels:cats2,
+        datasets:[
+          {label:'합격 (OK)',data:okArr2,backgroundColor:SIDIZ_COLORS.emerald+'CC',borderColor:SIDIZ_COLORS.emerald,borderWidth:1,borderRadius:4,stack:'s'},
+          {label:'불합격 (NG)',data:ngArr2,backgroundColor:SIDIZ_COLORS.rose+'CC',borderColor:SIDIZ_COLORS.rose,borderWidth:1,borderRadius:4,stack:'s'},
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        scales:{
+          x:{stacked:true,grid:{display:false},ticks:{font:{size:12,weight:600}}},
+          y:{stacked:true,beginAtZero:true,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'건',font:{size:10}}}
         },
-        plugins: {
-          legend: { display:true, position:'top', align:'end', labels:{boxWidth:10,font:{size:10}} },
-          datalabels: { display:true, anchor:'end', align:'top', color:SIDIZ_COLORS.text, font:{weight:700,size:10}, formatter:v=>v!=null?Number(v).toFixed(3):null }
+        plugins:{
+          legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,font:{size:11}}},
+          datalabels:{
+            display:(ctx)=>ctx.dataset.data[ctx.dataIndex]>0,
+            formatter:(v,ctx)=>{const tot=totArr2[ctx.dataIndex];const pct=tot>0?Math.round(v/tot*100):0;return `${v}건\n${pct}%`;},
+            color:'#fff',font:{weight:700,size:11},anchor:'center',align:'center',textAlign:'center',
+          },
+          tooltip:{callbacks:{label:(item)=>{const v=item.raw;const tot=totArr2[item.dataIndex];const pct=tot>0?Math.round(v/tot*100):0;return `${item.dataset.label}: ${v}건 (${pct}%)`;}}}
         }
       }
     });
-  }
-  // 판정 도넛 (STATE.roughness 전체 기반)
-  const jCtx=document.getElementById('inq-rough-judge-pie')?.getContext('2d');
-  if(jCtx){
-    const allForJudge2 = STATE.roughness;
-    const ok=allForJudge2.filter(r=>roughnessJudge(r.value)==='OK').length;
-    const ng=allForJudge2.filter(r=>roughnessJudge(r.value)==='NG').length;
-    const lb=[],dt=[],cl=[];
-    if(ok){lb.push('합격 (≤1.0μm)');dt.push(ok);cl.push(SIDIZ_COLORS.emerald);}
-    if(ng){lb.push('불합격 (>1.0μm)');dt.push(ng);cl.push(SIDIZ_COLORS.rose);}
-    if(!ok&&!ng){lb.push('데이터없음');dt.push(1);cl.push(SIDIZ_COLORS.muted);}
-    makeDoughnut('rough-judge-pie',jCtx,lb,dt,cl);
   }
 }
 function renderRoughnessTable(rows) {
