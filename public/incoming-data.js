@@ -1919,7 +1919,7 @@ function renderReamerTable(rows) {
     const j=reamerJudge(r.product_code,r.value);
     const spec=REAMER_SPECS[r.product_code];
     return `<tr>
-      <td>${r.measure_date ? r.measure_date.slice(0,7) : '-'}</td>
+      <td>${r.measure_date ? (r.measure_date.length>=10 ? r.measure_date.slice(0,10) : r.measure_date+'-01') : '-'}</td>
       <td>${escHtml(r.supplier||'-')}</td>
       <td><b>${escHtml(r.product_code||'-')}</b></td>
       <td style="font-weight:600;text-align:center">${r.value!==null?Number(r.value).toFixed(3):'-'} mm</td>
@@ -2109,8 +2109,8 @@ function renderRoughnessCharts(rows) {
       data:{
         labels:INSP_PRODUCTS,
         datasets:[
-          {label:'평균 Ra', data:avgs, backgroundColor:bclrs, borderRadius:4, categoryPercentage:0.72, barPercentage:0.55, order:2},
-          {label:'2025년 평균', data:INSP_PRODUCTS.map(p=>ROUGH_2025_AVG[p]??null), backgroundColor:SIDIZ_COLORS.amber+'AA', borderColor:SIDIZ_COLORS.amber, borderWidth:1, borderRadius:4, categoryPercentage:0.72, barPercentage:0.45, order:1},
+          {label:'평균 Ra', data:avgs, backgroundColor:bclrs, borderRadius:4, categoryPercentage:0.90, barPercentage:0.90, order:2},
+          {label:'2025년 평균', data:INSP_PRODUCTS.map(p=>ROUGH_2025_AVG[p]??null), backgroundColor:SIDIZ_COLORS.amber+'AA', borderColor:SIDIZ_COLORS.amber, borderWidth:1, borderRadius:4, categoryPercentage:0.90, barPercentage:0.90, order:1},
           {label:'기준 1.0μm', data:[], backgroundColor:'transparent', borderWidth:0},
         ]
       },
@@ -2247,7 +2247,7 @@ function renderRoughnessTable(rows) {
   tbody.innerHTML=sorted.map(r=>{
     const j=roughnessJudge(r.value);
     return `<tr>
-      <td>${r.measure_date ? r.measure_date.slice(0,7) : '-'}</td>
+      <td>${r.measure_date ? (r.measure_date.length>=10 ? r.measure_date.slice(0,10) : r.measure_date+'-01') : '-'}</td>
       <td>${escHtml(r.supplier||'-')}</td>
       <td><b>${escHtml(r.product_code||'-')}</b></td>
       <td style="font-weight:600;text-align:center">${r.value!==null?Number(r.value).toFixed(4):'-'} μm</td>
