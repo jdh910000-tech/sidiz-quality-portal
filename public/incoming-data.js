@@ -1541,14 +1541,14 @@ function renderReamerCharts(rows) {
   const SPEC_HI_IDX = NPRODS, SPEC_LO_IDX = NPRODS+1, SPEC_NOM_IDX = NPRODS+2;
 
   // 테이블 컬럼 하이라이트 헬퍼
-  function _hlReamerCol(colIdx) {
+  function _hlReamerCol(colIdx, hlColor) {
     const tbl = document.getElementById('inq-reamer-trend-table');
     if (!tbl) return;
     tbl.querySelectorAll('[data-col]').forEach(el => {
       const isHl = colIdx >= 0 && parseInt(el.getAttribute('data-col')) === colIdx;
-      el.style.boxShadow = isHl ? 'inset 0 0 0 2px rgba(230,168,0,0.9)' : '';
+      el.style.boxShadow = '';
       if (!el.getAttribute('data-ng') && !el.getAttribute('data-spec')) {
-        el.style.background = isHl ? 'rgba(230,168,0,0.12)' : '';
+        el.style.background = (isHl && hlColor) ? hlColor + '28' : '';
       }
     });
   }
@@ -1627,7 +1627,7 @@ function renderReamerCharts(rows) {
               chart.update();
               // 테이블 컬럼 하이라이트
               const nowAllVisible = INSP_PRODUCTS.every((_,i) => !chart.getDatasetMeta(i).hidden);
-              _hlReamerCol(nowAllVisible ? -1 : idx);
+              _hlReamerCol(nowAllVisible ? -1 : idx, clrs[idx]);
             }
           },
           datalabels: { display: false },
@@ -1698,15 +1698,14 @@ function renderReamerCharts(rows) {
       data: {
         labels: INSP_PRODUCTS,
         datasets: [
-          { label:'관리기준 범위', data:INSP_PRODUCTS.map(p=>[REAMER_SPECS[p].lo,REAMER_SPECS[p].hi]), backgroundColor:'rgba(0,43,210,0.08)', borderColor:'rgba(0,43,210,0.28)', borderWidth:1, order:3, barThickness:32 },
-          { label:'측정 평균 (mm)', data:avgs, backgroundColor:bclrs.map(c=>c+'CC'), borderColor:bclrs, borderWidth:1, borderRadius:4, order:1, barThickness:22 },
+          { label:'관리기준 범위', data:INSP_PRODUCTS.map(p=>[REAMER_SPECS[p].lo,REAMER_SPECS[p].hi]), backgroundColor:'rgba(0,43,210,0.08)', borderColor:'rgba(0,43,210,0.28)', borderWidth:1, order:3, barThickness:26 },
+          { label:'측정 평균 (mm)', data:avgs, backgroundColor:bclrs.map(c=>c+'CC'), borderColor:bclrs, borderWidth:1, borderRadius:4, order:1, barThickness:26 },
           { label:'2025년 평균 ●', data:[], backgroundColor:'transparent', borderWidth:0, pointRadius:0 }, // 범례용 더미
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        clip: false,
-        layout: { padding: { right: 25, left: 5 } },
+        layout: { padding: { right: 35, left: 5, bottom: 20 } },
         indexAxis: 'y',
         interaction: { mode:'index', intersect:false },
         scales: {
@@ -1752,6 +1751,7 @@ function renderReamerCharts(rows) {
               ? { size: 9, weight: 500 }
               : { size: 11, weight: 700 },
             clamp: false,
+            clip: false,
           },
           tooltip: {
             callbacks: {
@@ -1854,6 +1854,8 @@ function renderReamerCharts(rows) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
+        clip: false,
+        layout: { padding: { top: 24 } },
         interaction: { mode:'index', intersect:false },
         scales: {
           x: { stacked:true, grid:{display:false}, ticks:{font:{size:12, weight:600}} },
@@ -1871,6 +1873,7 @@ function renderReamerCharts(rows) {
             color: '#fff', font:{weight:700, size:11},
             anchor:'center', align:'center',
             textAlign: 'center',
+            clip: false,
           },
           tooltip: {
             callbacks: {
@@ -2149,6 +2152,8 @@ function renderRoughnessCharts(rows) {
       },
       options:{
         responsive:true,maintainAspectRatio:false,
+        clip:false,
+        layout:{padding:{top:24}},
         interaction:{mode:'index',intersect:false},
         scales:{
           x:{stacked:true,grid:{display:false},ticks:{font:{size:12,weight:600}}},
@@ -2160,6 +2165,7 @@ function renderRoughnessCharts(rows) {
             display:(ctx)=>ctx.dataset.data[ctx.dataIndex]>0,
             formatter:(v,ctx)=>{const tot=totArr2[ctx.dataIndex];const pct=tot>0?Math.round(v/tot*100):0;return `${v}건\n${pct}%`;},
             color:'#fff',font:{weight:700,size:11},anchor:'center',align:'center',textAlign:'center',
+            clip:false,
           },
           tooltip:{callbacks:{label:(item)=>{const v=item.raw;const tot=totArr2[item.dataIndex];const pct=tot>0?Math.round(v/tot*100):0;return `${item.dataset.label}: ${v}건 (${pct}%)`;}}}
         }
