@@ -1576,6 +1576,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         <button class="date-btn" onclick="resetInspectFilter('bolt')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
         <button class="date-btn" onclick="exportInspect('bolt')" style="align-self:flex-end">⬇ 자료변환</button>
         <button class="date-btn" onclick="toggleInspectForm('bolt')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+        <button class="date-btn" onclick="generateBoltReport()" style="background:var(--accent-violet);align-self:flex-end">📄 보고서 작성</button>
       </div>
     </div>
 
@@ -1641,6 +1642,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         <button class="date-btn" onclick="resetInspectFilter('rod')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
         <button class="date-btn" onclick="exportInspect('rod')" style="align-self:flex-end">⬇ 자료변환</button>
         <button class="date-btn" onclick="toggleInspectForm('rod')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+        <button class="date-btn" onclick="generateRodReport()" style="background:var(--accent-violet);align-self:flex-end">📄 보고서 작성</button>
       </div>
     </div>
     <div id="inq-form-rod" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
@@ -1695,6 +1697,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         <button class="date-btn" onclick="resetInspectFilter('sponge')" style="background:var(--text-muted);align-self:flex-end">초기화</button>
         <button class="date-btn" onclick="exportInspect('sponge')" style="align-self:flex-end">⬇ 자료변환</button>
         <button class="date-btn" onclick="toggleInspectForm('sponge')" style="background:var(--accent-emerald);align-self:flex-end">+ 데이터 입력</button>
+        <button class="date-btn" onclick="generateSpongeReport()" style="background:var(--accent-violet);align-self:flex-end">📄 보고서 작성</button>
       </div>
     </div>
     <div id="inq-form-sponge" class="data-table-wrapper" style="display:none;padding:18px;background:rgba(0,196,140,0.04);border-color:rgba(0,196,140,0.3)">
@@ -1944,6 +1947,9 @@ body.share-mode .section > .header .header-left p { display: none; }
       <button class="sub-tab report-cat-tab active" data-cat="bolt" onclick="switchReportCat('bolt')">🔩 볼트 분석</button>
       <button class="sub-tab report-cat-tab" data-cat="rod" onclick="switchReportCat('rod')">⚙ 중심봉 분석</button>
       <button class="sub-tab report-cat-tab" data-cat="sponge" onclick="switchReportCat('sponge')">🧊 스폰지 분석</button>
+      <button class="sub-tab report-cat-tab" data-cat="reamer" onclick="switchReportCat('reamer')">📐 리머 분석</button>
+      <button class="sub-tab report-cat-tab" data-cat="roughness" onclick="switchReportCat('roughness')">〰 조도 분석</button>
+      <button class="sub-tab report-cat-tab" data-cat="colorimetry" onclick="switchReportCat('colorimetry')">🎨 색차 분석</button>
     </div>
 
     <!-- 볼트 분석 -->
@@ -2005,6 +2011,67 @@ body.share-mode .section > .header .header-left p { display: none; }
         </table>
       </div>
     </div>
+
+    <!-- 리머 분석 -->
+    <div id="report-cat-reamer" class="report-cat-pane" style="display:none">
+      <div id="rep-reamer-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 리머 치수 권장 조치사항 (기준 이탈 분석)</h4>
+        <div id="rep-reamer-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>기종별 월별 치수 추이 (mm)</h3><div style="position:relative;height:280px"><canvas id="rep-reamer-trend"></canvas></div></div>
+        <div class="chart-card"><h3>기종별 평균 치수 vs 기준범위</h3><div style="position:relative;height:280px"><canvas id="rep-reamer-avg"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 기종별 측정 통계</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>기종코드</th><th>측정횟수</th><th>평균 (mm)</th><th>최소</th><th>최대</th><th>기준범위</th><th>NG 건수</th><th>합격률</th></tr></thead>
+          <tbody id="rep-reamer-top10"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 조도 분석 -->
+    <div id="report-cat-roughness" class="report-cat-pane" style="display:none">
+      <div id="rep-rough-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 표면 조도 권장 조치사항 (Ra 기준 초과 분석)</h4>
+        <div id="rep-rough-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>기종별 월별 Ra 추이 (μm)</h3><div style="position:relative;height:280px"><canvas id="rep-rough-trend"></canvas></div></div>
+        <div class="chart-card"><h3>기종별 평균 Ra vs 기준 1.0 μm</h3><div style="position:relative;height:280px"><canvas id="rep-rough-avg"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 기종별 조도 측정 통계</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>기종코드</th><th>측정횟수</th><th>평균 Ra (μm)</th><th>최대 Ra</th><th>기준</th><th>NG 건수</th><th>합격률</th></tr></thead>
+          <tbody id="rep-rough-top10"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 색차 분석 -->
+    <div id="report-cat-colorimetry" class="report-cat-pane" style="display:none">
+      <div id="rep-color-kpi" class="kpi-grid"></div>
+      <div class="analysis-box">
+        <h4>📋 색차 권장 조치사항 (ΔE 기준 초과 분석)</h4>
+        <div id="rep-color-rec"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>월별 ΔE 추이 (마스터/전lot 비교)</h3><div style="position:relative;height:280px"><canvas id="rep-color-trend"></canvas></div></div>
+        <div class="chart-card"><h3>색상별 평균 ΔE (마스터 비교)</h3><div style="position:relative;height:280px"><canvas id="rep-color-spec"></canvas></div></div>
+      </div>
+      <div class="data-table-wrapper">
+        <div class="data-table-header"><h3>📊 색상별 검사 통계</h3></div>
+        <table class="data-table">
+          <thead><tr><th>순위</th><th>색상코드</th><th>검사건수</th><th>평균 ΔE 마스터</th><th>평균 ΔE 전lot</th><th>기준</th><th>NG 건수</th><th>합격률</th></tr></thead>
+          <tbody id="rep-color-top10"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
 </div>

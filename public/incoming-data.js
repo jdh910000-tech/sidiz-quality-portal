@@ -147,6 +147,9 @@ window.switchReportCat = function (cat) {
   if (cat === 'bolt') renderReportBolt();
   else if (cat === 'rod') renderReportRod();
   else if (cat === 'sponge') renderReportSponge();
+  else if (cat === 'reamer') renderReportReamer();
+  else if (cat === 'roughness') renderReportRoughness();
+  else if (cat === 'colorimetry') renderReportColorimetry();
 };
 
 // ===== 측정 평균/판정 =====
@@ -938,6 +941,236 @@ function renderReportSponge() {
   });
   if (recs.length === 0) recs.push({ level: 'info', text: '모든 자재가 규격 범위 내 — 안정적 품질 유지 중.' });
   $('rep-sponge-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+}
+
+// ----- 리머 리포트 -----
+function renderReportReamer() {
+  const rows = STATE.reamers;
+  const total = rows.length;
+  const ngRows = rows.filter(r => reamerJudge(r.product_code, r.value) === 'NG');
+  const okRate = total ? Math.round((total - ngRows.length) / total * 100) : 0;
+  const allVals = rows.map(r => +r.value).filter(v => !isNaN(v));
+  const codes = uniq(rows.map(r => r.product_code)).sort();
+
+  $('rep-reamer-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">기종 ${codes.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="color:${ngRows.length>0?'var(--accent-rose)':'var(--accent-emerald)'}">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">기준 이탈</div></div>
+    <div class="kpi-card"><div class="kpi-label">합격률</div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">치수 기준 적합</div></div>
+    <div class="kpi-card"><div class="kpi-label">전체 평균 (mm)</div><div class="kpi-value">${allVals.length ? fmt(avg(allVals), 3) : '-'}</div><div class="kpi-change">측정값 전체 평균</div></div>
+  `;
+
+  const recs = _getReamerAnalysis(rows);
+  $('rep-reamer-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+
+  // 기종별 월별 추이
+  const months = [...new Set(rows.map(r => r.measure_date?.slice(0,7)).filter(Boolean))].sort();
+  const tCtx = $('rep-reamer-trend')?.getContext('2d');
+  if (tCtx) {
+    const datasets = INSP_PRODUCTS.filter(p => rows.some(r => r.product_code===p)).map((p, i) => ({
+      label: p,
+      data: months.map(m => {
+        const vs = rows.filter(r => r.product_code===p && r.measure_date?.startsWith(m)).map(r => +r.value).filter(v => !isNaN(v));
+        return vs.length ? +avg(vs).toFixed(3) : null;
+      }),
+      borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true,
+    }));
+    makeLine('repReamerTrend', tCtx, months, datasets, {
+      scales: { x: { grid: {display:false}, ticks:{font:{size:9}} }, y: { grid:{color:SIDIZ_COLORS.border}, title:{display:true,text:'mm',font:{size:10}} } }
+    });
+  }
+
+  // 기종별 평균 vs 기준범위
+  const aCtx = $('rep-reamer-avg')?.getContext('2d');
+  if (aCtx) {
+    const ps = INSP_PRODUCTS.filter(p => rows.some(r => r.product_code===p));
+    const avgs = ps.map(p => {
+      const vs = rows.filter(r => r.product_code===p).map(r => +r.value).filter(v => !isNaN(v));
+      return vs.length ? +avg(vs).toFixed(3) : null;
+    });
+    const bclrs = ps.map((p, i) => {
+      const s = REAMER_SPECS[p]; const v = avgs[i];
+      return (v !== null && s && v >= s.lo && v <= s.hi) ? SIDIZ_COLORS.blue : SIDIZ_COLORS.rose;
+    });
+    makeBar('repReamerAvg', aCtx, ps, [{label:'평균 치수 (mm)', data:avgs, backgroundColor:bclrs, borderRadius:6}], {
+      plugins: { legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:11},formatter:v=>v!==null?v.toFixed(3):'-'} },
+      scales: { x:{grid:{display:false}}, y:{grid:{color:SIDIZ_COLORS.border}, title:{display:true,text:'mm',font:{size:10}}} }
+    });
+  }
+
+  // 기종별 통계 테이블
+  const tbody = $('rep-reamer-top10'); if (!tbody) return;
+  const stats = INSP_PRODUCTS.map(p => {
+    const pRows = rows.filter(r => r.product_code === p);
+    if (!pRows.length) return null;
+    const vs = pRows.map(r => +r.value).filter(v => !isNaN(v));
+    const ngC = pRows.filter(r => reamerJudge(p, r.value)==='NG').length;
+    const spec = REAMER_SPECS[p];
+    return { p, n: pRows.length, avgV: avg(vs), minV: Math.min(...vs), maxV: Math.max(...vs), ng: ngC, spec };
+  }).filter(Boolean).sort((a,b) => b.ng - a.ng || a.p.localeCompare(b.p));
+
+  tbody.innerHTML = stats.length ? stats.map((s, i) => `
+    <tr>
+      <td><span class="rct-rank-num ${i===0&&s.ng>0?'gold':i===1&&s.ng>0?'silver':i===2&&s.ng>0?'bronze':'normal'}">${i+1}</span></td>
+      <td><b>${escHtml(s.p)}</b></td>
+      <td style="text-align:right">${s.n}</td>
+      <td style="text-align:right;font-weight:600">${s.avgV !== null ? s.avgV.toFixed(3) : '-'} mm</td>
+      <td style="text-align:right">${isFinite(s.minV) ? s.minV.toFixed(3) : '-'}</td>
+      <td style="text-align:right">${isFinite(s.maxV) ? s.maxV.toFixed(3) : '-'}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${s.spec ? s.spec.label : '-'}</td>
+      <td style="text-align:right;color:${s.ng>0?'var(--accent-rose)':'var(--accent-emerald)'};font-weight:600">${s.ng}</td>
+      <td style="text-align:right">${s.n ? Math.round((s.n-s.ng)/s.n*100) : 0}%</td>
+    </tr>`).join('') :
+    `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">데이터가 없습니다</td></tr>`;
+}
+
+// ----- 조도 리포트 -----
+function renderReportRoughness() {
+  const rows = STATE.roughness;
+  const total = rows.length;
+  const ngRows = rows.filter(r => roughnessJudge(r.value) === 'NG');
+  const okRate = total ? Math.round((total - ngRows.length) / total * 100) : 0;
+  const allVals = rows.map(r => +r.value).filter(v => !isNaN(v));
+  const codes = uniq(rows.map(r => r.product_code)).sort();
+
+  $('rep-rough-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">기종 ${codes.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="color:${ngRows.length>0?'var(--accent-rose)':'var(--accent-emerald)'}">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">Ra > 1.0 μm</div></div>
+    <div class="kpi-card"><div class="kpi-label">합격률</div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">Ra ≤ 1.0 μm 기준</div></div>
+    <div class="kpi-card"><div class="kpi-label">전체 평균 Ra (μm)</div><div class="kpi-value">${allVals.length ? fmt(avg(allVals), 4) : '-'}</div><div class="kpi-change">측정값 전체 평균</div></div>
+  `;
+
+  const recs = _getRoughnessAnalysis(rows);
+  $('rep-rough-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+
+  // 기종별 월별 추이
+  const months = [...new Set(rows.map(r => r.measure_date?.slice(0,7)).filter(Boolean))].sort();
+  const tCtx = $('rep-rough-trend')?.getContext('2d');
+  if (tCtx) {
+    const ps = uniq(rows.map(r => r.product_code)).filter(Boolean).sort();
+    const datasets = ps.map((p, i) => ({
+      label: p,
+      data: months.map(m => {
+        const vs = rows.filter(r => r.product_code===p && r.measure_date?.startsWith(m)).map(r => +r.value).filter(v => !isNaN(v));
+        return vs.length ? +avg(vs).toFixed(4) : null;
+      }),
+      borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true,
+    }));
+    datasets.push({ label:'기준 1.0', data: months.map(() => ROUGH_THR), borderColor: SIDIZ_COLORS.rose, borderDash:[6,4], borderWidth:2, pointRadius:0, fill:false });
+    makeLine('repRoughTrend', tCtx, months, datasets, {
+      scales: { x:{grid:{display:false},ticks:{font:{size:9}}}, y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'Ra (μm)',font:{size:10}}} }
+    });
+  }
+
+  // 기종별 평균 vs 기준
+  const aCtx = $('rep-rough-avg')?.getContext('2d');
+  if (aCtx) {
+    const ps = uniq(rows.map(r => r.product_code)).filter(Boolean).sort();
+    const avgs = ps.map(p => {
+      const vs = rows.filter(r => r.product_code===p).map(r => +r.value).filter(v => !isNaN(v));
+      return vs.length ? +avg(vs).toFixed(4) : null;
+    });
+    const bclrs = avgs.map(v => (v !== null && v <= ROUGH_THR) ? SIDIZ_COLORS.blue : SIDIZ_COLORS.rose);
+    makeBar('repRoughAvg', aCtx, ps, [{label:'평균 Ra (μm)', data:avgs, backgroundColor:bclrs, borderRadius:6}], {
+      plugins: { legend:{display:false}, datalabels:{display:true,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:11},formatter:v=>v!==null?v.toFixed(4):'-'} },
+      scales: { x:{grid:{display:false}}, y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'Ra (μm)',font:{size:10}}} }
+    });
+  }
+
+  // 기종별 통계 테이블
+  const tbody = $('rep-rough-top10'); if (!tbody) return;
+  const ps = uniq(rows.map(r => r.product_code)).filter(Boolean).sort();
+  const stats = ps.map(p => {
+    const pRows = rows.filter(r => r.product_code === p);
+    const vs = pRows.map(r => +r.value).filter(v => !isNaN(v));
+    const ngC = pRows.filter(r => roughnessJudge(r.value)==='NG').length;
+    return { p, n: pRows.length, avgV: avg(vs), maxV: Math.max(...vs), ng: ngC };
+  }).sort((a,b) => b.ng - a.ng);
+
+  tbody.innerHTML = stats.length ? stats.map((s, i) => `
+    <tr>
+      <td><span class="rct-rank-num ${i===0&&s.ng>0?'gold':i===1&&s.ng>0?'silver':i===2&&s.ng>0?'bronze':'normal'}">${i+1}</span></td>
+      <td><b>${escHtml(s.p)}</b></td>
+      <td style="text-align:right">${s.n}</td>
+      <td style="text-align:right;font-weight:600">${s.avgV !== null ? s.avgV.toFixed(4) : '-'} μm</td>
+      <td style="text-align:right;color:${s.maxV>ROUGH_THR?'var(--accent-rose)':''}">${isFinite(s.maxV) ? s.maxV.toFixed(4) : '-'}</td>
+      <td style="font-size:11px;color:var(--text-muted)">≤ 1.0 μm</td>
+      <td style="text-align:right;color:${s.ng>0?'var(--accent-rose)':'var(--accent-emerald)'};font-weight:600">${s.ng}</td>
+      <td style="text-align:right">${s.n ? Math.round((s.n-s.ng)/s.n*100) : 0}%</td>
+    </tr>`).join('') :
+    `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">데이터가 없습니다</td></tr>`;
+}
+
+// ----- 색차 리포트 -----
+function renderReportColorimetry() {
+  const rows = STATE.colorimetry;
+  const total = rows.length;
+  const ngRows = rows.filter(r => colorJudge(r.delta_e_master, r.delta_e_prev) === 'NG');
+  const okRate = total ? Math.round((total - ngRows.length) / total * 100) : 0;
+  const mVals = rows.map(r => +r.delta_e_master).filter(v => !isNaN(v));
+  const colors = uniq(rows.map(r => r.color_code)).filter(Boolean).sort();
+
+  $('rep-color-kpi').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">총 검사 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">색상 ${colors.length}종</div></div>
+    <div class="kpi-card"><div class="kpi-label">부적합 건수</div><div class="kpi-value" style="color:${ngRows.length>0?'var(--accent-rose)':'var(--accent-emerald)'}">${ngRows.length}</div><div class="kpi-change ${ngRows.length>0?'up':'down'}">ΔE > 1.0</div></div>
+    <div class="kpi-card"><div class="kpi-label">합격률</div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">ΔE ≤ 1.0 기준</div></div>
+    <div class="kpi-card"><div class="kpi-label">평균 ΔE (마스터)</div><div class="kpi-value" style="color:${mVals.length&&avg(mVals)<=COLOR_THR?'var(--accent-emerald)':'var(--accent-rose)'}">${mVals.length ? avg(mVals).toFixed(2) : '-'}</div><div class="kpi-change">기준 ≤ 1.0</div></div>
+  `;
+
+  const recs = _getColorimetryAnalysis(rows);
+  $('rep-color-rec').innerHTML = recs.map(r => `<div class="analysis-item"><div class="analysis-dot ${r.level}"></div><div>${r.text}</div></div>`).join('');
+
+  // 월별 ΔE 추이
+  const months = [...new Set(rows.map(r => r.measure_date?.slice(0,7)).filter(Boolean))].sort();
+  const tCtx = $('rep-color-trend')?.getContext('2d');
+  if (tCtx) {
+    const datasets = [
+      { label:'ΔE 마스터', data:months.map(m=>{const v=rows.filter(r=>r.measure_date?.startsWith(m)).map(r=>+r.delta_e_master).filter(v=>!isNaN(v));return v.length?+avg(v).toFixed(2):null;}), borderColor:SIDIZ_COLORS.blue, backgroundColor:SIDIZ_COLORS.blue+'20', tension:0.3, pointRadius:3, borderWidth:2, spanGaps:true },
+      { label:'ΔE 전lot', data:months.map(m=>{const v=rows.filter(r=>r.measure_date?.startsWith(m)).map(r=>+r.delta_e_prev).filter(v=>!isNaN(v));return v.length?+avg(v).toFixed(2):null;}), borderColor:SIDIZ_COLORS.cyan, backgroundColor:SIDIZ_COLORS.cyan+'20', tension:0.3, pointRadius:3, borderWidth:2, spanGaps:true },
+      { label:'기준 1.0', data:months.map(()=>COLOR_THR), borderColor:SIDIZ_COLORS.rose, borderDash:[6,4], borderWidth:2, pointRadius:0, fill:false },
+    ];
+    makeLine('repColorTrend', tCtx, months, datasets, {
+      scales: { x:{grid:{display:false},ticks:{font:{size:9}}}, y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'ΔE',font:{size:10}}} }
+    });
+  }
+
+  // 색상별 평균 ΔE
+  const sCtx = $('rep-color-spec')?.getContext('2d');
+  if (sCtx) {
+    const avgs = colors.map(c => {
+      const v = rows.filter(r=>r.color_code===c).map(r=>+r.delta_e_master).filter(v=>!isNaN(v));
+      return v.length ? +avg(v).toFixed(2) : null;
+    });
+    const bclrs = avgs.map(v => (v!==null&&v<=COLOR_THR) ? SIDIZ_COLORS.blue : SIDIZ_COLORS.rose);
+    makeBar('repColorSpec', sCtx, colors.length?colors:['(없음)'], [{label:'마스터 ΔE', data:avgs, backgroundColor:bclrs, borderRadius:4}], {
+      plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:10},formatter:v=>v!==null?v.toFixed(2):'-'}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border}}}
+    });
+  }
+
+  // 색상별 통계 테이블
+  const tbody = $('rep-color-top10'); if (!tbody) return;
+  const stats = colors.map(c => {
+    const cRows = rows.filter(r => r.color_code === c);
+    const mv = cRows.map(r => +r.delta_e_master).filter(v => !isNaN(v));
+    const pv = cRows.map(r => +r.delta_e_prev).filter(v => !isNaN(v));
+    const ngC = cRows.filter(r => colorJudge(r.delta_e_master, r.delta_e_prev)==='NG').length;
+    return { c, n: cRows.length, mAvg: avg(mv), pAvg: avg(pv), ng: ngC };
+  }).sort((a,b) => b.ng - a.ng || b.mAvg - a.mAvg);
+
+  tbody.innerHTML = stats.length ? stats.map((s, i) => `
+    <tr>
+      <td><span class="rct-rank-num ${i===0&&s.ng>0?'gold':i===1&&s.ng>0?'silver':i===2&&s.ng>0?'bronze':'normal'}">${i+1}</span></td>
+      <td><b>${escHtml(s.c)}</b></td>
+      <td style="text-align:right">${s.n}</td>
+      <td style="text-align:right;font-weight:600;color:${s.mAvg!==null&&s.mAvg>COLOR_THR?'var(--accent-rose)':''}">${s.mAvg !== null ? s.mAvg.toFixed(2) : '-'}</td>
+      <td style="text-align:right;color:${s.pAvg!==null&&s.pAvg>COLOR_THR?'var(--accent-rose)':''}">${s.pAvg !== null ? s.pAvg.toFixed(2) : '-'}</td>
+      <td style="font-size:11px;color:var(--text-muted)">≤ 1.0</td>
+      <td style="text-align:right;color:${s.ng>0?'var(--accent-rose)':'var(--accent-emerald)'};font-weight:600">${s.ng}</td>
+      <td style="text-align:right">${s.n ? Math.round((s.n-s.ng)/s.n*100) : 0}%</td>
+    </tr>`).join('') :
+    `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">데이터가 없습니다</td></tr>`;
 }
 
 // ============ 입력 폼 ============
@@ -1801,6 +2034,169 @@ function _getColorimetryAnalysis(rows) {
   });
   return recs;
 }
+
+// ── 볼트 보고서 생성 ────────────────────────────────────
+window.generateBoltReport = function () {
+  const from     = $('inq-bolt-from')?.value || '';
+  const to       = $('inq-bolt-to')?.value   || '';
+  const supplier = $('inq-bolt-supplier')?.value || '전체';
+  const code     = $('inq-bolt-code')?.value || '전체 자재';
+  const period   = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+
+  const rows = getBoltFiltered();
+  const total = rows.length;
+  const allHV = rows.map(boltHV).filter(v => v !== null);
+  const meanHV = avg(allHV), stdHV = stdev(allHV);
+  const ngCount = rows.filter(r => {
+    const hv = boltHV(r);
+    return hv !== null && (hv < 250 || hv > 550);
+  }).length;
+
+  const recs = [];
+  if (!total) { recs.push({ level:'info', text:'측정 데이터가 없습니다.' }); }
+  else {
+    const highStd = stdHV > 30;
+    recs.push({ level: highStd ? 'warning' : 'info', text:`전체 ${total}건, 평균 HV ${fmt(meanHV,1)}, 표준편차 σ ${fmt(stdHV,1)} — ${highStd ? '변동성 높음, 경도 편차 관리 권장.' : '경도 편차 양호.'}` });
+    if (ngCount > 0) recs.push({ level:'critical', text:`이상치(HV<250 또는 >550) ${ngCount}건 발견. 해당 LOT 원인 조사 필요.` });
+  }
+  const recHtml = _recToHtml(recs);
+  const imgTrend    = _captureInspectChart('rep-bolt-trend');
+  const imgSupplier = _captureInspectChart('rep-bolt-supplier');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>볼트 경도 검사 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 검사 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 검사 내용 : 볼트 경도 검사 (HV 비커스 / HRC 로크웰)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 경도 측정기 (HV / HRC)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 검사 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 공급업체 : ${supplier}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 자재 코드 : ${code}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">6) 검사 건수 : 총 ${total}건 / 평균 HV ${fmt(meanHV,1)} / 표준편차 σ ${fmt(stdHV,1)}</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
+${recHtml}
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 평균 HV 추이</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급업체별 평균 HV / 표준편차</p>
+<img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+</body>
+</html>`;
+  _downloadInspectReport(html, '볼트_경도검사_보고서.html');
+};
+
+// ── 중심봉 보고서 생성 ────────────────────────────────────
+window.generateRodReport = function () {
+  const from     = $('inq-rod-from')?.value || '';
+  const to       = $('inq-rod-to')?.value   || '';
+  const supplier = $('inq-rod-supplier')?.value || '전체';
+  const code     = $('inq-rod-code')?.value || '전체 자재';
+  const period   = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+
+  const rows = getRodFiltered();
+  const total = rows.length;
+  const ngRows = rows.filter(r => rodJudge(r) === 'NG');
+  const okRate = total ? Math.round((total - ngRows.length) / total * 100) : 0;
+
+  const recs = [];
+  if (!total) { recs.push({ level:'info', text:'측정 데이터가 없습니다.' }); }
+  else if (ngRows.length === 0) {
+    recs.push({ level:'info', text:`전체 ${total}건 측정 결과 모두 기준 범위 내 (H 5~7 mm, 흔들림 ≤ 1.0 mm) — 양호.` });
+  } else {
+    recs.push({ level:'warning', text:`전체 ${total}건 중 ${ngRows.length}건 기준 이탈 (합격률 ${okRate}%).` });
+    const wobbleNG = ngRows.filter(r => (r.wobble ?? 0) > 1.0);
+    const heightNG = ngRows.filter(r => { const h = rodH(r); return h !== null && (h < 5.0 || h > 7.0); });
+    if (heightNG.length) recs.push({ level:'critical', text:`높이 기준(5~7 mm) 이탈 ${heightNG.length}건.` });
+    if (wobbleNG.length) recs.push({ level:'critical', text:`흔들림 기준(≤ 1.0 mm) 이탈 ${wobbleNG.length}건.` });
+  }
+  const recHtml = _recToHtml(recs);
+  const imgTrend    = _captureInspectChart('rep-rod-trend');
+  const imgSupplier = _captureInspectChart('rep-rod-supplier');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>중심봉 치수 검사 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 검사 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 검사 내용 : 중심봉 치수 검사 (높이 / 흔들림)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 버니어캘리퍼스 / 다이얼게이지</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 검사 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 공급업체 : ${supplier}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 자재 코드 : ${code}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">6) 관리 기준 : 높이 5~7 mm / 흔들림 ≤ 1.0 mm</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">7) 검사 건수 : 총 ${total}건 (합격 ${total-ngRows.length}건 / 불합격 ${ngRows.length}건)</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
+${recHtml}
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급업체별 NG율</p>
+<img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+</body>
+</html>`;
+  _downloadInspectReport(html, '중심봉_치수검사_보고서.html');
+};
+
+// ── 스폰지 보고서 생성 ────────────────────────────────────
+window.generateSpongeReport = function () {
+  const from   = $('inq-sponge-from')?.value || '';
+  const to     = $('inq-sponge-to')?.value   || '';
+  const code   = $('inq-sponge-code')?.value || '전체 자재';
+  const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
+
+  const rows = getSpongeFiltered();
+  const total = rows.length;
+  const ngRows = rows.filter(r => spongeJudge(r) === 'NG');
+  const okRate = total ? Math.round((total - ngRows.length) / total * 100) : 0;
+
+  const recs = [];
+  if (!total) { recs.push({ level:'info', text:'측정 데이터가 없습니다.' }); }
+  else if (ngRows.length === 0) {
+    recs.push({ level:'info', text:`전체 ${total}건 측정 결과 모두 규격 범위 내 (타겟±5) — 양호한 품질 상태입니다.` });
+  } else {
+    recs.push({ level:'warning', text:`전체 ${total}건 중 ${ngRows.length}건 규격 이탈 (합격률 ${okRate}%).` });
+    const codes = uniq(ngRows.map(r => r.code));
+    codes.forEach(c => {
+      const cNG = ngRows.filter(r => r.code === c);
+      recs.push({ level:'critical', text:`${c}: ${cNG.length}건 규격(타겟±5) 이탈. 원재료 및 공정 점검 권장.` });
+    });
+  }
+  const recHtml = _recToHtml(recs);
+  const imgTrend = _captureInspectChart('rep-sponge-trend');
+  const imgSpec  = _captureInspectChart('rep-sponge-spec');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>스폰지 두께 검사 보고서</title>
+</head>
+<body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
+<p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 검사 정보</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 검사 내용 : 스폰지 두께 검사 (6포인트 측정)</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 두께 측정기</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 검사 일자 : ${period}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 자재 코드 : ${code}</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 관리 기준 : 규격 타겟 ± 5 mm</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">6) 검사 건수 : 총 ${total}건 (합격 ${total-ngRows.length}건 / 불합격 ${ngRows.length}건)</p>
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
+${recHtml}
+<p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이</p>
+<img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${imgSpec ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 제품별 NG율 / 평균 편차</p>
+<img src="${imgSpec}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+</body>
+</html>`;
+  _downloadInspectReport(html, '스폰지_두께검사_보고서.html');
+};
 
 // ── 리머 보고서 생성 ────────────────────────────────────
 window.generateReamerReport = function () {
