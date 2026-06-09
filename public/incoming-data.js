@@ -1541,14 +1541,14 @@ function renderReamerCharts(rows) {
   const SPEC_HI_IDX = NPRODS, SPEC_LO_IDX = NPRODS+1, SPEC_NOM_IDX = NPRODS+2;
 
   // 테이블 컬럼 하이라이트 헬퍼
-  function _hlReamerCol(colIdx, hlColor) {
+  function _hlReamerCol(colIdx) {
     const tbl = document.getElementById('inq-reamer-trend-table');
     if (!tbl) return;
     tbl.querySelectorAll('[data-col]').forEach(el => {
       const isHl = colIdx >= 0 && parseInt(el.getAttribute('data-col')) === colIdx;
       el.style.boxShadow = '';
       if (!el.getAttribute('data-ng') && !el.getAttribute('data-spec')) {
-        el.style.background = (isHl && hlColor) ? hlColor + '28' : '';
+        el.style.background = isHl ? 'rgba(230,168,0,0.22)' : '';
       }
     });
   }
@@ -1627,7 +1627,7 @@ function renderReamerCharts(rows) {
               chart.update();
               // 테이블 컬럼 하이라이트
               const nowAllVisible = INSP_PRODUCTS.every((_,i) => !chart.getDatasetMeta(i).hidden);
-              _hlReamerCol(nowAllVisible ? -1 : idx, clrs[idx]);
+              _hlReamerCol(nowAllVisible ? -1 : idx);
             }
           },
           datalabels: { display: false },
@@ -1870,8 +1870,28 @@ function renderReamerCharts(rows) {
               const pct = tot > 0 ? Math.round(v/tot*100) : 0;
               return `${v}건\n${pct}%`;
             },
-            color: '#fff', font:{weight:700, size:11},
-            anchor:'center', align:'center',
+            anchor: (ctx) => {
+              if (ctx.datasetIndex === 1) {
+                const tot = totArr[ctx.dataIndex];
+                return tot > 0 && ctx.dataset.data[ctx.dataIndex] / tot < 0.25 ? 'end' : 'center';
+              }
+              return 'center';
+            },
+            align: (ctx) => {
+              if (ctx.datasetIndex === 1) {
+                const tot = totArr[ctx.dataIndex];
+                return tot > 0 && ctx.dataset.data[ctx.dataIndex] / tot < 0.25 ? 'top' : 'center';
+              }
+              return 'center';
+            },
+            color: (ctx) => {
+              if (ctx.datasetIndex === 1) {
+                const tot = totArr[ctx.dataIndex];
+                return tot > 0 && ctx.dataset.data[ctx.dataIndex] / tot < 0.25 ? SIDIZ_COLORS.rose : '#fff';
+              }
+              return '#fff';
+            },
+            font:{weight:700, size:11},
             textAlign: 'center',
             clip: false,
           },
@@ -1979,33 +1999,84 @@ function renderRoughnessCharts(rows) {
   const monthsFixed2 = Array.from({length:12}, (_,i) => `${yr2}-${String(i+1).padStart(2,'0')}`);
   const monthLabels2 = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   const clrs=[SIDIZ_COLORS.blue,SIDIZ_COLORS.cyan,SIDIZ_COLORS.emerald,SIDIZ_COLORS.amber];
-  // 월별 추이 (전체 누적 데이터 사용)
-  const tCtx=document.getElementById('inq-rough-trend')?.getContext('2d');
-  if(tCtx){
-    const allRough = STATE.roughness;
-    const datasets=[
-      ...INSP_PRODUCTS.map((p,i)=>({
-        label:p,
-        data:monthsFixed2.map(m=>{
-          const vals=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
-          return vals.length?+avg(vals).toFixed(4):null;
-        }),
-        borderColor:clrs[i],backgroundColor:clrs[i]+'20',tension:0.3,
-        pointRadius:monthsFixed2.map(m=>{const v=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));return v.length?4:0;}),
-        pointBackgroundColor:monthsFixed2.map(m=>{const v=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));if(!v.length)return clrs[i];const a=avg(v);return a<=ROUGH_THR?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose;}),
-        pointBorderColor:monthsFixed2.map(m=>{const v=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));if(!v.length)return clrs[i];const a=avg(v);return a<=ROUGH_THR?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose;}),
-        borderWidth:2,spanGaps:true,fill:false,
-      })),
-      {label:'기준 1.0μm',data:monthsFixed2.map(()=>ROUGH_THR),borderColor:SIDIZ_COLORS.rose,borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false},
-    ];
-    makeLine('rough-trend',tCtx,monthLabels2,datasets,{
-      scales:{
-        x:{grid:{display:false},ticks:{font:{size:9}}},
-        y:{min:0,suggestedMax:2.0,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'μm',font:{size:10}}}
+  const NPRODS_R = INSP_PRODUCTS.length;
+
+  // 테이블 컬럼 하이라이트 헬퍼 (조도)
+  function _hlRoughCol(colIdx) {
+    const tbl = document.getElementById('inq-rough-trend-table');
+    if (!tbl) return;
+    tbl.querySelectorAll('[data-col]').forEach(el => {
+      const isHl = colIdx >= 0 && parseInt(el.getAttribute('data-col')) === colIdx;
+      el.style.boxShadow = '';
+      if (!el.getAttribute('data-ng') && !el.getAttribute('data-spec')) {
+        el.style.background = isHl ? 'rgba(230,168,0,0.22)' : '';
       }
     });
   }
-  // 기종별 평균 막대 (2025년 평균 ● 마커 포함)
+
+  // ① 기종별 월별 조도 추이 — 범례 클릭 기능 포함
+  const tCtx=document.getElementById('inq-rough-trend')?.getContext('2d');
+  if(tCtx){
+    const allRough = STATE.roughness;
+    const rProductDatasets = INSP_PRODUCTS.map((p,i)=>({
+      label:p,
+      data:monthsFixed2.map(m=>{
+        const vals=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));
+        return vals.length?+avg(vals).toFixed(4):null;
+      }),
+      borderColor:clrs[i], backgroundColor:clrs[i]+'20', tension:0.3,
+      pointRadius:monthsFixed2.map(m=>{const v=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));return v.length?4:0;}),
+      pointBackgroundColor:monthsFixed2.map(m=>{const v=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));if(!v.length)return clrs[i];const a=avg(v);return a<=ROUGH_THR?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose;}),
+      pointBorderColor:monthsFixed2.map(m=>{const v=allRough.filter(r=>r.product_code===p&&r.measure_date?.startsWith(m)).map(r=>+r.value).filter(v=>!isNaN(v));if(!v.length)return clrs[i];const a=avg(v);return a<=ROUGH_THR?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose;}),
+      borderWidth:2, pointBorderWidth:2, spanGaps:true, fill:false,
+    }));
+    const rThreshDataset = {label:'기준 1.0μm',data:monthsFixed2.map(()=>ROUGH_THR),borderColor:SIDIZ_COLORS.rose,borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,tension:0};
+    destroyChart('rough-trend');
+    STATE.charts['rough-trend'] = new Chart(tCtx, {
+      type:'line',
+      data:{labels:monthLabels2, datasets:[...rProductDatasets, rThreshDataset]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{
+            position:'top', align:'end', labels:{boxWidth:12,font:{size:10}},
+            onClick:(e, legendItem, legend)=>{
+              const chart=legend.chart;
+              const idx=legendItem.datasetIndex;
+              if(idx>=NPRODS_R) return;
+              const clickedMeta=chart.getDatasetMeta(idx);
+              const onlyThis=INSP_PRODUCTS.every((_,i)=>i===idx||chart.getDatasetMeta(i).hidden);
+              if(!clickedMeta.hidden && onlyThis){
+                INSP_PRODUCTS.forEach((_,i)=>{chart.getDatasetMeta(i).hidden=false;});
+              } else {
+                INSP_PRODUCTS.forEach((_,i)=>{chart.getDatasetMeta(i).hidden=(i!==idx);});
+              }
+              chart.update();
+              const nowAllVisible=INSP_PRODUCTS.every((_,i)=>!chart.getDatasetMeta(i).hidden);
+              _hlRoughCol(nowAllVisible?-1:idx);
+            }
+          },
+          datalabels:{display:false},
+          tooltip:{callbacks:{label:(item)=>{
+            const v=item.raw;
+            if(v===null||v===undefined) return null;
+            const dsIdx=item.datasetIndex;
+            if(dsIdx===NPRODS_R) return `기준: ${ROUGH_THR} μm`;
+            const p=INSP_PRODUCTS[dsIdx];
+            if(!p) return null;
+            const ok=+v<=ROUGH_THR;
+            return `${p}: ${(+v).toFixed(4)} μm → ${ok?'✓ OK':'✗ NG'}`;
+          }}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:9}}},
+          y:{min:0,suggestedMax:2.0,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'μm',font:{size:10}}}
+        }
+      }
+    });
+  }
+  // 기종별 평균 막대 (2025년 평균 막대 + 기준선 전체 폭)
   const aCtx=document.getElementById('inq-rough-avg')?.getContext('2d');
   if(aCtx){
     const avgs=INSP_PRODUCTS.map(p=>{
@@ -2013,81 +2084,74 @@ function renderRoughnessCharts(rows) {
       return vals.length?+avg(vals).toFixed(4):null;
     });
     const bclrs=avgs.map(v=>(v!==null&&v<=ROUGH_THR)?SIDIZ_COLORS.emerald:SIDIZ_COLORS.rose);
-    const rough2025Plugin = {
-      id: 'rough2025Markers',
-      afterDatasetsDraw(chart) {
-        const {ctx: c2, chartArea, scales} = chart;
-        if (!chartArea || !scales.x || !scales.y) return;
-        INSP_PRODUCTS.forEach((p, i) => {
-          const v2025 = ROUGH_2025_AVG[p];
-          if (v2025 == null) return;
-          const x = scales.x.getPixelForValue(p);
-          const y = scales.y.getPixelForValue(v2025);
-          if (!isFinite(x) || !isFinite(y)) return;
-          c2.save();
-          c2.fillStyle = SIDIZ_COLORS.amber;
-          c2.strokeStyle = '#fff'; c2.lineWidth = 2;
-          c2.beginPath();
-          c2.arc(x, y, 7, 0, Math.PI * 2);
-          c2.closePath(); c2.fill(); c2.stroke();
-          c2.restore();
-        });
+    const roughThreshPlugin = {
+      id:'roughThreshLine',
+      afterDraw(chart){
+        const{ctx:c2,chartArea,scales}=chart;
+        if(!chartArea||!scales.y) return;
+        const y=scales.y.getPixelForValue(ROUGH_THR);
+        if(!isFinite(y)) return;
+        c2.save();
+        c2.beginPath();
+        c2.moveTo(chartArea.left,y);
+        c2.lineTo(chartArea.right,y);
+        c2.strokeStyle=SIDIZ_COLORS.rose;
+        c2.setLineDash([6,4]);
+        c2.lineWidth=2;
+        c2.stroke();
+        c2.setLineDash([]);
+        c2.restore();
       }
     };
     destroyChart('rough-avg');
     STATE.charts['rough-avg'] = new Chart(aCtx, {
-      type: 'bar',
-      data: {
-        labels: INSP_PRODUCTS,
-        datasets: [
-          {label:'평균 Ra',data:avgs,backgroundColor:bclrs,borderRadius:6,order:2},
-          {label:'기준 1.0μm',data:INSP_PRODUCTS.map(()=>ROUGH_THR),type:'line',borderColor:SIDIZ_COLORS.rose,borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,order:1},
-          {label:'2025년 평균 ●',data:[],backgroundColor:'transparent',borderWidth:0,pointRadius:0},
+      type:'bar',
+      data:{
+        labels:INSP_PRODUCTS,
+        datasets:[
+          {label:'평균 Ra', data:avgs, backgroundColor:bclrs, borderRadius:4, categoryPercentage:0.72, barPercentage:0.55, order:2},
+          {label:'2025년 평균', data:INSP_PRODUCTS.map(p=>ROUGH_2025_AVG[p]??null), backgroundColor:SIDIZ_COLORS.amber+'AA', borderColor:SIDIZ_COLORS.amber, borderWidth:1, borderRadius:4, categoryPercentage:0.72, barPercentage:0.45, order:1},
+          {label:'기준 1.0μm', data:[], backgroundColor:'transparent', borderWidth:0},
         ]
       },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode:'index', intersect:false },
-        scales: {
-          y: { min:0, suggestedMax:2.0, grid:{color:SIDIZ_COLORS.border}, title:{display:true,text:'μm',font:{size:10}} },
-          x: { grid:{display:false} }
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        scales:{
+          y:{min:0,suggestedMax:2.0,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'μm',font:{size:10}}},
+          x:{grid:{display:false}}
         },
-        plugins: {
-          legend: {
+        plugins:{
+          legend:{
             display:true, position:'top', align:'end',
-            labels: {
+            labels:{
               boxWidth:10, font:{size:10},
-              generateLabels: (chart) => {
-                const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-                const item2025 = base.find(item => item.text && item.text.includes('●'));
-                if (item2025) { item2025.fillStyle = SIDIZ_COLORS.amber; item2025.strokeStyle = '#fff'; }
+              generateLabels:(chart)=>{
+                const base=Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                const thrItem=base.find(item=>item.text&&item.text.includes('기준'));
+                if(thrItem){thrItem.fillStyle='transparent';thrItem.strokeStyle=SIDIZ_COLORS.rose;thrItem.lineDash=[6,4];}
+                const avg25=base.find(item=>item.text&&item.text.includes('2025'));
+                if(avg25){avg25.fillStyle=SIDIZ_COLORS.amber+'AA';avg25.strokeStyle=SIDIZ_COLORS.amber;}
                 return base;
               }
             }
           },
-          datalabels: {
-            display: (ctx) => ctx.datasetIndex===0 && ctx.dataset.data[ctx.dataIndex]!==null,
+          datalabels:{
+            display:(ctx)=>ctx.datasetIndex===0&&ctx.dataset.data[ctx.dataIndex]!==null,
             anchor:'end', align:'top',
-            color: SIDIZ_COLORS.text, font:{weight:700, size:11},
-            formatter: (v) => v!=null ? Number(v).toFixed(3) : null
+            color:SIDIZ_COLORS.text, font:{weight:700,size:11},
+            formatter:(v)=>v!=null?Number(v).toFixed(3):null
           },
-          tooltip: {
-            callbacks: {
-              afterLabel: (item) => {
-                if (item.datasetIndex === 0) {
-                  const p = INSP_PRODUCTS[item.dataIndex];
-                  if (p) {
-                    const v = ROUGH_2025_AVG[p];
-                    if (v != null) return `  ● 2025년 평균: ${v.toFixed(3)} μm`;
-                  }
-                }
-                return null;
-              }
-            }
-          }
+          tooltip:{callbacks:{label:(item)=>{
+            const p=INSP_PRODUCTS[item.dataIndex]; const v=item.raw;
+            if(v===null||v===undefined) return null;
+            if(item.datasetIndex===0) return `평균 Ra: ${Number(v).toFixed(3)} μm (${v<=ROUGH_THR?'✓ OK':'✗ NG'})`;
+            if(item.datasetIndex===1) return `2025년 평균: ${Number(v).toFixed(3)} μm`;
+            return null;
+          }}}
         }
       },
-      plugins: [rough2025Plugin]
+      plugins:[roughThreshPlugin]
     });
   }
   // 기종별 월별 조도 데이터 표 (추이 카드 하단, 12개월 고정)
@@ -2164,8 +2228,10 @@ function renderRoughnessCharts(rows) {
           datalabels:{
             display:(ctx)=>ctx.dataset.data[ctx.dataIndex]>0,
             formatter:(v,ctx)=>{const tot=totArr2[ctx.dataIndex];const pct=tot>0?Math.round(v/tot*100):0;return `${v}건\n${pct}%`;},
-            color:'#fff',font:{weight:700,size:11},anchor:'center',align:'center',textAlign:'center',
-            clip:false,
+            anchor:(ctx)=>{if(ctx.datasetIndex===1){const tot=totArr2[ctx.dataIndex];return tot>0&&ctx.dataset.data[ctx.dataIndex]/tot<0.25?'end':'center';}return 'center';},
+            align:(ctx)=>{if(ctx.datasetIndex===1){const tot=totArr2[ctx.dataIndex];return tot>0&&ctx.dataset.data[ctx.dataIndex]/tot<0.25?'top':'center';}return 'center';},
+            color:(ctx)=>{if(ctx.datasetIndex===1){const tot=totArr2[ctx.dataIndex];return tot>0&&ctx.dataset.data[ctx.dataIndex]/tot<0.25?SIDIZ_COLORS.rose:'#fff';}return '#fff';},
+            font:{weight:700,size:11},textAlign:'center',clip:false,
           },
           tooltip:{callbacks:{label:(item)=>{const v=item.raw;const tot=totArr2[item.dataIndex];const pct=tot>0?Math.round(v/tot*100):0;return `${item.dataset.label}: ${v}건 (${pct}%)`;}}}
         }
@@ -2261,15 +2327,49 @@ function renderColorimetryCharts(rows) {
       scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border},title:{display:true,text:'ΔE',font:{size:10}}}}
     });
   }
-  // 색상별 마스터 ΔE
+  // 색상별 마스터 ΔE (기준선 전체 폭)
   const sCtx=document.getElementById('inq-color-spec')?.getContext('2d');
   if(sCtx){
     const colors=uniq(rows.map(r=>r.color_code).filter(Boolean)).sort();
     const avgs=colors.map(c=>{const v=rows.filter(r=>r.color_code===c).map(r=>+r.delta_e_master).filter(v=>!isNaN(v));return v.length?+avg(v).toFixed(2):null;});
     const bclrs=avgs.map(v=>(v!==null&&v<=COLOR_THR)?SIDIZ_COLORS.blue:SIDIZ_COLORS.rose);
-    makeBar('color-spec',sCtx,colors.length?colors:['(없음)'],[{label:'마스터 ΔE',data:avgs,backgroundColor:bclrs,borderRadius:4}],{
-      plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:10},formatter:v=>v!==null?v.toFixed(2):'-'}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border}}}
+    const colorThreshPlugin={
+      id:'colorThreshLine',
+      afterDraw(chart){
+        const{ctx:c2,chartArea,scales}=chart;
+        if(!chartArea||!scales.y) return;
+        const y=scales.y.getPixelForValue(COLOR_THR);
+        if(!isFinite(y)) return;
+        c2.save();
+        c2.beginPath();
+        c2.moveTo(chartArea.left,y);
+        c2.lineTo(chartArea.right,y);
+        c2.strokeStyle=SIDIZ_COLORS.rose;
+        c2.setLineDash([6,4]);
+        c2.lineWidth=2;
+        c2.stroke();
+        c2.setLineDash([]);
+        c2.restore();
+      }
+    };
+    destroyChart('color-spec');
+    STATE.charts['color-spec'] = new Chart(sCtx,{
+      type:'bar',
+      data:{labels:colors.length?colors:['(없음)'],datasets:[{label:'마스터 ΔE',data:avgs,backgroundColor:bclrs,borderRadius:4}]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          datalabels:{display:(ctx)=>ctx.dataset.data[ctx.dataIndex]!==null,anchor:'end',align:'top',color:SIDIZ_COLORS.text,font:{weight:700,size:10},formatter:v=>v!==null?v.toFixed(2):'-'},
+          tooltip:{callbacks:{label:(item)=>{const v=item.raw;if(v===null)return null;return `ΔE: ${Number(v).toFixed(2)} (${v<=COLOR_THR?'✓ OK':'✗ NG'})`;}}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},
+          y:{min:0,suggestedMax:1.5,grid:{color:SIDIZ_COLORS.border}}
+        }
+      },
+      plugins:[colorThreshPlugin]
     });
   }
   // 공급처별 파이
@@ -2305,9 +2405,9 @@ function renderColorimetryTable(rows) {
       <td>${escHtml(r.supplier||'-')}</td>
       <td><b>${escHtml(r.color_code||'-')}</b></td>
       <td>${escHtml(r.lot||'-')}</td>
-      <td style="text-align:right">${r.quantity_yd!=null?Number(r.quantity_yd).toLocaleString():'-'} Yd</td>
-      <td style="font-weight:600;text-align:right;${mNG?'color:var(--accent-rose)':''}">${r.delta_e_master!=null?Number(r.delta_e_master).toFixed(2):'-'}</td>
-      <td style="font-weight:600;text-align:right;${pNG?'color:var(--accent-rose)':''}">${r.delta_e_prev!=null?Number(r.delta_e_prev).toFixed(2):'-'}</td>
+      <td style="text-align:center">${r.quantity_yd!=null?Number(r.quantity_yd).toLocaleString():'-'} Yd</td>
+      <td style="font-weight:600;text-align:center;${mNG?'color:var(--accent-rose)':''}">${r.delta_e_master!=null?Number(r.delta_e_master).toFixed(2):'-'}</td>
+      <td style="font-weight:600;text-align:center;${pNG?'color:var(--accent-rose)':''}">${r.delta_e_prev!=null?Number(r.delta_e_prev).toFixed(2):'-'}</td>
       <td>${judgeTag(j)}</td>
       <td style="font-size:12px;color:var(--text-muted);text-align:left">${escHtml(r.note||'-')}</td>
       <td><button class="btn-del" onclick="deleteColorimetry('${r.id}')">🗑</button></td>
