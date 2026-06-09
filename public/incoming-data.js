@@ -1511,14 +1511,21 @@ function renderReamerKPI(rows) {
     const vals = rows.filter(r => r.product_code === p).map(r => +r.value).filter(v => !isNaN(v));
     return { p, a: vals.length ? avg(vals) : null };
   });
+  // pAvgs 인덱스: 0=4000G, 1=CH4800, 2=ITO-TILT, 3=S-TILT
+  const mkCard = ({p, a}) => {
+    const s = REAMER_SPECS[p]; const ok = a!==null&&a>=s.lo&&a<=s.hi;
+    return `<div class="kpi-card"><div class="kpi-label">${p} 평균</div><div class="kpi-value" style="${a===null?'':(ok?'color:var(--accent-emerald)':'color:var(--accent-rose)')}">${a!==null?a.toFixed(3):'-'}</div><div class="kpi-change">기준 ${s.label}</div></div>`;
+  };
   const el = $('inq-reamer-kpi'); if (!el) return;
+  // 배치: 총건수|4000G|S-TILT / 합격률|CH4800|ITO-TILT (3열)
+  el.style.gridTemplateColumns = 'repeat(3, 1fr)';
   el.innerHTML = `
     <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">이번 달 ${thisMonth}건</div></div>
+    ${mkCard(pAvgs[0])}
+    ${mkCard(pAvgs[3])}
     <div class="kpi-card"><div class="kpi-label">합격률</div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">NG ${ngCount}건</div></div>
-    ${pAvgs.map(({p,a})=>{
-      const s=REAMER_SPECS[p]; const ok=a!==null&&a>=s.lo&&a<=s.hi;
-      return `<div class="kpi-card"><div class="kpi-label">${p} 평균</div><div class="kpi-value" style="${a===null?'':(ok?'color:var(--accent-emerald)':'color:var(--accent-rose)')}">${a!==null?a.toFixed(3):'-'}</div><div class="kpi-change">기준 ${s.label}</div></div>`;
-    }).join('')}
+    ${mkCard(pAvgs[1])}
+    ${mkCard(pAvgs[2])}
   `;
 }
 function renderReamerCharts(rows) {
@@ -1707,10 +1714,26 @@ function renderReamerCharts(rows) {
             },
           },
           datalabels: {
-            display: (ctx) => ctx.datasetIndex===1 && ctx.dataset.data[ctx.dataIndex]!==null,
-            formatter: v => v!==null ? Number(v).toFixed(3) : null,
-            anchor:'end', align:'right',
-            color: SIDIZ_COLORS.text, font:{size:11, weight:700},
+            display: (ctx) => {
+              if (ctx.datasetIndex === 0) return true; // 관리기준 범위 안에 spec 텍스트
+              if (ctx.datasetIndex === 1) return ctx.dataset.data[ctx.dataIndex] !== null;
+              return false;
+            },
+            formatter: (v, ctx) => {
+              if (ctx.datasetIndex === 0) {
+                const p = INSP_PRODUCTS[ctx.dataIndex];
+                return REAMER_SPECS[p]?.label || '';
+              }
+              if (ctx.datasetIndex === 1) return v !== null ? Number(v).toFixed(3) : null;
+              return null;
+            },
+            anchor: (ctx) => ctx.datasetIndex === 0 ? 'center' : 'end',
+            align: (ctx) => ctx.datasetIndex === 0 ? 'center' : 'right',
+            color: (ctx) => ctx.datasetIndex === 0 ? SIDIZ_COLORS.navy : SIDIZ_COLORS.text,
+            font: (ctx) => ctx.datasetIndex === 0
+              ? { size: 9, weight: 500 }
+              : { size: 11, weight: 700 },
+            clamp: true,
           },
           tooltip: {
             callbacks: {
@@ -1747,7 +1770,7 @@ function renderReamerCharts(rows) {
   }
 
   // ③ 공급업체별 비교 (STATE.reamers 전체 데이터 기반)
-  const sCtx = document.getElementById('inq-reamer-supplier')?.getContext('2d');
+  const sCtx = document.getElementById('inq-reamer-supplier-chart')?.getContext('2d');
   if (sCtx) {
     const allForSup = STATE.reamers;
     const sups = ['GCK', '동진다이캐스팅']; // 고정 공급업체 순서
@@ -1759,8 +1782,8 @@ function renderReamerCharts(rows) {
       }),
       backgroundColor: clrs[i], borderRadius: 4,
     }));
-    destroyChart('reamer-supplier');
-    STATE.charts['reamer-supplier'] = new Chart(sCtx, {
+    destroyChart('reamer-supplier-chart');
+    STATE.charts['reamer-supplier-chart'] = new Chart(sCtx, {
       type: 'bar',
       data: { labels: sups, datasets: supDatasets },
       options: {
@@ -1799,7 +1822,7 @@ function renderReamerTable(rows) {
     const j=reamerJudge(r.product_code,r.value);
     const spec=REAMER_SPECS[r.product_code];
     return `<tr>
-      <td>${r.measure_date||'-'}</td>
+      <td>${r.measure_date ? r.measure_date.slice(0,7) : '-'}</td>
       <td>${escHtml(r.supplier||'-')}</td>
       <td><b>${escHtml(r.product_code||'-')}</b></td>
       <td style="font-weight:600;text-align:center">${r.value!==null?Number(r.value).toFixed(3):'-'} mm</td>
@@ -1858,13 +1881,19 @@ function renderRoughnessKPI(rows) {
     return{p,a:vals.length?avg(vals):null};
   });
   const el=$('inq-rough-kpi'); if(!el) return;
+  // 배치: 총건수|4000G|S-TILT / 합격률|CH4800|ITO-TILT (3열)
+  const mkRCard=({p,a})=>{
+    const ok=a!==null&&a<=ROUGH_THR;
+    return `<div class="kpi-card"><div class="kpi-label">${p} 평균 Ra</div><div class="kpi-value" style="${a===null?'':(ok?'color:var(--accent-emerald)':'color:var(--accent-rose)')}">${a!==null?a.toFixed(3):'-'}</div><div class="kpi-change">기준 ≤ 1.0 μm</div></div>`;
+  };
+  el.style.gridTemplateColumns='repeat(3, 1fr)';
   el.innerHTML=`
     <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-change">이번 달 ${thisMonth}건</div></div>
+    ${mkRCard(pAvgs[0])}
+    ${mkRCard(pAvgs[3])}
     <div class="kpi-card"><div class="kpi-label">합격률 <span style="font-size:11px">(≤1.0μm)</span></div><div class="kpi-value" style="color:${okRate>=95?'var(--accent-emerald)':'var(--accent-rose)'}">${okRate}%</div><div class="kpi-change">NG ${ngCount}건</div></div>
-    ${pAvgs.map(({p,a})=>{
-      const ok=a!==null&&a<=ROUGH_THR;
-      return `<div class="kpi-card"><div class="kpi-label">${p} 평균 Ra</div><div class="kpi-value" style="${a===null?'':(ok?'color:var(--accent-emerald)':'color:var(--accent-rose)')}">${a!==null?a.toFixed(3):'-'}</div><div class="kpi-change">기준 ≤ 1.0 μm</div></div>`;
-    }).join('')}
+    ${mkRCard(pAvgs[1])}
+    ${mkRCard(pAvgs[2])}
   `;
 }
 function renderRoughnessCharts(rows) {
@@ -1985,7 +2014,7 @@ function renderRoughnessCharts(rows) {
     });
   }
   // 공급업체별 비교 (STATE.roughness 전체 데이터 기반)
-  const sCtx=document.getElementById('inq-rough-supplier')?.getContext('2d');
+  const sCtx=document.getElementById('inq-rough-supplier-chart')?.getContext('2d');
   if(sCtx){
     const allForSup2 = STATE.roughness;
     const sups2 = ['GCK', '동진다이캐스팅'];
@@ -1997,8 +2026,8 @@ function renderRoughnessCharts(rows) {
       }),
       backgroundColor:clrs[i],borderRadius:4,
     }));
-    destroyChart('rough-supplier');
-    STATE.charts['rough-supplier'] = new Chart(sCtx, {
+    destroyChart('rough-supplier-chart');
+    STATE.charts['rough-supplier-chart'] = new Chart(sCtx, {
       type: 'bar',
       data: { labels: sups2, datasets: supDs2 },
       options: {
@@ -2035,7 +2064,7 @@ function renderRoughnessTable(rows) {
   tbody.innerHTML=sorted.map(r=>{
     const j=roughnessJudge(r.value);
     return `<tr>
-      <td>${r.measure_date||'-'}</td>
+      <td>${r.measure_date ? r.measure_date.slice(0,7) : '-'}</td>
       <td>${escHtml(r.supplier||'-')}</td>
       <td><b>${escHtml(r.product_code||'-')}</b></td>
       <td style="font-weight:600;text-align:center">${r.value!==null?Number(r.value).toFixed(4):'-'} μm</td>
