@@ -42,17 +42,17 @@ const DIE_2025_AVG = {
   '700 FLAT (RAW)': 1776.1,
 };
 
-// 2025년 평균 강도 (사출 베이스)
+// 2025년 평균 강도 (사출 베이스) — DB 사양명 기준 (괄호 포함)
 const INJ_2025_AVG = {
-  '690 각 WW': 1827.2,
-  '690 각 BK': 1532.5,
-  '690 Flat WW': 1577.9,
-  '690 Flat BK': 1679.6,
-  '690 통합 BK': 1551.6,
-  '690 각 CG1 WW': 1769.9,
-  '690 각 CG1 BK': 1627.8,
-  '690 Flat SG': 1791.4,
-  '690 Flat IG': 1808.6,
+  '690 각 (WW)': 1827.2,
+  '690 각 (BK)': 1532.5,
+  '690 Flat (WW)': 1577.9,
+  '690 Flat (BK)': 1679.6,
+  '690 통합 베이스 (BK)': 1551.6,
+  '690 각 GC1 (WW)': 1769.9,
+  '690 각 GC1 (BK)': 1627.8,
+  '690 Flat (SG)': 1791.4,
+  '690 Flat (IG)': 1808.6,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -243,28 +243,8 @@ function renderDieCharts(rows) {
     .concat(specs.filter(s => !SPEC_ORDER.includes(s))); // 미정의 사양은 뒤로
   const specAvgs = orderedSpecs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const specThres = orderedSpecs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
-  // 사양별 평균 강도 차트 — 레이블 겹침 방지 + 2025년 평균 마커
-  const die2025Plugin = {
-    id: 'die2025Markers',
-    afterDatasetsDraw(chart) {
-      const {ctx: c2, chartArea, scales} = chart;
-      if (!chartArea || !scales.x || !scales.y) return;
-      orderedSpecs.forEach((s, i) => {
-        const v2025 = DIE_2025_AVG[s];
-        if (v2025 == null) return;
-        const x = scales.x.getPixelForValue(i);
-        const y = scales.y.getPixelForValue(v2025);
-        if (!isFinite(x) || !isFinite(y)) return;
-        c2.save();
-        c2.fillStyle = C.amber;
-        c2.strokeStyle = '#fff'; c2.lineWidth = 2;
-        c2.beginPath();
-        c2.arc(x, y, 7, 0, Math.PI * 2);
-        c2.closePath(); c2.fill(); c2.stroke();
-        c2.restore();
-      });
-    }
-  };
+  // 사양별 평균 강도 차트 — 그룹형 막대 (평균 강도 + 2025년 평균) + 기준선 + 레이블 겹침 방지
+  const die2025Data = orderedSpecs.map(s => DIE_2025_AVG[s] ?? null);
   destroyChart('dieAvg');
   STATE.charts['dieAvg'] = new Chart($('str-die-avg').getContext('2d'), {
     type: 'bar',
@@ -277,6 +257,8 @@ function renderDieCharts(rows) {
           backgroundColor: PALETTE.slice(0, orderedSpecs.length),
           borderRadius: 6,
           order: 2,
+          categoryPercentage: 0.85,
+          barPercentage: 0.9,
           datalabels: {
             display: true,
             anchor: 'end',
@@ -286,9 +268,27 @@ function renderDieCharts(rows) {
             offset: (ctx) => {
               const v = ctx.dataset.data[ctx.dataIndex];
               const thr = specThres[ctx.dataIndex];
-              return (v !== null && v !== undefined && thr && Math.abs(v - thr) < 200) ? 22 : 4;
+              return (v != null && thr && Math.abs(v - thr) < 200) ? 30 : 4;
             },
-            formatter: v => v ? v.toFixed(1) : '-'
+            formatter: v => v != null ? v.toFixed(1) : '-'
+          }
+        },
+        {
+          label: '2025년 평균',
+          data: die2025Data,
+          backgroundColor: C.amber + 'BB',
+          borderRadius: 6,
+          order: 3,
+          categoryPercentage: 0.85,
+          barPercentage: 0.9,
+          datalabels: {
+            display: true,
+            anchor: 'end',
+            align: 'top',
+            color: C.amber,
+            font: { weight: 600, size: 9 },
+            offset: 4,
+            formatter: v => v != null ? v.toFixed(1) : ''
           }
         },
         {
@@ -314,17 +314,21 @@ function renderDieCharts(rows) {
             borderRadius: 4,
             padding: { top: 2, bottom: 2, left: 5, right: 5 },
             font: { weight: 800, size: 11 },
-            align: 'top',
+            align: (ctx) => {
+              const thr = specThres[ctx.dataIndex];
+              const barV = specAvgs[ctx.dataIndex];
+              return (barV != null && barV > thr && Math.abs(barV - thr) < 200) ? 'bottom' : 'top';
+            },
             anchor: 'end',
             offset: 4,
             formatter: v => v ? v.toLocaleString() : ''
           }
         },
-        { label: '2025년 평균 ●', data: [], backgroundColor: 'transparent', borderWidth: 0, datalabels: { display: false } },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 28 } },
       scales: {
         y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } },
         x: { grid: { display: false } }
@@ -332,20 +336,11 @@ function renderDieCharts(rows) {
       plugins: {
         legend: {
           display: true, position: 'top', align: 'end',
-          labels: {
-            boxWidth: 10, font: { size: 10 },
-            generateLabels: (chart) => {
-              const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-              const item2025 = base.find(item => item.text && item.text.includes('●'));
-              if (item2025) { item2025.fillStyle = C.amber; item2025.strokeStyle = '#fff'; }
-              return base;
-            }
-          }
+          labels: { boxWidth: 10, font: { size: 10 } }
         },
         datalabels: { display: false }
       }
-    },
-    plugins: [die2025Plugin]
+    }
   });
 
   // 시디즈 vs GCK 강도 비교 (4000G / S-TILT) — 막대 + 기준선 + OK/NG 색상
@@ -519,28 +514,8 @@ function renderInjCharts(rows) {
   const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const INJ_THR = 1134.7;
   const injThres = specs.map(() => INJ_THR);
-  // 사양별 평균 강도 차트 — 레이블 겹침 방지 + 2025년 평균 마커
-  const inj2025Plugin = {
-    id: 'inj2025Markers',
-    afterDatasetsDraw(chart) {
-      const {ctx: c2, chartArea, scales} = chart;
-      if (!chartArea || !scales.x || !scales.y) return;
-      specs.forEach((s, i) => {
-        const v2025 = INJ_2025_AVG[s];
-        if (v2025 == null) return;
-        const x = scales.x.getPixelForValue(i);
-        const y = scales.y.getPixelForValue(v2025);
-        if (!isFinite(x) || !isFinite(y)) return;
-        c2.save();
-        c2.fillStyle = C.amber;
-        c2.strokeStyle = '#fff'; c2.lineWidth = 2;
-        c2.beginPath();
-        c2.arc(x, y, 7, 0, Math.PI * 2);
-        c2.closePath(); c2.fill(); c2.stroke();
-        c2.restore();
-      });
-    }
-  };
+  // 사양별 평균 강도 차트 — 그룹형 막대 (평균 강도 + 2025년 평균) + 기준선 + 레이블 겹침 방지
+  const inj2025Data = specs.map(s => INJ_2025_AVG[s] ?? null);
   destroyChart('injAvg');
   STATE.charts['injAvg'] = new Chart($('str-inj-avg').getContext('2d'), {
     type: 'bar',
@@ -553,6 +528,8 @@ function renderInjCharts(rows) {
           backgroundColor: PALETTE.slice(0, specs.length),
           borderRadius: 6,
           order: 2,
+          categoryPercentage: 0.85,
+          barPercentage: 0.9,
           datalabels: {
             display: true,
             anchor: 'end',
@@ -561,9 +538,27 @@ function renderInjCharts(rows) {
             font: { weight: 700, size: 10 },
             offset: (ctx) => {
               const v = ctx.dataset.data[ctx.dataIndex];
-              return (v !== null && v !== undefined && Math.abs(v - INJ_THR) < 200) ? 22 : 4;
+              return (v != null && Math.abs(v - INJ_THR) < 200) ? 30 : 4;
             },
-            formatter: v => v ? v.toFixed(1) : '-'
+            formatter: v => v != null ? v.toFixed(1) : '-'
+          }
+        },
+        {
+          label: '2025년 평균',
+          data: inj2025Data,
+          backgroundColor: C.amber + 'BB',
+          borderRadius: 6,
+          order: 3,
+          categoryPercentage: 0.85,
+          barPercentage: 0.9,
+          datalabels: {
+            display: true,
+            anchor: 'end',
+            align: 'top',
+            color: C.amber,
+            font: { weight: 600, size: 9 },
+            offset: 4,
+            formatter: v => v != null ? v.toFixed(1) : ''
           }
         },
         {
@@ -595,11 +590,11 @@ function renderInjCharts(rows) {
             formatter: () => '기준 1,134.7'
           }
         },
-        { label: '2025년 평균 ●', data: [], backgroundColor: 'transparent', borderWidth: 0, datalabels: { display: false } },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 28 } },
       scales: {
         y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } },
         x: { grid: { display: false }, ticks: { font: { size: 10 } } }
@@ -607,20 +602,11 @@ function renderInjCharts(rows) {
       plugins: {
         legend: {
           display: true, position: 'top', align: 'end',
-          labels: {
-            boxWidth: 10, font: { size: 10 },
-            generateLabels: (chart) => {
-              const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-              const item2025 = base.find(item => item.text && item.text.includes('●'));
-              if (item2025) { item2025.fillStyle = C.amber; item2025.strokeStyle = '#fff'; }
-              return base;
-            }
-          }
+          labels: { boxWidth: 10, font: { size: 10 } }
         },
         datalabels: { display: false }
       }
-    },
-    plugins: [inj2025Plugin]
+    }
   });
 
   const wAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.weight)));
