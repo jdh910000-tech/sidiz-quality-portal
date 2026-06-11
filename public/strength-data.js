@@ -254,7 +254,7 @@ function renderDieCharts(rows) {
         {
           label: '2025년 평균',
           data: die2025Data,
-          backgroundColor: C.amber + 'BB',
+          backgroundColor: 'rgba(155,155,165,0.38)',
           borderRadius: 6,
           order: 2,
           categoryPercentage: 0.85,
@@ -263,8 +263,8 @@ function renderDieCharts(rows) {
             display: true,
             anchor: 'end',
             align: 'top',
-            color: C.amber,
-            font: { weight: 600, size: 9 },
+            color: '#8a8a9a',
+            font: { weight: 500, size: 9 },
             offset: 6,
             formatter: v => v != null ? v.toFixed(1) : ''
           }
@@ -523,7 +523,7 @@ function renderInjCharts(rows) {
         {
           label: '2025년 평균',
           data: inj2025Data,
-          backgroundColor: C.amber + 'BB',
+          backgroundColor: 'rgba(155,155,165,0.38)',
           borderRadius: 6,
           order: 2,
           categoryPercentage: 0.85,
@@ -532,8 +532,8 @@ function renderInjCharts(rows) {
             display: true,
             anchor: 'end',
             align: 'top',
-            color: C.amber,
-            font: { weight: 600, size: 9 },
+            color: '#8a8a9a',
+            font: { weight: 500, size: 9 },
             offset: 6,
             formatter: v => v != null ? v.toFixed(1) : ''
           }
