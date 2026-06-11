@@ -256,7 +256,7 @@ function renderDieCharts(rows) {
           data: die2025Data,
           backgroundColor: C.amber + 'BB',
           borderRadius: 6,
-          order: 3,
+          order: 2,
           categoryPercentage: 0.85,
           barPercentage: 0.9,
           datalabels: {
@@ -265,7 +265,7 @@ function renderDieCharts(rows) {
             align: 'top',
             color: C.amber,
             font: { weight: 600, size: 9 },
-            offset: 4,
+            offset: 6,
             formatter: v => v != null ? v.toFixed(1) : ''
           }
         },
@@ -274,7 +274,7 @@ function renderDieCharts(rows) {
           data: specAvgs,
           backgroundColor: PALETTE.slice(0, orderedSpecs.length),
           borderRadius: 6,
-          order: 2,
+          order: 3,
           categoryPercentage: 0.85,
           barPercentage: 0.9,
           datalabels: {
@@ -283,11 +283,7 @@ function renderDieCharts(rows) {
             align: 'top',
             color: C.text,
             font: { weight: 700, size: 10 },
-            offset: (ctx) => {
-              const v = ctx.dataset.data[ctx.dataIndex];
-              const thr = specThres[ctx.dataIndex];
-              return (v != null && thr && Math.abs(v - thr) < 200) ? 30 : 4;
-            },
+            offset: 6,
             formatter: v => v != null ? v.toFixed(1) : '-'
           }
         },
@@ -317,7 +313,9 @@ function renderDieCharts(rows) {
             align: (ctx) => {
               const thr = specThres[ctx.dataIndex];
               const barV = specAvgs[ctx.dataIndex];
-              return (barV != null && barV > thr && Math.abs(barV - thr) < 200) ? 'bottom' : 'top';
+              const v2025 = die2025Data[ctx.dataIndex];
+              const maxV = Math.max(barV ?? 0, v2025 ?? 0);
+              return (maxV > thr && Math.abs(maxV - thr) < 250) ? 'bottom' : 'top';
             },
             anchor: 'end',
             offset: 4,
@@ -527,7 +525,7 @@ function renderInjCharts(rows) {
           data: inj2025Data,
           backgroundColor: C.amber + 'BB',
           borderRadius: 6,
-          order: 3,
+          order: 2,
           categoryPercentage: 0.85,
           barPercentage: 0.9,
           datalabels: {
@@ -536,7 +534,7 @@ function renderInjCharts(rows) {
             align: 'top',
             color: C.amber,
             font: { weight: 600, size: 9 },
-            offset: 4,
+            offset: 6,
             formatter: v => v != null ? v.toFixed(1) : ''
           }
         },
@@ -545,7 +543,7 @@ function renderInjCharts(rows) {
           data: specAvgs,
           backgroundColor: PALETTE.slice(0, specs.length),
           borderRadius: 6,
-          order: 2,
+          order: 3,
           categoryPercentage: 0.85,
           barPercentage: 0.9,
           datalabels: {
@@ -554,10 +552,7 @@ function renderInjCharts(rows) {
             align: 'top',
             color: C.text,
             font: { weight: 700, size: 10 },
-            offset: (ctx) => {
-              const v = ctx.dataset.data[ctx.dataIndex];
-              return (v != null && Math.abs(v - INJ_THR) < 200) ? 30 : 4;
-            },
+            offset: 6,
             formatter: v => v != null ? v.toFixed(1) : '-'
           }
         },
