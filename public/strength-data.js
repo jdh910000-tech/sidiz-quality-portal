@@ -243,7 +243,7 @@ function renderDieCharts(rows) {
     .concat(specs.filter(s => !SPEC_ORDER.includes(s))); // 미정의 사양은 뒤로
   const specAvgs = orderedSpecs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const specThres = orderedSpecs.map(s => DIE_SPEC_THRESHOLDS[s] || 0);
-  // 사양별 평균 강도 차트 — 그룹형 막대 (평균 강도 + 2025년 평균) + 기준선 + 레이블 겹침 방지
+  // 사양별 평균 강도 차트 — 그룹형 막대 (2025년 평균 왼쪽 + 평균 강도 오른쪽) + 기준선 + 레이블 겹침 방지
   const die2025Data = orderedSpecs.map(s => DIE_2025_AVG[s] ?? null);
   destroyChart('dieAvg');
   STATE.charts['dieAvg'] = new Chart($('str-die-avg').getContext('2d'), {
@@ -251,6 +251,24 @@ function renderDieCharts(rows) {
     data: {
       labels: orderedSpecs,
       datasets: [
+        {
+          label: '2025년 평균',
+          data: die2025Data,
+          backgroundColor: C.amber + 'BB',
+          borderRadius: 6,
+          order: 3,
+          categoryPercentage: 0.85,
+          barPercentage: 0.9,
+          datalabels: {
+            display: true,
+            anchor: 'end',
+            align: 'top',
+            color: C.amber,
+            font: { weight: 600, size: 9 },
+            offset: 4,
+            formatter: v => v != null ? v.toFixed(1) : ''
+          }
+        },
         {
           label: '평균 강도',
           data: specAvgs,
@@ -271,24 +289,6 @@ function renderDieCharts(rows) {
               return (v != null && thr && Math.abs(v - thr) < 200) ? 30 : 4;
             },
             formatter: v => v != null ? v.toFixed(1) : '-'
-          }
-        },
-        {
-          label: '2025년 평균',
-          data: die2025Data,
-          backgroundColor: C.amber + 'BB',
-          borderRadius: 6,
-          order: 3,
-          categoryPercentage: 0.85,
-          barPercentage: 0.9,
-          datalabels: {
-            display: true,
-            anchor: 'end',
-            align: 'top',
-            color: C.amber,
-            font: { weight: 600, size: 9 },
-            offset: 4,
-            formatter: v => v != null ? v.toFixed(1) : ''
           }
         },
         {
@@ -330,7 +330,7 @@ function renderDieCharts(rows) {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 28 } },
       scales: {
-        y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } },
+        y: { beginAtZero: false, grace: '12%', grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } },
         x: { grid: { display: false } }
       },
       plugins: {
@@ -514,7 +514,7 @@ function renderInjCharts(rows) {
   const specAvgs = specs.map(s => avg(rows.filter(r => r.spec === s).map(r => r.strength)));
   const INJ_THR = 1134.7;
   const injThres = specs.map(() => INJ_THR);
-  // 사양별 평균 강도 차트 — 그룹형 막대 (평균 강도 + 2025년 평균) + 기준선 + 레이블 겹침 방지
+  // 사양별 평균 강도 차트 — 그룹형 막대 (2025년 평균 왼쪽 + 평균 강도 오른쪽) + 기준선 + 레이블 겹침 방지
   const inj2025Data = specs.map(s => INJ_2025_AVG[s] ?? null);
   destroyChart('injAvg');
   STATE.charts['injAvg'] = new Chart($('str-inj-avg').getContext('2d'), {
@@ -522,6 +522,24 @@ function renderInjCharts(rows) {
     data: {
       labels: specs,
       datasets: [
+        {
+          label: '2025년 평균',
+          data: inj2025Data,
+          backgroundColor: C.amber + 'BB',
+          borderRadius: 6,
+          order: 3,
+          categoryPercentage: 0.85,
+          barPercentage: 0.9,
+          datalabels: {
+            display: true,
+            anchor: 'end',
+            align: 'top',
+            color: C.amber,
+            font: { weight: 600, size: 9 },
+            offset: 4,
+            formatter: v => v != null ? v.toFixed(1) : ''
+          }
+        },
         {
           label: '평균 강도',
           data: specAvgs,
@@ -541,24 +559,6 @@ function renderInjCharts(rows) {
               return (v != null && Math.abs(v - INJ_THR) < 200) ? 30 : 4;
             },
             formatter: v => v != null ? v.toFixed(1) : '-'
-          }
-        },
-        {
-          label: '2025년 평균',
-          data: inj2025Data,
-          backgroundColor: C.amber + 'BB',
-          borderRadius: 6,
-          order: 3,
-          categoryPercentage: 0.85,
-          barPercentage: 0.9,
-          datalabels: {
-            display: true,
-            anchor: 'end',
-            align: 'top',
-            color: C.amber,
-            font: { weight: 600, size: 9 },
-            offset: 4,
-            formatter: v => v != null ? v.toFixed(1) : ''
           }
         },
         {
@@ -596,7 +596,7 @@ function renderInjCharts(rows) {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 28 } },
       scales: {
-        y: { beginAtZero: false, grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } },
+        y: { beginAtZero: false, grace: '12%', grid: { color: C.border }, title: { display: true, text: 'kgf', font: { size: 10 } } },
         x: { grid: { display: false }, ticks: { font: { size: 10 } } }
       },
       plugins: {
@@ -617,9 +617,7 @@ function renderInjCharts(rows) {
     plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', color: C.text, font: { weight: 700, size: 10 }, formatter: v => v ? v.toFixed(1) : '-' } }
   });
 
-  const ok = rows.filter(r => judge(r) === 'OK').length;
-  const ng = rows.filter(r => judge(r) === 'NG').length;
-  makeDoughnut('injJudge', $('str-inj-judge-pie').getContext('2d'), ['OK', 'NG'], [ok, ng], [C.emerald, C.rose]);
+  // 기준 부적합 비율 차트 제거 (레이아웃 개선)
 }
 
 function renderInjTable(rows) {
