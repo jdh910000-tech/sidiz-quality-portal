@@ -270,9 +270,9 @@ function renderDieCharts(rows) {
           }
         },
         {
-          label: '평균 강도',
+          label: '2026년 평균',
           data: specAvgs,
-          backgroundColor: PALETTE.slice(0, orderedSpecs.length),
+          backgroundColor: C.amber,
           borderRadius: 6,
           order: 3,
           categoryPercentage: 0.85,
@@ -539,9 +539,9 @@ function renderInjCharts(rows) {
           }
         },
         {
-          label: '평균 강도',
+          label: '2026년 평균',
           data: specAvgs,
-          backgroundColor: PALETTE.slice(0, specs.length),
+          backgroundColor: C.amber,
           borderRadius: 6,
           order: 3,
           categoryPercentage: 0.85,
