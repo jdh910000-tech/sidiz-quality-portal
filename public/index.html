@@ -1058,7 +1058,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         <canvas id="rctDefectTrendChart" height="80" style="margin-bottom:14px"></canvas>
         <!-- 편집 안내 -->
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;padding:8px 12px;background:rgba(0,87,184,0.06);border-radius:8px;border:1px solid rgba(0,87,184,0.15)">
-          ✏️ <strong>표준증상 · 카테고리</strong> 셀을 클릭하면 편집할 수 있습니다. 저장 시 증상 사전에 자동 학습됩니다. · <strong>요구내역</strong> 셀을 클릭하면 전체 내용을 볼 수 있습니다.
+          ✏️ <strong>표준증상 · 상세내용 · 카테고리</strong> 셀을 클릭하면 편집할 수 있습니다. 저장 시 표준증상·카테고리는 증상 사전에 자동 학습됩니다. · <strong>요구내역</strong> 셀을 클릭하면 전체 내용을 볼 수 있습니다.
         </div>
         <!-- 상세 테이블 -->
         <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
@@ -1075,6 +1075,7 @@ body.share-mode .section > .header .header-left p { display: none; }
                 <th style="padding:9px 10px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">접수일</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--accent-violet);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">제품구분 ✏️</th>
                 <th style="padding:9px 10px;text-align:left;color:var(--accent-emerald);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">표준증상 ✏️</th>
+                <th style="padding:9px 10px;text-align:left;color:var(--text-primary);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">상세내용 ✏️</th>
                 <th style="padding:9px 10px;text-align:center;color:var(--accent-cyan);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">카테고리 ✏️</th>
                 <th style="padding:9px 10px;text-align:left;color:var(--accent-amber);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">요구내역</th>
               </tr>
@@ -4549,9 +4550,11 @@ function _showDefectDetail(defectName, catGroup) {
     const normArg = _ocArg(d.defect_normalized || '');
     const catArg  = _ocArg(d.defect_category || '');
     const catArg2 = _ocArg(d.defect_category || '기타');
+    const noteArg = _ocArg(d.admin_note || '');
     const detailURI = encodeURIComponent(d.claim_detail || '');
     const itemDisp  = d.item ? _hEsc(d.item) : '<span style="color:var(--accent-violet);font-style:italic">미확인</span>';
     const normDisp  = d.defect_normalized ? _hEsc(d.defect_normalized) : '<span style="color:var(--text-muted);font-style:italic">미분류</span>';
+    const noteDisp  = d.admin_note ? `<span style="color:var(--text-primary)">${_hEsc(d.admin_note)}</span>` : '<span style="color:var(--text-muted)">-</span>';
     const catDisp   = (() => {
       const c = d.defect_category;
       if (!c) return '<span style="color:var(--text-muted)">-</span>';
@@ -4574,6 +4577,9 @@ function _showDefectDetail(defectName, catGroup) {
       <td style="padding:7px 10px;cursor:pointer;color:var(--accent-emerald)"
           onclick="startEdit(this,'defect_normalized','${rid}',${seq},'${rawArg}','${normArg}','${catArg2}')"
           title="클릭하여 편집">${normDisp}</td>
+      <td style="padding:7px 10px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          onclick="startEdit(this,'admin_note','${rid}',${seq},'','','${noteArg}')"
+          title="${_hEsc(d.admin_note||'클릭하여 상세내용 입력')}">${noteDisp}</td>
       <td style="padding:7px 10px;text-align:center;cursor:pointer"
           onclick="startEdit(this,'defect_category','${rid}',${seq},'${rawArg}','${normArg}','${catArg}')"
           title="클릭하여 편집">${catDisp}</td>
@@ -4583,11 +4589,11 @@ function _showDefectDetail(defectName, catGroup) {
     </tr>`;
   }).join('');
 
-  // 합계 행 (colspan 8로 수정)
+  // 합계 행 (colspan 9: 체크박스+접수번호+순번+접수일+제품구분+표준증상+상세내용+카테고리+요구내역)
   const tfoot = document.getElementById('rctDetailTableFoot');
   if (tfoot) {
     tfoot.innerHTML = `<tr style="background:rgba(255,255,255,0.97)">
-      <td colspan="8" style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:11px;font-weight:600;border-top:2px solid var(--border)">
+      <td colspan="9" style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:11px;font-weight:600;border-top:2px solid var(--border)">
         합계&nbsp;<span style="color:var(--accent-amber);font-size:13px;font-weight:700">${sorted.length}</span>건
       </td>
     </tr>`;
@@ -4603,7 +4609,11 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
   // datalist / input 생성
   const input = document.createElement('input');
   input.type = 'text';
-  if (field === 'defect_category') {
+  if (field === 'admin_note') {
+    input.value = (currentCat && currentCat.trim()) ? currentCat : '';
+    input.placeholder = '자유롭게 입력...';
+    input.style.cssText = 'background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid rgba(200,200,210,0.5);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;min-width:160px;box-sizing:border-box';
+  } else if (field === 'defect_category') {
     input.value = currentCat || originalText || '';
     input.placeholder = '예: 외관(오염), 작동성 등';
     input.style.cssText = 'background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--sidiz-blue-bright);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;min-width:110px;box-sizing:border-box';
@@ -4635,7 +4645,9 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
 
   const saveEdit = async () => {
     const newValue = input.value.trim();
-    if (!newValue || newValue === originalText) { cell.innerHTML = originalHTML; return; }
+    // admin_note는 빈 값으로 저장 가능 (삭제 목적). 나머지는 변경 없으면 복원
+    if (field !== 'admin_note' && (!newValue || newValue === originalText)) { cell.innerHTML = originalHTML; return; }
+    if (field === 'admin_note' && newValue === (currentCat || '')) { cell.innerHTML = originalHTML; return; }
 
     cell.innerHTML = '<span style="color:var(--text-muted)">저장 중...</span>';
 
@@ -4651,7 +4663,16 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
       if (!res.ok) throw new Error(`PATCH ${res.status}`);
 
       // 2. 학습
-      if (field === 'item') {
+      if (field === 'admin_note') {
+        // admin_note: 증상 학습 없음. 빈 문자열로 저장하면 null 처리
+        if (!newValue) {
+          await fetch(patchUrl, {
+            method: 'PATCH',
+            headers: { 'apikey': SupabaseClient.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SupabaseClient.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ admin_note: null })
+          });
+        }
+      } else if (field === 'item') {
         // item 편집 학습: symptom_pending 레코드에도 item 반영
         try {
           const BASE = SupabaseClient.SUPABASE_URL, KEY = SupabaseClient.SUPABASE_ANON_KEY;
@@ -4673,15 +4694,17 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
 
       // 3. 로컬 캐시 업데이트
       const cachedRow = _rctAllData.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
-      if (cachedRow) cachedRow[field] = newValue;
+      if (cachedRow) cachedRow[field] = newValue || null;
       const filteredRow = _rctFilteredData.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
-      if (filteredRow) filteredRow[field] = newValue;
+      if (filteredRow) filteredRow[field] = newValue || null;
       // _rctDetailSorted도 갱신 (삭제 참조용 배열)
       const detailRow = _rctDetailSorted.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
-      if (detailRow) detailRow[field] = newValue;
+      if (detailRow) detailRow[field] = newValue || null;
 
-      const highlightColor = field === 'item' ? 'var(--accent-violet)' : 'var(--accent-emerald)';
-      cell.innerHTML = `<span style="color:${highlightColor}">${newValue}</span>`;
+      const highlightColor = field === 'item' ? 'var(--accent-violet)' : field === 'admin_note' ? 'var(--text-primary)' : 'var(--accent-emerald)';
+      cell.innerHTML = newValue
+        ? `<span style="color:${highlightColor}">${_hEsc(newValue)}</span>`
+        : '<span style="color:var(--text-muted)">-</span>';
       cell.style.color = highlightColor;
       setTimeout(() => { cell.style.color = ''; }, 2000);
 
@@ -5087,6 +5110,7 @@ function exportReceiptDataToExcel() {
     { key:'item',              label:'제품' },
     { key:'defect_type',       label:'하자유형(원본)' },
     { key:'defect_normalized', label:'하자유형(표준화)' },
+    { key:'admin_note',        label:'상세내용' },
     { key:'category',          label:'판정유형' },
     { key:'inspection_result', label:'판정내용' },
     { key:'claim_detail',      label:'요구내역' },
