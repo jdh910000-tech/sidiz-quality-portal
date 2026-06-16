@@ -876,12 +876,15 @@ window.submitStrengthInj = async function () {
 
 async function postStrength(table, data, kind) {
   try {
-    // 다이캐스팅: (date, spec, source) UNIQUE → 같은 키 입력 시 자동 갱신 (upsert)
+    // 다이캐스팅: on_conflict 파라미터로 충돌 컬럼 명시 → ON CONFLICT(measure_date,spec,source) DO UPDATE
     const preferUpsert = (table === 'strength_diecasting');
+    const url = preferUpsert
+      ? `${SB_URL}/rest/v1/${table}?on_conflict=measure_date,spec,source`
+      : `${SB_URL}/rest/v1/${table}`;
     const headers = preferUpsert
       ? { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' }
       : { ...SB_HEADERS, 'Prefer': 'return=representation' };
-    const res = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(data),
@@ -1446,8 +1449,8 @@ window.handleGckUpload = async function (event) {
       return;
     }
 
-    // upsert: (measure_date, spec, source) UNIQUE 제약 기반으로 자동 병합
-    const res = await fetch(`${SB_URL}/rest/v1/strength_diecasting`, {
+    // upsert: on_conflict 파라미터로 충돌 컬럼 명시 → ON CONFLICT(measure_date,spec,source) DO UPDATE
+    const res = await fetch(`${SB_URL}/rest/v1/strength_diecasting?on_conflict=measure_date,spec,source`, {
       method: 'POST',
       headers: { ...SB_HEADERS, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
       body: JSON.stringify(records),
