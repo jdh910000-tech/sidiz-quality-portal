@@ -1470,19 +1470,29 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
   const ws = wb.Sheets[sheetName];
   if (!ws) return;
   const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, dateNF: 'yyyy-mm-dd' });
-  // 헤더 R9 (index 8): "시험 날짜", "Sample #1", "Sample #2", "Sample #3", ..., "Weight #1", "Weight #2"
-  // 데이터 R10 (index 9) 부터
-  const headerRow = json[8] || [];
+
+  // 헤더 행 동적 탐지: 'Sample #1' 텍스트가 포함된 행을 찾음
+  // (SheetJS는 시트 범위가 A2에서 시작하면 json[0]=row2이므로 고정 인덱스 불가)
+  let hdrIdx = -1;
+  for (let i = 0; i < Math.min(15, json.length); i++) {
+    if ((json[i] || []).some(v => String(v || '').includes('Sample #1'))) { hdrIdx = i; break; }
+  }
+  if (hdrIdx < 0) return;
+
+  const headerRow = json[hdrIdx] || [];
   const dateIdx = 0;
-  const s1Idx = 1, s2Idx = 2, s3Idx = 3;
-  // Weight 컬럼 위치 찾기
+  const s1Idx = 1, s2Idx = 2;
+  const moldIdx = 7; // H열: 금형 차수 (업체 기입 예정)
+
+  // Weight 컬럼 위치 동적 탐지
   let w1Idx = -1, w2Idx = -1;
   for (let i = 0; i < headerRow.length; i++) {
     const h = String(headerRow[i] || '');
     if (h.includes('Weight') && h.includes('#1')) w1Idx = i;
     if (h.includes('Weight') && h.includes('#2')) w2Idx = i;
   }
-  for (let i = 9; i < json.length; i++) {
+
+  for (let i = hdrIdx + 1; i < json.length; i++) {
     const row = json[i];
     if (!row || row[dateIdx] == null) continue;
     let d = row[dateIdx];
@@ -1500,24 +1510,30 @@ function parseGckSheet(wb, sheetName, spec, threshold, out) {
     // 2026년 데이터만 (사용자 요청)
     if (!dateStr.startsWith('2026')) continue;
 
-    // B,C 강도 평균 (사용자가 요청한 B/C 두 컬럼)
+    // B,C 강도 평균
     const s1 = row[s1Idx], s2 = row[s2Idx];
-    const strengths = [s1, s2].filter(v => v !== null && v !== undefined && !isNaN(v));
+    const strengths = [s1, s2].filter(v => v !== null && v !== undefined && !isNaN(v) && v !== '');
     const strength = strengths.length ? strengths.reduce((a,b)=>a+b,0)/strengths.length : null;
 
     // K,L Weight 평균
     let weight = null;
     if (w1Idx >= 0 && w2Idx >= 0) {
       const w1 = row[w1Idx], w2 = row[w2Idx];
-      const weights = [w1, w2].filter(v => v !== null && v !== undefined && !isNaN(v));
+      const weights = [w1, w2].filter(v => v !== null && v !== undefined && !isNaN(v) && v !== '');
       if (weights.length) weight = weights.reduce((a,b)=>a+b,0)/weights.length;
     }
+
+    // H열 금형 차수
+    const moldVal = row[moldIdx];
+    const mold_number = (moldVal !== null && moldVal !== undefined && String(moldVal).trim())
+      ? String(moldVal).trim()
+      : null;
 
     if (strength === null && weight === null) continue;
     out.push({
       measure_date: dateStr,
       spec, source: 'GCK',
-      mold_number: null,
+      mold_number,
       weight, strength,
       threshold,
       note: 'GCK 파일 자동 업로드',
