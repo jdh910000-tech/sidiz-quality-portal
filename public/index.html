@@ -4660,7 +4660,22 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
         headers: { 'apikey': SupabaseClient.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SupabaseClient.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
         body: JSON.stringify(updates)
       });
-      if (!res.ok) throw new Error(`PATCH ${res.status}`);
+      if (!res.ok) {
+        let errBody = {};
+        try { errBody = await res.clone().json(); } catch(_) {}
+        // 컬럼 미존재 (Supabase PGRST204) → 마이그레이션 안내
+        if (res.status === 400 && field === 'admin_note' &&
+            (errBody.code === 'PGRST204' || (errBody.message || '').includes('admin_note'))) {
+          throw new Error(
+            'DB 컬럼이 아직 생성되지 않았습니다.\n\n' +
+            '📌 Supabase Dashboard → SQL Editor에서 아래 SQL을 실행해주세요:\n\n' +
+            'ALTER TABLE claims_receipt\n' +
+            'ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT NULL;\n\n' +
+            '(주소: https://supabase.com/dashboard/project/cyxnbwczcvjeaqmrdzcb/sql/new)'
+          );
+        }
+        throw new Error(`PATCH ${res.status}`);
+      }
 
       // 2. 학습
       if (field === 'admin_note') {
