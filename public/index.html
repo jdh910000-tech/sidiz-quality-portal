@@ -4059,12 +4059,13 @@ function getCatGroup(cat) {
   return idx > 0 ? cat.substring(0, idx).trim() : cat;
 }
 // 고정 카테고리 목록 (이 외의 카테고리는 '기타'로 표시)
-const FIXED_CATS = ['파손','작동성','체결','유격','소음','외관','오접수','수평','누락','시공불만'];
+// 카테고리 마스터 v2 (12개): 작동성·파손·체결·소음·유격·수평·외관·누락·마감·오처리·반품·기타
+const FIXED_CATS = ['작동성','파손','체결','소음','유격','수평','외관','누락','마감','오처리','반품'];
 const _CAT_BASE_COLORS = {
-  '파손':'#ff6b7a', '작동성':'#4a9eff', '체결':'#00c48c',
-  '유격':'#a78bfa', '소음':'#ffb347',   '외관':'#f59e0b',
-  '오접수':'#94a3b8','수평':'#00c6d7',  '누락':'#fb923c',
-  '시공불만':'#e879f9','기타':'#64748b'
+  '작동성':'#4a9eff', '파손':'#ff6b7a',  '체결':'#00c48c',
+  '소음':'#ffb347',   '유격':'#a78bfa',  '수평':'#00c6d7',
+  '외관':'#f59e0b',   '누락':'#fb923c',  '마감':'#ec4899',
+  '오처리':'#94a3b8', '반품':'#f43f5e',  '기타':'#64748b'
 };
 function getCatColorHex(cat) {
   if (!cat) return _CAT_BASE_COLORS['기타'];
@@ -4102,16 +4103,17 @@ function _renderRctCategory() {
   if (!ctx) return;
   // 브랜드 컬러 팔레트 (세련된 그라데이션 색상)
   const BRAND_CAT_COLORS = {
-    '파손':    { solid: '#FF4C6A', light: 'rgba(255,76,106,0.15)' },
     '작동성':  { solid: '#002BD2', light: 'rgba(0,43,210,0.13)' },
+    '파손':    { solid: '#FF4C6A', light: 'rgba(255,76,106,0.15)' },
     '체결':    { solid: '#00B87A', light: 'rgba(0,184,122,0.13)' },
-    '유격':    { solid: '#7c5fe6', light: 'rgba(124,95,230,0.13)' },
     '소음':    { solid: '#E6A800', light: 'rgba(230,168,0,0.15)' },
-    '외관':    { solid: '#F59E0B', light: 'rgba(245,158,11,0.13)' },
-    '오접수':  { solid: '#94A3B8', light: 'rgba(148,163,184,0.15)' },
+    '유격':    { solid: '#7c5fe6', light: 'rgba(124,95,230,0.13)' },
     '수평':    { solid: '#54DBC2', light: 'rgba(84,219,194,0.13)' },
+    '외관':    { solid: '#F59E0B', light: 'rgba(245,158,11,0.13)' },
     '누락':    { solid: '#FF6C39', light: 'rgba(255,108,57,0.13)' },
-    '시공불만':{ solid: '#D946EF', light: 'rgba(217,70,239,0.13)' },
+    '마감':    { solid: '#EC4899', light: 'rgba(236,72,153,0.13)' },
+    '오처리':  { solid: '#94A3B8', light: 'rgba(148,163,184,0.15)' },
+    '반품':    { solid: '#F43F5E', light: 'rgba(244,63,94,0.13)' },
     '기타':    { solid: '#64748B', light: 'rgba(100,116,139,0.13)' }
   };
   const barBg = labels.map(l => (BRAND_CAT_COLORS[l] || BRAND_CAT_COLORS['기타']).solid + 'cc');
@@ -4527,7 +4529,7 @@ function _showDefectDetail(defectName, catGroup) {
   const selectAllCb = document.getElementById('rctSelectAll');
   if (selectAllCb) selectAllCb.checked = false;
 
-  const CATS = ['작동성','소음','파손','유격','수평','체결','외관','기타'];
+  const CATS = ['작동성','파손','체결','소음','유격','수평','외관','누락','마감','오처리','반품','기타'];
 
   // 안전한 이스케이프 헬퍼:
   //   _hEsc  : HTML 텍스트/속성용 (& < > " 만 변환 — 셀 표시·title 등에 사용)
@@ -4620,8 +4622,9 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
     const dlId = '_catEditList';
     let dl = document.getElementById(dlId);
     if (!dl) { dl = document.createElement('datalist'); dl.id = dlId; document.body.appendChild(dl); }
-    const existing = [...new Set(_rctAllData.map(d=>d.defect_category).filter(Boolean))].sort();
-    dl.innerHTML = existing.map(c=>`<option value="${c}">`).join('');
+    const fromDB = [...new Set(_rctAllData.map(d=>d.defect_category).filter(Boolean))];
+    const allCats = [...new Set([...FIXED_CATS, '기타', ...fromDB])];
+    dl.innerHTML = allCats.map(c=>`<option value="${c}">`).join('');
     input.setAttribute('list', dlId);
   } else if (field === 'item') {
     // currentNorm에 현재 item 값 전달됨
