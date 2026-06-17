@@ -4716,9 +4716,10 @@ function startEdit(cell, field, receiptId, seqNo, rawSymptom, currentNorm, curre
       const detailRow = _rctDetailSorted.find(d => d.receipt_id === receiptId && d.seq_no == seqNo);
       if (detailRow) detailRow[field] = newValue || null;
 
+      const _esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       const highlightColor = field === 'item' ? 'var(--accent-violet)' : field === 'admin_note' ? 'var(--text-primary)' : 'var(--accent-emerald)';
       cell.innerHTML = newValue
-        ? `<span style="color:${highlightColor}">${_hEsc(newValue)}</span>`
+        ? `<span style="color:${highlightColor}">${_esc(newValue)}</span>`
         : '<span style="color:var(--text-muted)">-</span>';
       cell.style.color = highlightColor;
       setTimeout(() => { cell.style.color = ''; }, 2000);
