@@ -547,11 +547,17 @@ function setClaimFileType(type, btn) {
   resetClaimPreview();
 }
 
-// ─── 분류 완료 파일 파싱 (자동 분류 없이 직접 매핑) ───
+// ─── 분류 완료 파일 파싱 (자동 분류 없이 직접 매핑, 스펙 기준) ───
+// 컬럼 매핑: 접수번호→receipt_id, 접수일→receipt_date, 순번→seq_no,
+//           제품구분→category, 표준증상→defect_normalized, 카테고리→defect_category,
+//           상세증상→admin_note, 요구내역→claim_detail, 제품코드원본→product_code_raw
+//           검토사유 → 저장 제외
 function _handleClaimFilePre(rows, filename) {
   const today = (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })();
 
-  // 중복 제거: (접수번호 + 순번) 기준
+  const errors = [];
+
+  // 중복 제거: (접수번호 + 순번) 기준, 마지막 행 우선
   const seen = new Map();
   rows.forEach(r => {
     const rid = String(r['접수번호'] || '').trim();
@@ -567,34 +573,45 @@ function _handleClaimFilePre(rows, filename) {
   Array.from(seen.values()).forEach(r => {
     const rid = String(r['접수번호'] || '').trim();
     const seq = parseInt(r['순번'] || '1') || 1;
+
+    // 접수일: 엑셀 컬럼 직접 읽기 → fallback: 접수번호에서 추출
+    let rDate = null;
+    const rawDate = r['접수일'];
+    if (rawDate) {
+      rDate = formatDate(rawDate);
+    }
+    if (!rDate) rDate = extractDateFromReceiptId(rid);
+    if (!rDate) { errors.push(`접수번호 ${rid}: 접수일 없음 → 적재 보류`); return; }
+
     const dbRow = {
-      receipt_id:       rid,
-      seq_no:           seq,
-      receipt_date:     extractDateFromReceiptId(rid),
-      item:             String(r['제품구분'] || '').trim() || null,
+      receipt_id:        rid,
+      seq_no:            seq,
+      receipt_date:      rDate,
+      category:          String(r['제품구분'] || '').trim() || null,   // 제품구분 → category
       defect_normalized: String(r['표준증상'] || '').trim() || null,
-      raw_symptom:      String(r['상세증상(보충설명)'] || '').trim() || null,
-      defect_category:  String(r['카테고리'] || '').trim() || null,
-      claim_detail:     String(r['요구내역'] || '').trim().slice(0, 2000) || null,
+      defect_category:   String(r['카테고리'] || '').trim() || null,
+      admin_note:        String(r['상세증상(보충설명)'] || r['상세증상'] || '').trim() || null,
+      claim_detail:      String(r['요구내역'] || '').trim().slice(0, 2000) || null,
+      product_code_raw:  String(r['제품코드원본'] || '').trim() || null,
       // 검토사유 → 저장 제외
-      country:          '국내',
-      brand:            '시디즈',
-      uploaded_at:      today,
-      processing_date:  null, category: null, judgement_type: null,
-      defect_type:      null, model: null, cost: 0,
+      country:           '국내',
+      brand:             '시디즈',
+      uploaded_at:       today,
+      item: null, processing_date: null, judgement_type: null,
+      defect_type: null, model: null, cost: 0,
       inspection_result: null, main_category: null, sub_category: null,
-      defective_part:   null, lot: null, code: null, warranty_type: null,
-      product_code_raw: null,
+      defective_part: null, lot: null, code: null, warranty_type: null,
+      raw_symptom: null,
     };
     claimParsedData.push(dbRow);
     claimRawParsed.push(dbRow);
   });
 
   // 통계 배너
-  document.getElementById('statTotal').textContent = claimParsedData.length + '건';
-  document.getElementById('statDedup').textContent = (rows.length - claimParsedData.length) + '건 제거';
-  document.getElementById('statMatched').textContent = claimParsedData.length + '건 (전체)';
-  document.getElementById('statUnmatched').textContent = '0건';
+  document.getElementById('statTotal').textContent = rows.length + '건';
+  document.getElementById('statDedup').textContent = (rows.length - seen.size) > 0 ? `${rows.length - seen.size}건 제거` : '—';
+  document.getElementById('statMatched').textContent = claimParsedData.length + '건';
+  document.getElementById('statUnmatched').textContent = errors.length > 0 ? `${errors.length}건 보류` : '0건';
   document.getElementById('claimParseBanner').classList.add('show');
 
   // 미리보기 (분류완료 전용 컬럼)
@@ -602,28 +619,33 @@ function _handleClaimFilePre(rows, filename) {
   const table = document.getElementById('claimPreviewTable');
   const info = document.getElementById('claimPreviewInfo');
   container.classList.add('show');
-  info.textContent = `${filename} — ${claimParsedData.length}건 (최대 30행 미리보기)`;
+  const errNote = errors.length ? ` ⚠ ${errors.length}건 보류` : '';
+  info.textContent = `${filename} — ${claimParsedData.length}건 적재 예정${errNote} (최대 30행 미리보기)`;
 
-  const cols = ['접수번호', '접수일', '제품구분', '표준증상', '상세증상', '카테고리'];
+  const cols = ['접수번호', '접수일', '제품구분(→category)', '표준증상', '상세증상(→admin_note)', '카테고리'];
   let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
   claimRawParsed.slice(0, 30).forEach(row => {
     html += `<tr>
       <td>${escHtml(row.receipt_id ?? '')}</td>
       <td>${escHtml(row.receipt_date ?? '')}</td>
-      <td>${escHtml(row.item ?? '')}</td>
+      <td>${escHtml(row.category ?? '')}</td>
       <td>${escHtml(row.defect_normalized ?? '')}</td>
-      <td title="${escHtml(row.raw_symptom ?? '')}">${escHtml(truncate(row.raw_symptom ?? '', 35))}</td>
+      <td title="${escHtml(row.admin_note ?? '')}">${escHtml(truncate(row.admin_note ?? '', 35))}</td>
       <td>${escHtml(row.defect_category ?? '')}</td>
     </tr>`;
   });
+  if (errors.length) {
+    errors.forEach(e => { html += `<tr style="color:var(--amber)"><td colspan="6">⚠ ${escHtml(e)}</td></tr>`; });
+  }
   if (claimRawParsed.length > 30) {
     html += `<tr><td colspan="6" style="text-align:center;color:var(--muted)">... 외 ${claimRawParsed.length - 30}행</td></tr>`;
   }
   html += '</tbody>';
   table.innerHTML = html;
 
+  if (errors.length) showStatus('claimStatus', 'error', `⚠ ${errors.length}건은 접수일 누락으로 적재 보류됩니다.`);
+  else hideStatus('claimStatus');
   document.getElementById('claimUploadBtn').disabled = claimParsedData.length === 0;
-  hideStatus('claimStatus');
 }
 
 // ─── 증상 사전 로드 ───
