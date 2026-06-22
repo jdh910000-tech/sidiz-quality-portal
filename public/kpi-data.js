@@ -338,7 +338,7 @@ function renderKpiMainTable(data, year, range) {
 
   const mh = MONTHS.map(m => `<th>${m}</th>`).join('');
   const rangeLabel = range < 12 ? ` · ~${range}월 강조` : '';
-  const cumTh = `<th style="text-align:center;background:rgba(0,87,184,0.06);font-weight:700">${year}누적</th>`;
+  const cumTh = `<th style="text-align:center;background:rgba(0,87,184,0.06);font-weight:700">누적</th>`;
 
   let h = `<div class="data-table-header"><h3>고객클레임 종합 현황 (${year}년${rangeLabel})</h3></div>
   <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th style="text-align:center">${py}평균</th><th style="text-align:center">${year}평균</th>${mh}${cumTh}</tr></thead><tbody>`;
@@ -378,17 +378,21 @@ function renderKpiJudgementTables(data, year, range) {
     return `<td${dim}>${fmt(v)}</td>`;
   }).join(''); }
 
+  function fmtSum(arr,lim) { const s=arr.slice(0,lim).reduce((a,v)=>a+(v||0),0); return s>0?fmt(s):'-'; }
+  const cumTh = `<th style="text-align:center;background:rgba(0,87,184,0.06);font-weight:700">누적</th>`;
+  const cumSt = 'background:rgba(0,87,184,0.04);font-weight:600';
+
   function build(flag, label, dd, pdd) {
     const mh = MONTHS.map(m=>`<th>${m}</th>`).join('');
     let h = `<div class="data-table-header"><h3>${flag} ${label} — 판정유형별 클레임 건수</h3></div>
-    <table class="data-table"><thead><tr><th style="text-align:left">판정유형</th><th style="text-align:center">${py}평균</th>${mh}</tr></thead><tbody>`;
+    <table class="data-table"><thead><tr><th style="text-align:left">판정유형</th><th style="text-align:center">${py}평균</th>${mh}${cumTh}</tr></thead><tbody>`;
     let tot = Array(12).fill(0);
     types.forEach(t => {
       const arr = dd[t]||Array(12).fill(0);
       arr.forEach((v,i) => tot[i]+=(v||0));
-      h+=`<tr><td class="row-header">${t}</td><td>${pdd&&pdd[t]?fmt(avg(pdd[t])):'-'}</td>${mc(arr)}</tr>`;
+      h+=`<tr><td class="row-header">${t}</td><td>${pdd&&pdd[t]?fmt(avg(pdd[t])):'-'}</td>${mc(arr)}<td style="${cumSt}">${fmtSum(arr,range)}</td></tr>`;
     });
-    h+=`<tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>-</td>${mc(tot.map(v=>v||null))}</tr></tbody></table>`;
+    h+=`<tr style="font-weight:700;background:rgba(0,87,184,0.04)"><td>합계</td><td>-</td>${mc(tot.map(v=>v||null))}<td style="${cumSt}">${fmtSum(tot,range)}</td></tr></tbody></table>`;
     return h;
   }
   krC.innerHTML = build('🇰🇷','국내', data.detail_kr, pd?.detail_kr);
