@@ -325,6 +325,10 @@ function renderKpiMainTable(data, year, range) {
     const cls = (c&&s>0&&(c/s)>0.015&&i<range) ? ' class="danger"' : '';
     return `<td${cls}${dim}>${val}</td>`;
   }).join(''); }
+  function davg(cArr,sArr,lim) {
+    const vals = cArr.slice(0,lim).map((c,i)=>{ const s=sArr[i]||0; return (c&&s>0)?(c/s)*100:null; }).filter(v=>v!==null);
+    return vals.length>0 ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2)+'%' : '-';
+  }
 
   const mh = MONTHS.map(m => `<th>${m}</th>`).join('');
   const rangeLabel = range < 12 ? ` · ~${range}월 강조` : '';
@@ -342,9 +346,11 @@ function renderKpiMainTable(data, year, range) {
   const tJ=data.judgement.kr.map((v,i)=>(v||0)+(data.judgement.vn[i]||0));
   h+=`<tr style="font-weight:600"><td class="row-header">판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>-</td>${mc(tJ)}</tr>`;
 
-  h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td class="row-header">국내</td><td>-</td><td>-</td>${dc(data.judgement.kr,data.sales.kr)}</tr>`;
-  h+=`<tr><td class="row-header">베트남</td><td>-</td><td>-</td>${dc(data.judgement.vn,data.sales.vn)}</tr>`;
-  h+=`<tr style="font-weight:600"><td class="row-header">불량 계</td><td>-</td><td>-</td>${dc(tJ,tS)}</tr>`;
+  const pdtS=pd?pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)):null;
+  const pdtJ=pd?pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)):null;
+  h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td class="row-header">국내</td><td>${pd?davg(pd.judgement.kr,pd.sales.kr,12):'-'}</td><td>${davg(data.judgement.kr,data.sales.kr,range)}</td>${dc(data.judgement.kr,data.sales.kr)}</tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?davg(pd.judgement.vn,pd.sales.vn,12):'-'}</td><td>${davg(data.judgement.vn,data.sales.vn,range)}</td>${dc(data.judgement.vn,data.sales.vn)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">불량 계</td><td>${pd&&pdtJ&&pdtS?davg(pdtJ,pdtS,12):'-'}</td><td>${davg(tJ,tS,range)}</td>${dc(tJ,tS)}</tr>`;
   h+=`<tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td>${Array(12).fill('<td>1.50%</td>').join('')}</tr>`;
   h+='</tbody></table>';
   container.innerHTML = h;
