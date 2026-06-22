@@ -341,10 +341,10 @@ function renderKpiMainTable(data, year, range) {
   const tS=data.sales.kr.map((v,i)=>(v||0)+(data.sales.vn[i]||0));
   h+=`<tr style="font-weight:600"><td class="row-header">계</td><td>${pd?fmt(avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)))):'-'}</td><td>${fmt(avg(tS))}</td>${mc(tS)}</tr>`;
 
-  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>-</td>${mc(data.judgement.kr)}</tr>`;
-  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>-</td>${mc(data.judgement.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>${fmt(avg(data.judgement.kr.slice(0,range)))}</td>${mc(data.judgement.kr)}</tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>${fmt(avg(data.judgement.vn.slice(0,range)))}</td>${mc(data.judgement.vn)}</tr>`;
   const tJ=data.judgement.kr.map((v,i)=>(v||0)+(data.judgement.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td class="row-header">판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>-</td>${mc(tJ)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>${fmt(avg(tJ.slice(0,range)))}</td>${mc(tJ)}</tr>`;
 
   const pdtS=pd?pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)):null;
   const pdtJ=pd?pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)):null;
