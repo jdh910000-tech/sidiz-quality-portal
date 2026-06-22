@@ -341,25 +341,25 @@ function renderKpiMainTable(data, year, range) {
   const cumTh = `<th style="text-align:center;background:rgba(0,87,184,0.06);font-weight:700">${year}누적</th>`;
 
   let h = `<div class="data-table-header"><h3>고객클레임 종합 현황 (${year}년${rangeLabel})</h3></div>
-  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th style="text-align:center">${py}평균</th><th style="text-align:center">${year}평균</th>${cumTh}${mh}</tr></thead><tbody>`;
+  <table class="data-table"><thead><tr><th style="text-align:left" colspan="2">구분</th><th style="text-align:center">${py}평균</th><th style="text-align:center">${year}평균</th>${mh}${cumTh}</tr></thead><tbody>`;
 
   const cumSt = 'background:rgba(0,87,184,0.04);font-weight:600';
-  h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.sales.kr)):'-'}</td><td>${fmt(avg(data.sales.kr))}</td><td style="${cumSt}">${fmtSum(data.sales.kr,range)}</td>${mc(data.sales.kr)}</tr>`;
-  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.sales.vn)):'-'}</td><td>${fmt(avg(data.sales.vn))}</td><td style="${cumSt}">${fmtSum(data.sales.vn,range)}</td>${mc(data.sales.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">총 매출건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.sales.kr)):'-'}</td><td>${fmt(avg(data.sales.kr))}</td>${mc(data.sales.kr)}<td style="${cumSt}">${fmtSum(data.sales.kr,range)}</td></tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.sales.vn)):'-'}</td><td>${fmt(avg(data.sales.vn))}</td>${mc(data.sales.vn)}<td style="${cumSt}">${fmtSum(data.sales.vn,range)}</td></tr>`;
   const tS=data.sales.kr.map((v,i)=>(v||0)+(data.sales.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td class="row-header">계</td><td>${pd?fmt(avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)))):'-'}</td><td>${fmt(avg(tS))}</td><td style="${cumSt}">${fmtSum(tS,range)}</td>${mc(tS)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">계</td><td>${pd?fmt(avg(pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)))):'-'}</td><td>${fmt(avg(tS))}</td>${mc(tS)}<td style="${cumSt}">${fmtSum(tS,range)}</td></tr>`;
 
-  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>${fmt(avg(data.judgement.kr.slice(0,range)))}</td><td style="${cumSt}">${fmtSum(data.judgement.kr,range)}</td>${mc(data.judgement.kr)}</tr>`;
-  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>${fmt(avg(data.judgement.vn.slice(0,range)))}</td><td style="${cumSt}">${fmtSum(data.judgement.vn,range)}</td>${mc(data.judgement.vn)}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">판정종합 건수</td><td class="row-header">국내</td><td>${pd?fmt(avg(pd.judgement.kr)):'-'}</td><td>${fmt(avg(data.judgement.kr.slice(0,range)))}</td>${mc(data.judgement.kr)}<td style="${cumSt}">${fmtSum(data.judgement.kr,range)}</td></tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?fmt(avg(pd.judgement.vn)):'-'}</td><td>${fmt(avg(data.judgement.vn.slice(0,range)))}</td>${mc(data.judgement.vn)}<td style="${cumSt}">${fmtSum(data.judgement.vn,range)}</td></tr>`;
   const tJ=data.judgement.kr.map((v,i)=>(v||0)+(data.judgement.vn[i]||0));
-  h+=`<tr style="font-weight:600"><td class="row-header">판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>${fmt(avg(tJ.slice(0,range)))}</td><td style="${cumSt}">${fmtSum(tJ,range)}</td>${mc(tJ)}</tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">판정 계</td><td>${pd?fmt(avg(pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)))):'-'}</td><td>${fmt(avg(tJ.slice(0,range)))}</td>${mc(tJ)}<td style="${cumSt}">${fmtSum(tJ,range)}</td></tr>`;
 
   const pdtS=pd?pd.sales.kr.map((v,i)=>(v||0)+(pd.sales.vn[i]||0)):null;
   const pdtJ=pd?pd.judgement.kr.map((v,i)=>(v||0)+(pd.judgement.vn[i]||0)):null;
-  h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td class="row-header">국내</td><td>${pd?davg(pd.judgement.kr,pd.sales.kr,12):'-'}</td><td>${davg(data.judgement.kr,data.sales.kr,range)}</td><td style="${cumSt}">${dcum(data.judgement.kr,data.sales.kr,range)}</td>${dc(data.judgement.kr,data.sales.kr)}</tr>`;
-  h+=`<tr><td class="row-header">베트남</td><td>${pd?davg(pd.judgement.vn,pd.sales.vn,12):'-'}</td><td>${davg(data.judgement.vn,data.sales.vn,range)}</td><td style="${cumSt}">${dcum(data.judgement.vn,data.sales.vn,range)}</td>${dc(data.judgement.vn,data.sales.vn)}</tr>`;
-  h+=`<tr style="font-weight:600"><td class="row-header">불량 계</td><td>${pd&&pdtJ&&pdtS?davg(pdtJ,pdtS,12):'-'}</td><td>${davg(tJ,tS,range)}</td><td style="${cumSt}">${dcum(tJ,tS,range)}</td>${dc(tJ,tS)}</tr>`;
-  h+=`<tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td><td>-</td>${Array(12).fill('<td>1.50%</td>').join('')}</tr>`;
+  h+=`<tr><td class="row-header" rowspan="3">불량지수</td><td class="row-header">국내</td><td>${pd?davg(pd.judgement.kr,pd.sales.kr,12):'-'}</td><td>${davg(data.judgement.kr,data.sales.kr,range)}</td>${dc(data.judgement.kr,data.sales.kr)}<td style="${cumSt}">${dcum(data.judgement.kr,data.sales.kr,range)}</td></tr>`;
+  h+=`<tr><td class="row-header">베트남</td><td>${pd?davg(pd.judgement.vn,pd.sales.vn,12):'-'}</td><td>${davg(data.judgement.vn,data.sales.vn,range)}</td>${dc(data.judgement.vn,data.sales.vn)}<td style="${cumSt}">${dcum(data.judgement.vn,data.sales.vn,range)}</td></tr>`;
+  h+=`<tr style="font-weight:600"><td class="row-header">불량 계</td><td>${pd&&pdtJ&&pdtS?davg(pdtJ,pdtS,12):'-'}</td><td>${davg(tJ,tS,range)}</td>${dc(tJ,tS)}<td style="${cumSt}">${dcum(tJ,tS,range)}</td></tr>`;
+  h+=`<tr style="background:rgba(0,87,184,0.06)"><td class="row-header" colspan="2">목표</td><td>-</td><td>1.50%</td>${Array(12).fill('<td>1.50%</td>').join('')}<td>-</td></tr>`;
   h+='</tbody></table>';
   container.innerHTML = h;
 }
