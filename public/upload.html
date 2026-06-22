@@ -104,13 +104,23 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
   <!-- ============ 접수일 클레임 업로드 (증상 자동 파싱 포함) ============ -->
   <div class="upload-section">
     <h2>접수일 기준 클레임 데이터</h2>
-    <p class="upload-desc">
+    <p class="upload-desc" id="claimUploadDesc">
       ERP에서 <strong>접수일 기준</strong>으로 다운받은 엑셀 파일을 업로드합니다.<br>
       <code>claims_receipt</code> 테이블에 저장되며, <code>요구내역</code> 컬럼은 자동으로 증상 파싱 파이프라인을 거칩니다.<br>
       미분류(미매칭) 항목은 <code>symptom_pending</code> 테이블에 별도 저장되어 관리자 검토를 기다립니다.
     </p>
 
-    <div class="column-spec">
+    <!-- 파일 유형 선택 -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap">파일 유형:</span>
+      <div id="claimFileTypeToggle" class="mode-toggle" style="margin-bottom:0">
+        <button class="mode-btn active" onclick="setClaimFileType('erp',this)">📂 ERP 원본 (자동 분류)</button>
+        <button class="mode-btn" onclick="setClaimFileType('pre',this)">✅ 분류 완료 파일</button>
+      </div>
+    </div>
+
+    <!-- ERP 원본 컬럼 스펙 -->
+    <div id="claimColSpecERP" class="column-spec">
       <strong>필수 컬럼:</strong>
       <code>접수번호</code> · <code>접수일</code>(YYYY-MM-DD) · <code>제품군</code> · <code>유형</code><br>
       <strong>선택 컬럼:</strong>
@@ -118,7 +128,16 @@ h1 span { background:linear-gradient(135deg,#0057b8,#00c6d7); -webkit-background
       <em style="color:var(--amber)">※ <code>요구내역</code>(claim_detail)은 증상 자동 파싱에 사용됩니다. <code>접수번호</code> 기준 중복은 첫 번째 행이 유지됩니다.</em>
     </div>
 
-    <div class="mode-toggle">
+    <!-- 분류 완료 파일 컬럼 스펙 -->
+    <div id="claimColSpecPRE" class="column-spec" style="display:none">
+      <strong>필수 컬럼:</strong>
+      <code>접수번호</code> · <code>순번</code> · <code>제품구분</code><br>
+      <strong>저장 컬럼:</strong>
+      <code>표준증상</code> · <code>상세증상(보충설명)</code> · <code>카테고리</code> · <code>요구내역</code><br>
+      <em style="color:var(--emerald)">✔ <code>검토사유</code> 컬럼은 저장에서 자동 제외됩니다. 자동 분류 파이프라인 없이 직접 저장됩니다.</em>
+    </div>
+
+    <div id="claimModeToggle" class="mode-toggle">
       <button class="mode-btn active" onclick="setClaimMode('append',this)">추가 (기존 유지)</button>
       <button class="mode-btn" onclick="setClaimMode('replace',this)">교체 (기존 삭제 후 업로드)</button>
     </div>
@@ -297,6 +316,7 @@ const headers = {
 };
 
 let claimMode = 'append';
+let claimFileType = 'erp';   // 'erp' | 'pre'
 let claimParsedData = [];    // rows ready for claims_receipt
 let claimPendingData = [];   // rows for symptom_pending
 let claimRawParsed = [];     // full parsed objects with parse results (for preview)
@@ -513,8 +533,97 @@ const COST_HEADER_MAP = {
 
 function setClaimMode(mode, btn) {
   claimMode = mode;
-  document.querySelectorAll('.mode-toggle .mode-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#claimModeToggle .mode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+function setClaimFileType(type, btn) {
+  claimFileType = type;
+  document.querySelectorAll('#claimFileTypeToggle .mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('claimColSpecERP').style.display = type === 'erp' ? '' : 'none';
+  document.getElementById('claimColSpecPRE').style.display = type === 'pre' ? '' : 'none';
+  // 파일 유형 변경 시 기존 파싱 결과 초기화
+  resetClaimPreview();
+}
+
+// ─── 분류 완료 파일 파싱 (자동 분류 없이 직접 매핑) ───
+function _handleClaimFilePre(rows, filename) {
+  const today = (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })();
+
+  // 중복 제거: (접수번호 + 순번) 기준
+  const seen = new Map();
+  rows.forEach(r => {
+    const rid = String(r['접수번호'] || '').trim();
+    if (!rid) return;
+    const seq = parseInt(r['순번'] || '1') || 1;
+    seen.set(`${rid}::${seq}`, r);
+  });
+
+  claimParsedData = [];
+  claimPendingData = [];
+  claimRawParsed = [];
+
+  Array.from(seen.values()).forEach(r => {
+    const rid = String(r['접수번호'] || '').trim();
+    const seq = parseInt(r['순번'] || '1') || 1;
+    const dbRow = {
+      receipt_id:       rid,
+      seq_no:           seq,
+      receipt_date:     extractDateFromReceiptId(rid),
+      item:             String(r['제품구분'] || '').trim() || null,
+      defect_normalized: String(r['표준증상'] || '').trim() || null,
+      raw_symptom:      String(r['상세증상(보충설명)'] || '').trim() || null,
+      defect_category:  String(r['카테고리'] || '').trim() || null,
+      claim_detail:     String(r['요구내역'] || '').trim().slice(0, 2000) || null,
+      // 검토사유 → 저장 제외
+      country:          '국내',
+      brand:            '시디즈',
+      uploaded_at:      today,
+      processing_date:  null, category: null, judgement_type: null,
+      defect_type:      null, model: null, cost: 0,
+      inspection_result: null, main_category: null, sub_category: null,
+      defective_part:   null, lot: null, code: null, warranty_type: null,
+      product_code_raw: null,
+    };
+    claimParsedData.push(dbRow);
+    claimRawParsed.push(dbRow);
+  });
+
+  // 통계 배너
+  document.getElementById('statTotal').textContent = claimParsedData.length + '건';
+  document.getElementById('statDedup').textContent = (rows.length - claimParsedData.length) + '건 제거';
+  document.getElementById('statMatched').textContent = claimParsedData.length + '건 (전체)';
+  document.getElementById('statUnmatched').textContent = '0건';
+  document.getElementById('claimParseBanner').classList.add('show');
+
+  // 미리보기 (분류완료 전용 컬럼)
+  const container = document.getElementById('claimPreview');
+  const table = document.getElementById('claimPreviewTable');
+  const info = document.getElementById('claimPreviewInfo');
+  container.classList.add('show');
+  info.textContent = `${filename} — ${claimParsedData.length}건 (최대 30행 미리보기)`;
+
+  const cols = ['접수번호', '접수일', '제품구분', '표준증상', '상세증상', '카테고리'];
+  let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  claimRawParsed.slice(0, 30).forEach(row => {
+    html += `<tr>
+      <td>${escHtml(row.receipt_id ?? '')}</td>
+      <td>${escHtml(row.receipt_date ?? '')}</td>
+      <td>${escHtml(row.item ?? '')}</td>
+      <td>${escHtml(row.defect_normalized ?? '')}</td>
+      <td title="${escHtml(row.raw_symptom ?? '')}">${escHtml(truncate(row.raw_symptom ?? '', 35))}</td>
+      <td>${escHtml(row.defect_category ?? '')}</td>
+    </tr>`;
+  });
+  if (claimRawParsed.length > 30) {
+    html += `<tr><td colspan="6" style="text-align:center;color:var(--muted)">... 외 ${claimRawParsed.length - 30}행</td></tr>`;
+  }
+  html += '</tbody>';
+  table.innerHTML = html;
+
+  document.getElementById('claimUploadBtn').disabled = claimParsedData.length === 0;
+  hideStatus('claimStatus');
 }
 
 // ─── 증상 사전 로드 ───
@@ -618,6 +727,17 @@ function formatDate(val) {
 // ─── Claim File Handler (순번 기반 증상 추출) ───
 async function handleClaimFile(file) {
   if (!file) return;
+
+  // 분류 완료 파일 모드 → 별도 핸들러로 분기
+  if (claimFileType === 'pre') {
+    showStatus('claimStatus', 'loading', '파일 파싱 중...');
+    parseExcel(file, (err, rows) => {
+      if (err || !rows.length) { showStatus('claimStatus', 'error', '파일 읽기 실패: ' + (err?.message || '데이터 없음')); return; }
+      _handleClaimFilePre(rows, file.name);
+    });
+    return;
+  }
+
   showStatus('claimStatus', 'loading', '증상 사전 로드 중...');
 
   // 1. 증상 사전 로드
