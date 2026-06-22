@@ -187,7 +187,16 @@ function renderKpiClaimSection(year) {
   const vnS = data.sales.vn.slice(0, range);
   const totalS = krS.reduce((s,v)=>s+(v||0),0) + vnS.reduce((s,v)=>s+(v||0),0);
 
-  const avgIdx = totalS > 0 ? ((totalJ / totalS) * 100).toFixed(2) : '-';
+  // 불량지수 평균: 월별 (판정/매출×100) 의 평균 — 표 2026평균 열과 동일한 방식
+  const tJArr = data.judgement.kr.map((v,i) => (v||0) + (data.judgement.vn[i]||0));
+  const tSArr = data.sales.kr.map((v,i) => (v||0) + (data.sales.vn[i]||0));
+  const monthlyRates = tJArr.slice(0, range).map((c,i) => {
+    const s = tSArr[i] || 0;
+    return (c && s > 0) ? (c / s) * 100 : null;
+  }).filter(v => v !== null);
+  const avgIdx = monthlyRates.length > 0
+    ? (monthlyRates.reduce((a,b) => a+b, 0) / monthlyRates.length).toFixed(2)
+    : '-';
 
   let lastMonth = 0;
   for (let i = range-1; i >= 0; i--) { if ((data.judgement.kr[i]||0)+(data.judgement.vn[i]||0) > 0) { lastMonth = i; break; } }
