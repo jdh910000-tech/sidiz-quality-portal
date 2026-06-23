@@ -586,7 +586,7 @@ function _handleClaimFilePre(rows, filename) {
       receipt_id:        rid,
       seq_no:            seq,
       receipt_date:      rDate,
-      category:          String(r['제품구분'] || '').trim() || null,   // 제품구분 → category
+      item:              String(r['제품구분'] || '').trim() || null,   // 제품구분 → item (표시에 사용)
       defect_normalized: String(r['표준증상'] || '').trim() || null,
       defect_category:   String(r['카테고리'] || '').trim() || null,
       admin_note:        String(r['상세증상(보충설명)'] || r['상세증상'] || '').trim() || null,
@@ -596,7 +596,7 @@ function _handleClaimFilePre(rows, filename) {
       country:           '국내',
       brand:             '시디즈',
       uploaded_at:       today,
-      item: null, processing_date: null, judgement_type: null,
+      category: null, processing_date: null, judgement_type: null,
       defect_type: null, model: null, cost: 0,
       inspection_result: null, main_category: null, sub_category: null,
       defective_part: null, lot: null, code: null, warranty_type: null,
@@ -621,7 +621,7 @@ function _handleClaimFilePre(rows, filename) {
   const errNote = errors.length ? ` ⚠ ${errors.length}건 보류` : '';
   info.textContent = `${filename} — ${claimParsedData.length}건 적재 예정${errNote} (최대 30행 미리보기)`;
 
-  const cols = ['접수번호', '접수일', '제품구분(→category)', '표준증상', '상세증상(→admin_note)', '카테고리'];
+  const cols = ['접수번호', '접수일', '제품구분(→item)', '표준증상', '상세증상(→admin_note)', '카테고리'];
   let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
   claimRawParsed.slice(0, 30).forEach(row => {
     html += `<tr>
