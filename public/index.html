@@ -872,7 +872,7 @@ body.share-mode .section > .header .header-left p { display: none; }
         <div style="position:relative;height:320px"><canvas id="prodBarChart"></canvas></div>
       </div>
       <div class="chart-card" style="padding:20px">
-        <h3 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        <h3 id="prodPieTitle" style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent-violet);display:inline-block"></span>
           제품별 클레임 현황
         </h3>
@@ -4774,6 +4774,35 @@ function _updateReceiptUI() {}
 // ─── 제품별 클레임 탭 — claims 테이블 기반 (claim_date 기준) ───
 let _prodAllData = [];
 let _prodSalesData = [];  // product_sales_monthly
+
+// product_sales_monthly.item 정규화 맵 (claims.item과 매칭을 위해)
+const _SALES_NORMALIZE = (() => {
+  const m = {};
+  [['T60','에가'],['아이블','아이블(높이조절형)'],
+   ['T61','T60'],['T52','T50AIR'],['T52(좌판커버)','T50AIR'],['T51','T50AIR'],['T53','T50AIR'],
+   ['T501FE','아이블'],['T503','아이블(높이조절형)'],['T50헤드','T50'],['T50 조절팔걸이','T50'],
+   ['T62','T60AIR'],['T603','에가'],
+   ['GC1','GC PRO'],['G10','GC PRO'],['GC PRO_쿨링시트_LED','GC PRO'],
+   ['S51','링고2세대'],['링고2','링고2세대'],['링고2 발받침','링고2세대'],
+   ['링고1 발받침','링고'],['S50','링고'],['링고 등,좌판','링고'],['링고 등판','링고'],
+   ['T25','리니에'],['N10','플릿'],['S40','트레보'],
+   ['M071','마네(인조가죽)'],['T402','T40'],['M803','버튼'],['M801','버튼(LEGS형)'],
+   ['M02','마네(플라스틱)'],['PILLO','필로'],['T300','T30'],
+   ['아띠 의자','아띠'],['캐스터','이지리페어'],['2단 발받침','스테포'],
+   ['휴대의자','올리'],['암패드','T55'],['T20 팔걸이','T20'],['패브릭 스프레이','[부품]'],
+   ['T50light','T50LIGHT'],['T501fe','아이블'],
+   ['E40','셀리오스'],['M17','바스툴'],['HCH0018','비비'],['T302','T30'],
+   ['CH4200','ITIS3'],['M08','스푼'],['알렉스','T20'],['HCH0009','콘'],
+   ['HCH0014','세타'],['E50','베스토'],['HCH2000','아띠'],['E60','프로나드'],['T403','T40'],
+  ].forEach(([k,v]) => m[k] = v);
+  return m;
+})();
+function _normalizeSalesItem(name) {
+  if (!name) return name;
+  let prev = null;
+  while (name !== prev) { prev = name; name = _SALES_NORMALIZE[name] || name; }
+  return name;
+}
 let _prodBarChart = null;
 let _prodPieChart = null;
 let _prodTrendChart = null;
@@ -4991,7 +5020,7 @@ async function loadProdTab() {
       SupabaseClient.fetchProductSalesMonthly()
     ]);
     _prodAllData = rows || [];
-    _prodSalesData = salesRows || [];
+    _prodSalesData = (salesRows || []).map(s => s.item ? {...s, item: _normalizeSalesItem(s.item)} : s);
 
     // 제품 드롭다운 (item 기준 — 의자구분 우선, 클레임 수 내림차순)
     const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))];
@@ -5484,17 +5513,32 @@ function renderProdBarChart(claims) {
 function renderProdPieChart(claims) {
   if (_prodPieChart) { _prodPieChart.destroy(); _prodPieChart = null; }
   const ctx = document.getElementById('prodPieChart'); if (!ctx) return;
-  // 제품별 클레임 현황: claims.item 기준
-  const byItem = {};
+
+  const selItem = document.getElementById('prodItemSelect')?.value || 'all';
+  const isPartMode = selItem !== 'all';
+
+  // 제품 선택 시 → defective_part 기준 / 전체 선택 시 → item 기준
+  const byKey = {};
   claims.forEach(c => {
-    const p = c.item || '기타';
-    byItem[p] = (byItem[p] || 0) + 1;
+    const p = isPartMode ? (c.defective_part || '기타') : (c.item || '기타');
+    byKey[p] = (byKey[p] || 0) + 1;
   });
-  const sorted = Object.entries(byItem).sort((a,b) => b[1]-a[1]).slice(0, 10);
+
+  const sorted = Object.entries(byKey).sort((a,b) => b[1]-a[1]).slice(0, 10);
   if (sorted.length === 0) return;
   const labels = sorted.map(([k]) => k);
   const values = sorted.map(([,v]) => v);
   const palette = ['#002BD2','#FF4C6A','#00B87A','#E6A800','#7c5fe6','#54DBC2','#FF6C39','#1A59FF','#D946EF','#64748B'];
+
+  // 차트 제목 업데이트
+  const titleEl = document.getElementById('prodPieTitle');
+  if (titleEl) {
+    const dot = titleEl.querySelector('span');
+    titleEl.innerHTML = '';
+    if (dot) titleEl.appendChild(dot);
+    titleEl.appendChild(document.createTextNode(isPartMode ? `부품별 클레임 현황 (${selItem})` : '제품별 클레임 현황'));
+  }
+
   _prodPieChart = new Chart(ctx, {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: '#ffffff', borderWidth: 2 }] },
@@ -5505,7 +5549,7 @@ function renderProdPieChart(claims) {
           callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } }
       },
       onClick(e, elements) {
-        if (!elements.length) return;
+        if (!elements.length || isPartMode) return;
         const clickedItem = labels[elements[0].index];
         _prodDrillItem = (_prodDrillItem === clickedItem) ? null : clickedItem;
         _prodDrillCat  = null;
@@ -5513,7 +5557,7 @@ function renderProdPieChart(claims) {
       }
     }
   });
-  if (ctx.canvas) ctx.canvas.style.cursor = 'pointer';
+  if (ctx.canvas) ctx.canvas.style.cursor = isPartMode ? 'default' : 'pointer';
 }
 
 function renderProdTrendChart(claims, from, to) {
@@ -5737,15 +5781,16 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
   // 1~12월 고정 (현재 연도 기준, 기간 필터 무관)
   const allMonths = Array.from({length:12}, (_,i) => `${year}-${String(i+1).padStart(2,'0')}`);
 
-  // 그룹핑: defect_type(하자유형) + category(판정유형) + 정규화된 inspection_result
+  // 그룹핑: item + defect_type + category + inspection_result
   const groupMap = {};
   claims.forEach(c => {
-    const dt = c.defect_type || '미분류';
+    const it  = c.item || '미분류';
+    const dt  = c.defect_type || '미분류';
     const cat = c.category || '미분류';
     const detail = _normalizeInspectionResult(c.inspection_result);
-    const key = dt + '||' + cat + '||' + detail;
+    const key = it + '||' + dt + '||' + cat + '||' + detail;
     const m = c.claim_date?.slice(0,7) || '미분류';
-    if (!groupMap[key]) groupMap[key] = { defect_type: dt, category: cat, detail, total: 0, months: {}, records: [] };
+    if (!groupMap[key]) groupMap[key] = { item: it, defect_type: dt, category: cat, detail, total: 0, months: {}, records: [] };
     groupMap[key].total++;
     groupMap[key].months[m] = (groupMap[key].months[m]||0)+1;
     groupMap[key].records.push({ receipt_id: c.claim_id || '-', claim_detail: c.claim_detail || c.inspection_result || '-' });
@@ -5753,14 +5798,17 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
 
   const rows = Object.values(groupMap).sort((a,b) => b.total - a.total);
 
-  // defect_type 그룹 (rowspan)
-  const dtGroups = {};
+  // item 기준 outer 그룹 → 각 item 내 defect_type inner 그룹
+  const itemGroups = {};
   rows.forEach(r => {
-    if (!dtGroups[r.defect_type]) dtGroups[r.defect_type] = { items:[], total:0 };
-    dtGroups[r.defect_type].items.push(r);
-    dtGroups[r.defect_type].total += r.total;
+    if (!itemGroups[r.item]) itemGroups[r.item] = { dtMap: {}, total: 0 };
+    const ig = itemGroups[r.item];
+    ig.total += r.total;
+    if (!ig.dtMap[r.defect_type]) ig.dtMap[r.defect_type] = { items: [], total: 0 };
+    ig.dtMap[r.defect_type].items.push(r);
+    ig.dtMap[r.defect_type].total += r.total;
   });
-  const dtSorted = Object.entries(dtGroups).sort((a,b) => b[1].total - a[1].total);
+  const itemSorted = Object.entries(itemGroups).sort((a,b) => b[1].total - a[1].total);
 
   const STATUS_OPTS = ['','개선중','개선완료','개선불가'];
   const STATUS_COLORS = { '':'#aaaaaa', '개선중':'#FF8C00', '개선완료':'#00B87A', '개선불가':'#FF4C6A' };
@@ -5771,33 +5819,44 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
   const mh = allMonths.map(m => `<th style="text-align:center;white-space:nowrap;min-width:40px">${parseInt(m.slice(5))}월</th>`).join('');
 
   let tableRows = '';
-  dtSorted.forEach(([dt, group]) => {
-    // 서브카테고리("외관(오염)")도 부모 색상으로 자동 매칭
-    const dtColor = DEFECT_COLORS[dt] || DEFECT_COLORS[getCatGroup(dt)] || (typeof getCatColorHex === 'function' ? getCatColorHex(dt) : '#a0b4cb');
-    group.items.forEach((r, idx) => {
-      const rowKey = encodeURIComponent(dt + '||' + r.category + '||' + r.detail);
-      const savedStatus = getProdStatus(rowKey);
-      const stColor = STATUS_COLORS[savedStatus] || 'var(--accent-cyan)';
-      const catColor = CAT_COLOR_MAP[r.category] || '#a0b4cb';
-      const rowIdx = window._prodDetailData ? window._prodDetailData.length : 0;
-      if (window._prodDetailData) window._prodDetailData.push({ detail: r.detail, records: r.records || [] });
-      tableRows += '<tr>';
-      if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);word-break:keep-all;text-align:center;padding:8px 6px;width:150px;min-width:150px;max-width:150px">
-        <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33;word-break:keep-all">${dt}</span>
-        <div style="font-family:'JetBrains Mono';font-size:12px;color:${dtColor};font-weight:700;margin-top:4px">${group.total}건</div>
-      </td>`;
-      tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;color:${catColor};background:${catColor}18;border:1px solid ${catColor}33">${r.category}</span></td>`;
-      tableRows += `<td style="text-align:left;font-size:11px;min-width:280px;white-space:normal;line-height:1.5;padding:6px 8px;cursor:pointer;text-decoration:underline dotted;color:var(--sidiz-blue-bright)" title="클릭 시 상세 내역 보기" onclick="showProdDetailModal(${rowIdx})">${r.detail}</td>`;
-      tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px">
-        <select onchange="saveProdRowStatus('${rowKey}',this.value);this.style.color=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#aaaaaa');this.style.borderColor=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#cccccc')+'88'" onclick="event.stopPropagation()" style="background:${savedStatus?stColor+'12':'rgba(255,255,255,0.04)'};border:1.5px solid ${savedStatus?stColor+'88':'#cccccc88'};color:${savedStatus?stColor:'#aaaaaa'};padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;outline:none;min-width:72px;text-align:center">
-          <option value="" ${savedStatus===''?'selected':''} style="color:#aaaaaa">—</option>
-          <option value="개선중" ${savedStatus==='개선중'?'selected':''} style="color:#FF8C00">개선중</option>
-          <option value="개선완료" ${savedStatus==='개선완료'?'selected':''} style="color:#00B87A">개선완료</option>
-          <option value="개선불가" ${savedStatus==='개선불가'?'selected':''} style="color:#FF4C6A">개선불가</option>
-        </select>
-      </td>`;
-      tableRows += allMonths.map(m => `<td style="text-align:center;font-size:11px">${r.months[m]||'-'}</td>`).join('');
-      tableRows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${r.total}</td></tr>`;
+  itemSorted.forEach(([itemName, ig]) => {
+    const dtSortedLocal = Object.entries(ig.dtMap).sort((a,b) => b[1].total - a[1].total);
+    const itemRowspan = dtSortedLocal.reduce((sum, [, dg]) => sum + dg.items.length, 0);
+    let itemFirstRow = true;
+    dtSortedLocal.forEach(([dt, group]) => {
+      const dtColor = DEFECT_COLORS[dt] || DEFECT_COLORS[getCatGroup(dt)] || (typeof getCatColorHex === 'function' ? getCatColorHex(dt) : '#a0b4cb');
+      group.items.forEach((r, idx) => {
+        const rowKey = encodeURIComponent(itemName + '||' + dt + '||' + r.category + '||' + r.detail);
+        const savedStatus = getProdStatus(rowKey);
+        const stColor = STATUS_COLORS[savedStatus] || 'var(--accent-cyan)';
+        const catColor = CAT_COLOR_MAP[r.category] || '#a0b4cb';
+        const rowIdx = window._prodDetailData ? window._prodDetailData.length : 0;
+        if (window._prodDetailData) window._prodDetailData.push({ detail: r.detail, records: r.records || [] });
+        tableRows += '<tr>';
+        if (itemFirstRow) {
+          tableRows += `<td class="row-header" rowspan="${itemRowspan}" style="vertical-align:middle;border-right:1px solid var(--border);text-align:center;padding:8px 4px;width:90px;min-width:90px;max-width:90px">
+            <span style="font-size:11px;font-weight:700;color:var(--sidiz-blue-bright);word-break:keep-all">${itemName}</span>
+            <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--text-muted);margin-top:2px">${ig.total}건</div>
+          </td>`;
+          itemFirstRow = false;
+        }
+        if (idx===0) tableRows += `<td class="row-header" rowspan="${group.items.length}" style="vertical-align:middle;border-right:1px solid var(--border);word-break:keep-all;text-align:center;padding:8px 6px;width:130px;min-width:130px;max-width:130px">
+          <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;color:${dtColor};background:${dtColor}18;border:1px solid ${dtColor}33;word-break:keep-all">${dt}</span>
+          <div style="font-family:'JetBrains Mono';font-size:12px;color:${dtColor};font-weight:700;margin-top:4px">${group.total}건</div>
+        </td>`;
+        tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;color:${catColor};background:${catColor}18;border:1px solid ${catColor}33">${r.category}</span></td>`;
+        tableRows += `<td style="text-align:left;font-size:11px;min-width:280px;white-space:normal;line-height:1.5;padding:6px 8px;cursor:pointer;text-decoration:underline dotted;color:var(--sidiz-blue-bright)" title="클릭 시 상세 내역 보기" onclick="showProdDetailModal(${rowIdx})">${r.detail}</td>`;
+        tableRows += `<td style="text-align:center;white-space:nowrap;padding:4px 8px">
+          <select onchange="saveProdRowStatus('${rowKey}',this.value);this.style.color=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#aaaaaa');this.style.borderColor=({'개선중':'#FF8C00','개선완료':'#00B87A','개선불가':'#FF4C6A'}[this.value]||'#cccccc')+'88'" onclick="event.stopPropagation()" style="background:${savedStatus?stColor+'12':'rgba(255,255,255,0.04)'};border:1.5px solid ${savedStatus?stColor+'88':'#cccccc88'};color:${savedStatus?stColor:'#aaaaaa'};padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;outline:none;min-width:72px;text-align:center">
+            <option value="" ${savedStatus===''?'selected':''} style="color:#aaaaaa">—</option>
+            <option value="개선중" ${savedStatus==='개선중'?'selected':''} style="color:#FF8C00">개선중</option>
+            <option value="개선완료" ${savedStatus==='개선완료'?'selected':''} style="color:#00B87A">개선완료</option>
+            <option value="개선불가" ${savedStatus==='개선불가'?'selected':''} style="color:#FF4C6A">개선불가</option>
+          </select>
+        </td>`;
+        tableRows += allMonths.map(m => `<td style="text-align:center;font-size:11px">${r.months[m]||'-'}</td>`).join('');
+        tableRows += `<td style="font-weight:700;color:var(--sidiz-blue-bright);text-align:center">${r.total}</td></tr>`;
+      });
     });
   });
 
@@ -5824,7 +5883,7 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
   const totalDefect = totalSalesAll > 0 ? ((totalClaimsAll / totalSalesAll) * 100).toFixed(2) + '%' : '-';
 
   const salesRow = `<tr style="background:rgba(0,196,140,0.05)">
-    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
+    <td colspan="5" style="text-align:right;font-size:11px;color:var(--accent-emerald);font-weight:600;padding:8px 10px">📦 매출량</td>
     ${allMonths.map(m => {
       const v = salesByMonth[m];
       return `<td style="text-align:center;font-size:11px;color:${v>0?'var(--accent-emerald)':'var(--text-muted)'}">${v>0?v.toLocaleString():'-'}</td>`;
@@ -5832,7 +5891,7 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     <td style="font-weight:700;color:var(--accent-emerald);text-align:center">${totalSalesAll>0?totalSalesAll.toLocaleString()+' 개':'-'}</td>
   </tr>`;
   const defectRow = `<tr style="background:rgba(255,179,71,0.05)">
-    <td colspan="4" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×100)</td>
+    <td colspan="5" style="text-align:right;font-size:11px;color:var(--accent-amber);font-weight:600;padding:8px 10px">📊 불량지수 (×100)</td>
     ${allMonths.map(m => {
       const s = salesByMonth[m]; const c2 = claimsByMonth[m];
       const idx = s > 0 ? ((c2 / s) * 100).toFixed(2) : null;
@@ -5845,7 +5904,8 @@ function renderProdMonthlyTable(claims, selItem, selCountry) {
     <table class="data-table" style="font-size:11px;min-width:800px">
       <thead>
         <tr style="background:rgba(255,255,255,0.97)">
-          <th style="text-align:center;width:150px;min-width:150px;word-break:keep-all">하자유형</th>
+          <th style="text-align:center;width:90px;min-width:90px;word-break:keep-all">제품</th>
+          <th style="text-align:center;width:130px;min-width:130px;word-break:keep-all">하자유형</th>
           <th style="text-align:center;white-space:nowrap;min-width:85px">판정유형</th>
           <th style="text-align:left;min-width:280px">판정내용 (상세)</th>
           <th style="text-align:center;white-space:nowrap;min-width:60px">상태</th>
