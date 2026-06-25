@@ -140,8 +140,24 @@ async function fetchReceiptByDefect(item, defectType) {
 // ─── sales_monthly (매출량) ───
 async function fetchSalesMonthly() { return supabaseFetch('sales_monthly', 'select=*&order=year_month.desc'); }
 
-// ─── product_sales_monthly (제품별 매출량) ───
-async function fetchProductSalesMonthly() { return supabaseFetch('product_sales_monthly', 'select=*&order=year_month.asc'); }
+// ─── product_sales_monthly (제품별 매출량, 전체 페이지네이션) ───
+async function fetchProductSalesMonthly() {
+  const PAGE = 1000;
+  let all = [], offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/product_sales_monthly?select=*&order=year_month.asc`,
+      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
+    );
+    if (!res.ok) break;
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    all = all.concat(rows);
+    if (rows.length < PAGE) break;
+    offset += PAGE;
+  }
+  return all;
+}
 
 // ─── failure_costs (실패비용) ───
 async function fetchFailureCosts(year) {
