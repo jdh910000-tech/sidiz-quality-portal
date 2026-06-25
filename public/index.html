@@ -5363,8 +5363,9 @@ async function loadProdDashboard() {
 
   // 매출량 계산: product_sales_monthly 에서 item + country + 기간 필터
   const country = document.getElementById('prodCountrySel')?.value || 'all';
+  const salesItem = item !== 'all' ? _normalizeSalesItem(item) : 'all';
   const salesFiltered = _prodSalesData.filter(s => {
-    if (item !== 'all' && s.item !== item) return false;
+    if (salesItem !== 'all' && s.item !== salesItem) return false;
     if (country !== 'all' && s.country !== country) return false;
     if (from && s.year_month < from.slice(0,7)) return false;
     if (to   && s.year_month > to.slice(0,7))   return false;
