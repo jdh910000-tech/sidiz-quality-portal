@@ -4781,6 +4781,44 @@ let _prodLoaded = false;
 let _prodDrillCat  = null;   // 바차트 클릭 시 선택된 판정유형
 let _prodDrillItem = null;   // 파이차트 클릭 시 선택된 제품
 
+// 제품 그룹 (엑셀 "제품구분 rev1" 기준): 1=주황(주요), 2=파랑(일반), 3=노랑(기타)
+const ITEM_GROUP = (() => {
+  const g = {};
+  ['T50','T20','GC PRO','T80','리니에','T50AIR','마네(인조가죽)','아이블','T90',
+   '마네(플라스틱)','ITIS3','T40','T60','링고2세대','T21','에가','몰티',
+   '아이블(높이조절형)','GX','T50LIGHT','트레보','버튼','링고','윈든',
+   '버튼(LEGS형)','뮤브','펑거스','스푼','T60AIR','플릿'
+  ].forEach(n => g[n] = 1);
+  ['올라운드','세타','셀리오스','ITIS2','바스툴','베스토','링고아이','아띠',
+   '누오','CH13X','이지리페어','피코','프로나드','콘','롤리','비비','필로',
+   '[부품]','CH3411','CH2711','아웃라인','프라자','소다','리플라이','테푸이','T12'
+  ].forEach(n => g[n] = 2);
+  ['마르쿠스','아띠 책상','T45','T55','올리','T30','스테포','M50','T502','T501F'
+  ].forEach(n => g[n] = 3);
+  return g;
+})();
+
+function _buildSortedItemOptions(items, refData) {
+  const cnt = {};
+  refData.forEach(r => { if (r.item) cnt[r.item] = (cnt[r.item] || 0) + 1; });
+  const sorted = [...items].sort((a, b) => {
+    const ga = ITEM_GROUP[a] || 99, gb = ITEM_GROUP[b] || 99;
+    if (ga !== gb) return ga - gb;
+    return (cnt[b] || 0) - (cnt[a] || 0);
+  });
+  const g1  = sorted.filter(i => ITEM_GROUP[i] === 1);
+  const g2  = sorted.filter(i => ITEM_GROUP[i] === 2);
+  const g3  = sorted.filter(i => ITEM_GROUP[i] === 3);
+  const g99 = sorted.filter(i => !ITEM_GROUP[i]);
+  const opts = i => `<option value="${i}">${i} (${cnt[i]||0}건)</option>`;
+  let html = '<option value="all">전체 제품</option>';
+  if (g1.length)  html += `<optgroup label="── 주요 제품 ──">${g1.map(opts).join('')}</optgroup>`;
+  if (g2.length)  html += `<optgroup label="── 일반 제품 ──">${g2.map(opts).join('')}</optgroup>`;
+  if (g3.length)  html += `<optgroup label="── 기타 제품 ──">${g3.map(opts).join('')}</optgroup>`;
+  if (g99.length) html += `<optgroup label="── 미분류 ──">${g99.map(opts).join('')}</optgroup>`;
+  return html;
+}
+
 // 판정유형 다중선택 드롭다운 토글
 function toggleProdCatDD(e) {
   e.stopPropagation();
@@ -4835,10 +4873,10 @@ async function loadProdTab() {
     _prodAllData = rows || [];
     _prodSalesData = salesRows || [];
 
-    // 제품 드롭다운 (item 기준)
-    const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))].sort();
+    // 제품 드롭다운 (item 기준 — 그룹 우선, 클레임 수 내림차순)
+    const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))];
     const itemSel = document.getElementById('prodItemSelect');
-    if (itemSel) itemSel.innerHTML = '<option value="all">전체 제품</option>' + items.map(i => `<option value="${i}">${i}</option>`).join('');
+    if (itemSel) itemSel.innerHTML = _buildSortedItemOptions(items, _prodAllData);
 
     // 판정유형 다중선택 체크박스 (claims.category 기준)
     const cats = [...new Set(_prodAllData.map(r => r.category).filter(Boolean))].sort();
@@ -4887,11 +4925,11 @@ function refreshProdItemDropdown() {
     if (country !== 'all' && r.country !== country) return false;
     return true;
   });
-  const items = [...new Set(filtered.map(r => r.item).filter(Boolean))].sort();
+  const items = [...new Set(filtered.map(r => r.item).filter(Boolean))];
 
   const itemSel = document.getElementById('prodItemSelect');
   if (!itemSel) return;
-  itemSel.innerHTML = '<option value="all">전체 제품</option>' + items.map(i => `<option value="${i}">${i}</option>`).join('');
+  itemSel.innerHTML = _buildSortedItemOptions(items, filtered);
 
   // 기존 선택값이 새 목록에 있으면 유지, 없으면 '전체'로 초기화
   if (items.includes(curItem)) itemSel.value = curItem;
