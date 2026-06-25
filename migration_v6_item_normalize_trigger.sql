@@ -53,6 +53,22 @@ BEGIN
     WHEN '암패드'             THEN 'T55'
     WHEN 'T20 팔걸이'         THEN 'T20'
     WHEN '패브릭 스프레이'    THEN '[부품]'
+    -- v2 추가 (2026-06-25)
+    WHEN 'T50light'           THEN 'T50LIGHT'
+    WHEN 'T501fe'             THEN '아이블'
+    WHEN 'E40'                THEN '셀리오스'
+    WHEN 'M17'                THEN '바스툴'
+    WHEN 'HCH0018'            THEN '비비'
+    WHEN 'T302'               THEN 'T30'
+    WHEN 'CH4200'             THEN 'ITIS3'
+    WHEN 'M08'                THEN '스푼'
+    WHEN '알렉스'             THEN 'T20'
+    WHEN 'HCH0009'            THEN '콘'
+    WHEN 'HCH0014'            THEN '세타'
+    WHEN 'E50'                THEN '베스토'
+    WHEN 'HCH2000'            THEN '아띠'
+    WHEN 'E60'                THEN '프로나드'
+    WHEN 'T403'               THEN 'T40'
     ELSE NEW.item  -- 해당 없으면 그대로 유지
   END;
   RETURN NEW;

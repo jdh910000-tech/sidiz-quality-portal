@@ -791,10 +791,14 @@ body.share-mode .section > .header .header-left p { display: none; }
 
     <!-- 필터 바 -->
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--sidiz-dark2);padding:14px 16px;border-radius:12px;border:1px solid var(--border)">
-      <!-- 제품 선택 -->
-      <select id="prodItemSelect" onchange="onProdItemChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
-        <option value="all">전체 제품</option>
-      </select>
+      <!-- 제품 선택 (custom dropdown) -->
+      <div style="position:relative" id="prodItemWrapper">
+        <select id="prodItemSelect" style="display:none"><option value="all">전체 제품</option></select>
+        <button id="prodItemBtn" onclick="toggleProdItemDD(event)" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:150px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:6px">
+          <span id="prodItemLabel">전체 제품</span><span style="font-size:9px;opacity:0.6">▾</span>
+        </button>
+        <div id="prodItemDD" style="display:none;position:absolute;top:38px;left:0;background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;z-index:300;min-width:220px;max-height:420px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)"></div>
+      </div>
       <!-- 판정유형 다중선택 -->
       <div style="position:relative" id="prodCatWrapper">
         <button id="prodCatBtn" onclick="toggleProdCatDD(event)" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:130px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:6px">
@@ -4813,8 +4817,13 @@ const _ITEM_CAT_LABELS = {
   4:'GAMING', 5:'STUDY', 6:'GROWING',
   7:'SEAT BOOSTER', 8:'관계사 제품', 9:'부품'
 };
+const _ITEM_CAT_DESCS = {
+  1:'사무용·컴퓨터 의자', 2:'홈오피스·책상 의자', 3:'식탁 의자·바스툴',
+  4:'게이밍 의자', 5:'학생·공부 의자', 6:'하이체어·유아 의자',
+  7:'발받침대·스툴·좌식의자', 8:'퍼시스·일룸·데스커 등', 9:'소모품·부품류'
+};
 
-function _buildSortedItemOptions(items, refData) {
+function _rebuildProdItemDD(items, refData, curVal) {
   const cnt = {};
   refData.forEach(r => { if (r.item) cnt[r.item] = (cnt[r.item] || 0) + 1; });
   const sorted = [...items].sort((a, b) => {
@@ -4822,19 +4831,55 @@ function _buildSortedItemOptions(items, refData) {
     if (ga !== gb) return ga - gb;
     return (cnt[b] || 0) - (cnt[a] || 0);
   });
+  // hidden select 업데이트
+  const sel = document.getElementById('prodItemSelect');
+  if (sel) {
+    sel.innerHTML = '<option value="all">전체 제품</option>' + sorted.map(i => `<option value="${i}">${i}</option>`).join('');
+    const restoreVal = (curVal && sorted.includes(curVal)) ? curVal : 'all';
+    sel.value = restoreVal;
+    const lbl = document.getElementById('prodItemLabel');
+    if (lbl) lbl.textContent = restoreVal === 'all' ? '전체 제품' : restoreVal;
+  }
+  // custom dropdown 패널 빌드
+  const dd = document.getElementById('prodItemDD');
+  if (!dd) return;
   const groups = {};
   sorted.forEach(i => {
     const g = ITEM_CATEGORY[i] || 99;
     if (!groups[g]) groups[g] = [];
     groups[g].push(i);
   });
-  const opts = i => `<option value="${i}">${i} (${cnt[i]||0}건)</option>`;
-  let html = '<option value="all">전체 제품</option>';
-  Object.keys(groups).sort((a, b) => Number(a) - Number(b)).forEach(g => {
-    const label = _ITEM_CAT_LABELS[g] || '미분류';
-    html += `<optgroup label="── ${label} ──">${groups[g].map(opts).join('')}</optgroup>`;
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  let html = `<div data-item-val="all" style="padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text-primary);border-bottom:1px solid var(--border)" onmouseover="this.style.background='rgba(74,158,255,0.1)'" onmouseout="this.style.background=''">전체 제품</div>`;
+  Object.keys(groups).sort((a,b)=>Number(a)-Number(b)).forEach(g=>{
+    const n=Number(g), name=_ITEM_CAT_LABELS[n]||'미분류', desc=_ITEM_CAT_DESCS[n]||'';
+    html+=`<div style="padding:7px 14px 4px;background:rgba(0,0,0,0.18);border-top:1px solid var(--border)"><div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:0.4px">${esc(name)}</div>${desc?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${esc(desc)}</div>`:''}</div>`;
+    groups[g].forEach(i=>{
+      html+=`<div data-item-val="${esc(i)}" style="padding:5px 14px 5px 20px;cursor:pointer;font-size:12px;color:var(--text-primary);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(74,158,255,0.08)'" onmouseout="this.style.background=''"><span>${esc(i)}</span><span style="color:var(--text-muted);font-size:10px;margin-left:8px">${cnt[i]||0}건</span></div>`;
+    });
   });
-  return html;
+  dd.innerHTML = html;
+  dd.onclick = e => {
+    const opt = e.target.closest('[data-item-val]');
+    if (!opt) return;
+    _selectProdItem(opt.dataset.itemVal);
+  };
+}
+
+function toggleProdItemDD(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('prodItemDD');
+  if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+function _selectProdItem(val) {
+  const sel = document.getElementById('prodItemSelect');
+  if (sel) sel.value = val;
+  const lbl = document.getElementById('prodItemLabel');
+  if (lbl) lbl.textContent = val === 'all' ? '전체 제품' : val;
+  const dd = document.getElementById('prodItemDD');
+  if (dd) dd.style.display = 'none';
+  onProdItemChange();
 }
 
 // 판정유형 다중선택 드롭다운 토글
@@ -4844,13 +4889,12 @@ function toggleProdCatDD(e) {
   if (!dd) return;
   dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
-// 외부 클릭 시 닫기
+// 외부 클릭 시 닫기 (제품 선택 + 판정유형)
 document.addEventListener('click', function(e) {
-  const wrapper = document.getElementById('prodCatWrapper');
-  if (wrapper && !wrapper.contains(e.target)) {
-    const dd = document.getElementById('prodCatDD');
-    if (dd) dd.style.display = 'none';
-  }
+  const catW = document.getElementById('prodCatWrapper');
+  if (catW && !catW.contains(e.target)) { const d = document.getElementById('prodCatDD'); if (d) d.style.display = 'none'; }
+  const itemW = document.getElementById('prodItemWrapper');
+  if (itemW && !itemW.contains(e.target)) { const d = document.getElementById('prodItemDD'); if (d) d.style.display = 'none'; }
 });
 // 전체 체크박스 변경
 function prodCatAllChanged(cb) {
@@ -4891,10 +4935,9 @@ async function loadProdTab() {
     _prodAllData = rows || [];
     _prodSalesData = salesRows || [];
 
-    // 제품 드롭다운 (item 기준 — 그룹 우선, 클레임 수 내림차순)
+    // 제품 드롭다운 (item 기준 — 의자구분 우선, 클레임 수 내림차순)
     const items = [...new Set(_prodAllData.map(r => r.item).filter(Boolean))];
-    const itemSel = document.getElementById('prodItemSelect');
-    if (itemSel) itemSel.innerHTML = _buildSortedItemOptions(items, _prodAllData);
+    _rebuildProdItemDD(items, _prodAllData);
 
     // 판정유형 다중선택 체크박스 (claims.category 기준)
     const cats = [...new Set(_prodAllData.map(r => r.category).filter(Boolean))].sort();
@@ -4945,13 +4988,7 @@ function refreshProdItemDropdown() {
   });
   const items = [...new Set(filtered.map(r => r.item).filter(Boolean))];
 
-  const itemSel = document.getElementById('prodItemSelect');
-  if (!itemSel) return;
-  itemSel.innerHTML = _buildSortedItemOptions(items, filtered);
-
-  // 기존 선택값이 새 목록에 있으면 유지, 없으면 '전체'로 초기화
-  if (items.includes(curItem)) itemSel.value = curItem;
-  else itemSel.value = 'all';
+  _rebuildProdItemDD(items, filtered, curItem);
 }
 
 function setProdQuick(period) {
