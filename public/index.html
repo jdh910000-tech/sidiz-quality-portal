@@ -956,9 +956,13 @@ body.share-mode .section > .header .header-left p { display: none; }
           📤 업로드일
         </button>
       </div>
-      <select id="rctProductFilter" onchange="onRctProductChange()" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:140px">
-        <option value="all">전체 제품</option>
-      </select>
+      <div style="position:relative" id="rctItemWrapper">
+        <select id="rctProductFilter" style="display:none"><option value="all">전체 제품구분</option></select>
+        <button id="rctItemBtn" onclick="toggleRctItemDD(event)" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;min-width:150px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:6px">
+          <span id="rctItemLabel">전체 제품구분</span><span style="font-size:9px;opacity:0.6">▾</span>
+        </button>
+        <div id="rctItemDD" style="display:none;position:absolute;top:38px;left:0;background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;z-index:300;min-width:220px;max-height:420px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)"></div>
+      </div>
       <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap">
         <input type="date" id="rctDateFrom" style="background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px" value="">
         <span style="color:var(--text-muted)">~</span>
@@ -3834,20 +3838,11 @@ async function loadReceiptDashboard() {
       : await SupabaseClient.fetchReceiptByDateRange(from, to);
     _rctAllData = data || [];
 
-    // 제품 필터 드롭다운 업데이트 (특수문자 안전 이스케이프)
-    const _hOpt = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const products = [...new Set(_rctAllData.map(d => d.item).filter(Boolean))].sort();
-    const sel = document.getElementById('rctProductFilter');
-    const curVal = sel.value;
-    let opts = '<option value="all">전체 제품구분</option>' + products.map(p => `<option value="${_hOpt(p)}">${_hOpt(p)}</option>`).join('');
-    // 사용자가 선택한 제품이 새 결과에 없으면 — 묵시적으로 '전체'로 리셋되지 않도록 그대로 보존
-    // (이 기간엔 데이터 없음을 명시)
-    if (curVal && curVal !== 'all' && !products.includes(curVal)) {
-      opts += `<option value="${_hOpt(curVal)}">${_hOpt(curVal)} (이 기간 데이터 없음)</option>`;
-    }
-    sel.innerHTML = opts;
-    sel.value = curVal || 'all';
-    _rctSelectedProduct = sel.value;
+    // 제품 필터 드롭다운 업데이트 (카테고리 그룹화)
+    const products = [...new Set(_rctAllData.map(d => d.item).filter(Boolean))];
+    const curVal = document.getElementById('rctProductFilter')?.value || 'all';
+    _rebuildRctItemDD(products, _rctAllData, curVal);
+    _rctSelectedProduct = document.getElementById('rctProductFilter').value;
 
     // 미분류 배지 — symptom_pending 실제 검토 큐 기준 (claims_receipt null 건수 아님)
     try {
@@ -4754,6 +4749,8 @@ function _renderRctProductChips() {
 function selectRctProduct(prod) {
   _rctSelectedProduct = prod;
   document.getElementById('rctProductFilter').value = prod;
+  const lbl = document.getElementById('rctItemLabel');
+  if (lbl) lbl.textContent = prod === 'all' ? '전체 제품구분' : prod;
   _applyRctFilter();
 }
 
@@ -4882,6 +4879,65 @@ function _selectProdItem(val) {
   onProdItemChange();
 }
 
+// ── 클레임 현황(접수일/업로드일) 제품 커스텀 드롭다운 ──
+function _rebuildRctItemDD(items, refData, curVal) {
+  const cnt = {};
+  refData.forEach(r => { if (r.item) cnt[r.item] = (cnt[r.item] || 0) + 1; });
+  const sorted = [...items].sort((a, b) => {
+    const ga = ITEM_CATEGORY[a] || 99, gb = ITEM_CATEGORY[b] || 99;
+    if (ga !== gb) return ga - gb;
+    return (cnt[b] || 0) - (cnt[a] || 0);
+  });
+  // hidden select 업데이트
+  const sel = document.getElementById('rctProductFilter');
+  if (sel) {
+    sel.innerHTML = '<option value="all">전체 제품구분</option>' + sorted.map(i => `<option value="${i}">${i}</option>`).join('');
+    const restoreVal = (curVal && sorted.includes(curVal)) ? curVal : 'all';
+    sel.value = restoreVal;
+    const lbl = document.getElementById('rctItemLabel');
+    if (lbl) lbl.textContent = restoreVal === 'all' ? '전체 제품구분' : restoreVal;
+  }
+  // custom dropdown 패널 빌드
+  const dd = document.getElementById('rctItemDD');
+  if (!dd) return;
+  const groups = {};
+  sorted.forEach(i => {
+    const g = ITEM_CATEGORY[i] || 99;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(i);
+  });
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  let html = `<div data-item-val="all" style="padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text-primary);border-bottom:1px solid var(--border)" onmouseover="this.style.background='rgba(74,158,255,0.1)'" onmouseout="this.style.background=''">전체 제품구분</div>`;
+  Object.keys(groups).sort((a,b)=>Number(a)-Number(b)).forEach(g=>{
+    const n=Number(g), name=_ITEM_CAT_LABELS[n]||'미분류', desc=_ITEM_CAT_DESCS[n]||'';
+    html+=`<div style="padding:7px 14px 4px;background:rgba(0,0,0,0.18);border-top:1px solid var(--border)"><div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:0.4px">${esc(name)}</div>${desc?`<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${esc(desc)}</div>`:''}</div>`;
+    groups[g].forEach(i=>{
+      html+=`<div data-item-val="${esc(i)}" style="padding:5px 14px 5px 20px;cursor:pointer;font-size:12px;color:var(--text-primary);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(74,158,255,0.08)'" onmouseout="this.style.background=''"><span>${esc(i)}</span><span style="color:var(--text-muted);font-size:10px;margin-left:8px">${cnt[i]||0}건</span></div>`;
+    });
+  });
+  dd.innerHTML = html;
+  dd.onclick = e => {
+    const opt = e.target.closest('[data-item-val]');
+    if (!opt) return;
+    _selectRctItem(opt.dataset.itemVal);
+  };
+}
+function toggleRctItemDD(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('rctItemDD');
+  if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function _selectRctItem(val) {
+  const sel = document.getElementById('rctProductFilter');
+  if (sel) sel.value = val;
+  const lbl = document.getElementById('rctItemLabel');
+  if (lbl) lbl.textContent = val === 'all' ? '전체 제품구분' : val;
+  const dd = document.getElementById('rctItemDD');
+  if (dd) dd.style.display = 'none';
+  _rctSelectedProduct = val;
+  _applyRctFilter();
+}
+
 // 판정유형 다중선택 드롭다운 토글
 function toggleProdCatDD(e) {
   e.stopPropagation();
@@ -4889,12 +4945,14 @@ function toggleProdCatDD(e) {
   if (!dd) return;
   dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
-// 외부 클릭 시 닫기 (제품 선택 + 판정유형)
+// 외부 클릭 시 닫기 (제품 선택 + 판정유형 + 현황탭 제품)
 document.addEventListener('click', function(e) {
   const catW = document.getElementById('prodCatWrapper');
   if (catW && !catW.contains(e.target)) { const d = document.getElementById('prodCatDD'); if (d) d.style.display = 'none'; }
   const itemW = document.getElementById('prodItemWrapper');
   if (itemW && !itemW.contains(e.target)) { const d = document.getElementById('prodItemDD'); if (d) d.style.display = 'none'; }
+  const rctW = document.getElementById('rctItemWrapper');
+  if (rctW && !rctW.contains(e.target)) { const d = document.getElementById('rctItemDD'); if (d) d.style.display = 'none'; }
 });
 // 전체 체크박스 변경
 function prodCatAllChanged(cb) {
