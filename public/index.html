@@ -4775,6 +4775,20 @@ function _updateReceiptUI() {}
 let _prodAllData = [];
 let _prodSalesData = [];  // product_sales_monthly
 
+// claims.item 정규화 맵 (DB에 잘못된 코드로 입력된 미분류 항목 처리)
+const _CLAIMS_NORMALIZE = (() => {
+  const m = {};
+  [['TC13','T60'],['TN25','리니에'],['UCH0007','소다'],
+  ].forEach(([k,v]) => m[k] = v);
+  return m;
+})();
+function _normalizeClaimsItem(name) {
+  if (!name) return name;
+  let prev = null;
+  while (name !== prev) { prev = name; name = _CLAIMS_NORMALIZE[name] || name; }
+  return name;
+}
+
 // product_sales_monthly.item 정규화 맵 (claims.item과 매칭을 위해)
 const _SALES_NORMALIZE = (() => {
   const m = {};
@@ -5019,7 +5033,7 @@ async function loadProdTab() {
       SupabaseClient.fetchAllClaims(),
       SupabaseClient.fetchProductSalesMonthly()
     ]);
-    _prodAllData = (rows || []).map(r => r.item ? {...r, item: _normalizeSalesItem(r.item)} : r);
+    _prodAllData = (rows || []).map(r => r.item ? {...r, item: _normalizeClaimsItem(r.item)} : r);
     _prodSalesData = (salesRows || []).map(s => s.item ? {...s, item: _normalizeSalesItem(s.item)} : s);
 
     // 제품 드롭다운 (item 기준 — 의자구분 우선, 클레임 수 내림차순)
