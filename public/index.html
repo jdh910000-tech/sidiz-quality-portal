@@ -4794,7 +4794,7 @@ const _SALES_NORMALIZE = (() => {
   const m = {};
   [['T60','에가'],['아이블','아이블(높이조절형)'],
    ['T61','T60'],['T52','T50AIR'],['T52(좌판커버)','T50AIR'],['T51','T50AIR'],['T53','T50AIR'],
-   ['T501FE','아이블'],['T503','아이블(높이조절형)'],['T50헤드','T50'],['T50 조절팔걸이','T50'],
+   ['T501FE','아이블(높이조절형)'],['T503','아이블(높이조절형)'],['T50헤드','T50'],['T50 조절팔걸이','T50'],
    ['T62','T60AIR'],['T603','에가'],
    ['GC1','GC PRO'],['G10','GC PRO'],['GC PRO_쿨링시트_LED','GC PRO'],
    ['S51','링고2세대'],['링고2','링고2세대'],['링고2 발받침','링고2세대'],
@@ -4813,9 +4813,7 @@ const _SALES_NORMALIZE = (() => {
 })();
 function _normalizeSalesItem(name) {
   if (!name) return name;
-  let prev = null;
-  while (name !== prev) { prev = name; name = _SALES_NORMALIZE[name] || name; }
-  return name;
+  return _SALES_NORMALIZE[name] || name;
 }
 let _prodBarChart = null;
 let _prodPieChart = null;
@@ -4828,7 +4826,7 @@ let _prodDrillItem = null;   // 파이차트 클릭 시 선택된 제품
 // 제품 의자구분 (엑셀 "제품구분 rev1" 기준) — 카테고리 번호 1~9
 const ITEM_CATEGORY = (() => {
   const g = {};
-  ['T50','T20','T80','T50AIR','T90','ITIS3','T40','T60','T21','T50LIGHT',
+  ['T50','T20','T80','T50AIR','T90','T40','T60','T21','T50LIGHT',
    'T60AIR','T12','T45','T55','T30'
   ].forEach(n => g[n] = 1); // WORK
   ['리니에','에가','버튼','버튼(LEGS형)','뮤브','M50','트레보'
@@ -4843,7 +4841,7 @@ const ITEM_CATEGORY = (() => {
   ].forEach(n => g[n] = 6); // GROWING
   ['펑거스','필로','올리','스테포'
   ].forEach(n => g[n] = 7); // SEAT BOOSTER
-  ['스푼','올라운드','세타','셀리오스','ITIS2','바스툴','베스토','링고아이','누오',
+  ['스푼','올라운드','세타','셀리오스','ITIS2','ITIS3','바스툴','베스토','링고아이','누오',
    'CH13X','피코','프로나드','콘','롤리','비비','CH3411','CH2711','아웃라인',
    '프라자','소다','리플라이','테푸이','마르쿠스','로비의자'
   ].forEach(n => g[n] = 8); // 관계사 제품
@@ -5443,9 +5441,13 @@ function _refreshProdBottom() {
     return true;
   });
 
-  // 상호 연결: 카테고리 선택 시 파이차트도 해당 카테고리 데이터로 갱신
+  // 상호 연결: 카테고리 선택 시 파이차트도 해당 카테고리 데이터로 갱신 (날짜 필터 포함)
   if (_prodDrillCat) {
-    renderProdPieChart(baseFiltered.filter(r => r.category === _prodDrillCat));
+    renderProdPieChart(baseFiltered.filter(r => {
+      if (from && r.claim_date < from) return false;
+      if (to   && r.claim_date > to)   return false;
+      return r.category === _prodDrillCat;
+    }));
   }
   // 상호 연결: 제품 선택 시 바차트도 해당 제품 데이터로 갱신
   if (_prodDrillItem) {
