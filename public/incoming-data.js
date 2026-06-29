@@ -2612,7 +2612,7 @@ window.generateBoltReport = function () {
   const from     = $('inq-bolt-from')?.value || '';
   const to       = $('inq-bolt-to')?.value   || '';
   const supplier = $('inq-bolt-supplier')?.value || [...new Set(getBoltFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
-  const code     = $('inq-bolt-code')?.value || [...new Set(getBoltFiltered().map(r => r.code).filter(Boolean))].sort().join(', ') || '전체 자재';
+  const code     = $('inq-bolt-code')?.value || '전체';
   const period   = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
   const rows = getBoltFiltered();
@@ -2666,7 +2666,7 @@ window.generateRodReport = function () {
   const from     = $('inq-rod-from')?.value || '';
   const to       = $('inq-rod-to')?.value   || '';
   const supplier = $('inq-rod-supplier')?.value || [...new Set(getRodFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
-  const code     = $('inq-rod-code')?.value || [...new Set(getRodFiltered().map(r => r.code).filter(Boolean))].sort().join(', ') || '전체 자재';
+  const code     = $('inq-rod-code')?.value || '전체';
   const period   = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
   const rows = getRodFiltered();
