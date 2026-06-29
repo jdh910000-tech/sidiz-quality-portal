@@ -7909,34 +7909,75 @@ async function _orgSaveJobDesc() {
     _render();
   };
 
+  let _modalAfterId = null;
+
   window.asAddRow = function(afterId) {
-    let insertIdx = _data.length;
-    let baseRow = _data[_data.length - 1];
+    _modalAfterId = afterId != null ? afterId : null;
 
-    if (afterId != null) {
-      const idx = _data.findIndex(r => r.id === afterId);
-      if (idx !== -1) { insertIdx = idx + 1; baseRow = _data[idx]; }
-    }
-
-    const newRow = {
-      id: _nextId++,
-      large: baseRow?.large || '불량',
-      medium: baseRow?.medium || '',
-      small: baseRow?.small || '',
-      content: ''
+    // datalist 채우기
+    const fill = (dlId, field) => {
+      const dl = document.getElementById(dlId);
+      if (!dl) return;
+      dl.innerHTML = '';
+      [...new Set(_data.map(r => r[field]).filter(Boolean))].sort().forEach(v => {
+        const o = document.createElement('option'); o.value = v; dl.appendChild(o);
+      });
     };
+    fill('asAddDlL', 'large');
+    fill('asAddDlM', 'medium');
+    fill('asAddDlS', 'small');
+
+    // 기본값: 해당 행의 대/중/소분류 채워줌
+    let defaults = {};
+    if (afterId != null) {
+      const b = _data.find(r => r.id === afterId);
+      if (b) defaults = { large: b.large, medium: b.medium, small: b.small };
+    } else {
+      const last = _data[_data.length - 1];
+      if (last) defaults = { large: last.large, medium: last.medium };
+    }
+    document.getElementById('asAddLarge').value   = defaults.large  || '';
+    document.getElementById('asAddMedium').value  = defaults.medium || '';
+    document.getElementById('asAddSmall').value   = defaults.small  || '';
+    document.getElementById('asAddContent').value = '';
+
+    const modal = document.getElementById('asAddModal');
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      if (defaults.small)        document.getElementById('asAddContent').focus();
+      else if (defaults.medium)  document.getElementById('asAddSmall').focus();
+      else if (defaults.large)   document.getElementById('asAddMedium').focus();
+      else                       document.getElementById('asAddLarge').focus();
+    }, 60);
+  };
+
+  window.asAddModalClose = function() {
+    const m = document.getElementById('asAddModal');
+    if (m) m.style.display = 'none';
+    _modalAfterId = null;
+  };
+
+  window.asAddModalConfirm = function() {
+    const large   = document.getElementById('asAddLarge').value.trim();
+    const medium  = document.getElementById('asAddMedium').value.trim();
+    const small   = document.getElementById('asAddSmall').value.trim();
+    const content = document.getElementById('asAddContent').value.trim();
+    if (!large) { alert('대분류를 입력해주세요.'); document.getElementById('asAddLarge').focus(); return; }
+
+    let insertIdx = _data.length;
+    if (_modalAfterId != null) {
+      const idx = _data.findIndex(r => r.id === _modalAfterId);
+      if (idx !== -1) insertIdx = idx + 1;
+    }
+    const newRow = { id: _nextId++, large, medium, small, content };
     _data.splice(insertIdx, 0, newRow);
     _markDirty();
     _rebuildFilters();
     _render();
-
+    window.asAddModalClose();
     setTimeout(() => {
-      const tr = document.querySelector(`[data-id="${newRow.id}"]`);
-      if (tr) {
-        tr.scrollIntoView({ behavior:'smooth', block:'nearest' });
-        const contentCell = tr.querySelector('td:nth-last-child(2)');
-        if (contentCell) contentCell.click();
-      }
+      const tr = document.querySelector('[data-id="' + newRow.id + '"]');
+      if (tr) tr.scrollIntoView({ behavior:'smooth', block:'nearest' });
     }, 80);
   };
 
@@ -7995,5 +8036,40 @@ async function _orgSaveJobDesc() {
   }
 })();
 </script>
+
+<!-- AS 행 추가 모달 -->
+<div id="asAddModal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,43,0.48);align-items:center;justify-content:center" onclick="if(event.target===this)asAddModalClose()">
+  <div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:14px;padding:24px;width:440px;max-width:94%;box-shadow:0 12px 48px rgba(0,0,43,0.25)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 style="font-size:14px;font-weight:700;color:var(--text-primary);margin:0">행 추가</h3>
+      <button onclick="asAddModalClose()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;padding:0 2px">✕</button>
+    </div>
+    <div style="display:grid;gap:11px">
+      <div>
+        <label style="font-size:11.5px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">대분류</label>
+        <input id="asAddLarge" list="asAddDlL" placeholder="대분류 입력 또는 선택" style="width:100%;height:36px;padding:0 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--sidiz-dark2);color:var(--text-primary);box-sizing:border-box;outline:none" onfocus="this.style.borderColor='var(--sidiz-blue)'" onblur="this.style.borderColor=''">
+        <datalist id="asAddDlL"></datalist>
+      </div>
+      <div>
+        <label style="font-size:11.5px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">중분류</label>
+        <input id="asAddMedium" list="asAddDlM" placeholder="중분류 입력 또는 선택" style="width:100%;height:36px;padding:0 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--sidiz-dark2);color:var(--text-primary);box-sizing:border-box;outline:none" onfocus="this.style.borderColor='var(--sidiz-blue)'" onblur="this.style.borderColor=''">
+        <datalist id="asAddDlM"></datalist>
+      </div>
+      <div>
+        <label style="font-size:11.5px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">소분류</label>
+        <input id="asAddSmall" list="asAddDlS" placeholder="소분류 입력 또는 선택" style="width:100%;height:36px;padding:0 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--sidiz-dark2);color:var(--text-primary);box-sizing:border-box;outline:none" onfocus="this.style.borderColor='var(--sidiz-blue)'" onblur="this.style.borderColor=''">
+        <datalist id="asAddDlS"></datalist>
+      </div>
+      <div>
+        <label style="font-size:11.5px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">내용</label>
+        <textarea id="asAddContent" rows="3" placeholder="내용을 입력하세요" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--sidiz-dark2);color:var(--text-primary);resize:vertical;box-sizing:border-box;font-family:inherit;outline:none;line-height:1.55" onfocus="this.style.borderColor='var(--sidiz-blue)'" onblur="this.style.borderColor=''"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+      <button onclick="asAddModalClose()" style="height:36px;padding:0 18px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--sidiz-dark2);color:var(--text-secondary);cursor:pointer">취소</button>
+      <button onclick="asAddModalConfirm()" style="height:36px;padding:0 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;background:var(--sidiz-blue);color:#fff;cursor:pointer">추가</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
