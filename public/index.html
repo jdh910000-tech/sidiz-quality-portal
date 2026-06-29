@@ -7936,15 +7936,7 @@ async function _orgSaveJobDesc() {
       const idx = _data.findIndex(r => r.id === afterId);
       if (idx !== -1) insertIdx = idx + 1;
     }
-    let base = {};
-    if (afterId != null) {
-      const b = _data.find(r => r.id === afterId);
-      if (b) base = { large: b.large, medium: b.medium };
-    } else if (_data.length > 0) {
-      const last = _data[_data.length - 1];
-      base = { large: last.large, medium: last.medium };
-    }
-    const newRow = { id: _nextId++, large: base.large||'', medium: base.medium||'', small: '', content: '' };
+    const newRow = { id: _nextId++, large: '', medium: '', small: '', content: '' };
     _data.splice(insertIdx, 0, newRow);
     _markDirty();
     _rebuildFilters();
