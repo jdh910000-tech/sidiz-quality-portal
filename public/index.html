@@ -4811,8 +4811,70 @@ const _SALES_NORMALIZE = (() => {
   ].forEach(([k,v]) => m[k] = v);
   return m;
 })();
+
+// 단품코드 → 제품명 직접 매핑 (DB에 단품코드가 그대로 저장된 경우)
+const _SKU_NORMALIZE = (() => {
+  const m = {};
+  [
+   ['중심봉','[부품]'],['HCH2711','CH2711'],['CH2800','ITIS2'],['T50HLDA0VK','T50'],['E20','누오'],
+   ['CH12X','로비의자'],['M40','롤리'],['CH4100','리플라이'],['링고 커버','링고'],['CH36XX','마르쿠스'],
+   ['UCH0007','소다'],['CH0014','아웃라인'],['M30(CH0027)','윈든'],['CH55XX','테푸이'],['CH0017','프라자'],
+   ['HCH2200','피코'],['DHT9FEGU','아이블'],['옷걸이','옷걸이'],['G20HDA2KK','GX'],['M40(CH0026)','롤리'],
+   ['T20H0VG','T20'],['S50N0VG','링고'],['ITY00BS00A','에가'],['T402HF0VK','T40'],['CH0015','VIM'],
+   ['글라이드','글라이드'],['ch0015','VIM'],['T301','T30(4LEG타입)'],['CHN08XX','가보트'],['T50HA0KK','T50'],
+   ['S50X0VG','링고'],['CH2811','ITIS2(회의용)'],['WCH0001,2','병원/실험실 의자(스툴)'],['[기타]','[기타]'],
+   ['CH0020MQD','버튼(LEGS형)'],['T52HLDA0KK','T50AIR'],['링고 발받침(신규)','링고2세대'],['T50HA0VK','T50'],
+   ['더 프로그레시브 백','더 프로그레시브 백'],['CHA4301C','아이블(높이조절형)'],['RS60FEGU0KK','아이블'],['CH18X','로비의자'],
+   ['CH0020BKMQD','버튼(LEGS형)'],['MN130YCC4','펑거스'],['CHN6400AHT','T61'],['CHA4311','CHA4311'],
+   ['VPCOSNA500A1','링고'],['FT90HLDA2KK','T90'],['T61LDAM0KK','T60'],['CH3801','인비토'],
+   ['PACSPRAY','스프레이'],['VPCOSNA500O1','링고'],['IYX2401007','세타'],['DHM303E1','스푼'],
+   ['TZH09XX','시험실(스툴)'],['CHN39XX','루미나'],['K50X0KG','몰티'],['CHN6211W','T40(희의실)'],
+   ['CHN6211','T40(희의실)'],['CHN6400AH','T61'],['CHA6201W','T40(희의실)'],['FG20HDA1KK','GX'],
+   ['RT90HLDA2KK','T90'],['CHA4200A','ITIS3'],['CHA6200CW','T40'],['T61H0KK','T60'],
+   ['S60FEGU0QKK','아이블'],['N10C0KK','플릿'],['CHA6200WA','T40'],['G10HDA2CC2','GC PRO'],
+   ['T61AP0KK','T60'],['RT61HLDAM0KK','T60'],['T62LDAM0KK','T60AIR'],['CHN6200A','T40'],
+   ['CHN6100A','T52'],['BT500XLDAGBN','T50'],['TCHA4300AH','T50'],['CHN6400A','T61'],
+   ['HCH0020WN','버튼'],['CH0020BKMQ','버튼'],['TCHA6100WAH','T52'],['T62D0KK','T60AIR'],
+   ['CH0020MQ','버튼'],['CHN6200AHZ','T40'],['CHB4200AHU','ITIS3'],['ITHCH0020WN','버튼'],
+   ['CH6500A','T61AIR'],['CHAJ4300RAZ','T50'],['CHNJ6200AZ','T40'],['TCHA4300A','T50'],
+   ['RG20HDA1KK','GX'],['FG20HDA2KK','GX'],['CH6500WA','T61AIR'],['CHA4300HEZ','T50'],
+   ['CHN6400WA','T61'],['CHN6400WAH','T61'],['CHN6500WAH','T61AIR'],['CHNJ6200Z','T40'],
+   ['T61X0KT','T60'],['T61HLDAM0KT','T60'],['CHN6201U','T40(희의실)'],['G20HDA2KT','GX'],
+   ['CHA6200WAHZ','T40'],['CHN6201Z','T40(희의실)'],['PBT500G','T50'],['PBT500H','T50'],
+   ['RG10HDA2KK','GC PRO'],['TCHA4300RH','T50'],['CHN6200CAHZ','T40'],['CHA6201WZ','T40(희의실)'],
+   ['S60SFU0QKK','아이블(높이조절형)'],['BT500HLDAGBN','T50'],['CHAJ4300RAHZ','T50'],['PT500CRAF','T50'],
+   ['S51G11026','GC PRO'],['CHAJ4300AZ','T50'],['RS60SFU0KK','아이블(높이조절형)'],['ACHA4300WAH','T50'],
+   ['CHA6200CWAHU','T40'],['T50HLDA0AOVA','T50'],['T50HDA0VK','T50'],['ACHN6400A','T61'],
+   ['CHA6200CWZ','T40'],['CHN6100AHPZ','T52'],['PBT500AR','T50'],['CHNJ6200FZ','T40'],
+   ['G20HDA1KT','GX'],['PBT500L','T50'],['ACHB4200AH','ITIS3'],['S60FEGU0KT','아이블'],
+   ['CHA6100WRA','T52'],['ACHN6100AH','T52'],['ACH6500A','T61AIR'],['ACHA4300A','T50'],
+   ['ACHA4300WA','T50'],['CHA6200CWAHZ','T40'],['CHA6200WAZ','T40'],['CHN6200CHZ','T40'],
+   ['FHG100STW007','GC PRO'],['PBT500U','T50'],['T90HLDA2GOKT','T90'],['BT500XXDAGBN','T50'],
+   ['CHAJ4300AHPZ','T50'],['PBT500S','T50'],['RG10HDAW2KK','GC PRO'],['XCIFF2610002','T52'],
+   ['T509CHKT','T50'],['ACHA4300AH','T50'],['CHN6100RA','T52'],['CHN6200AZ','T40'],['G20X0KK','GX'],
+   ['WT500XLDAGBN','T50'],['CHA6200CWHZ','T40'],['CHN6100AZ','T52'],['CHN6200CAZ','T40'],
+   ['FHG100STW008','GC PRO'],['FHG100STW009','GC PRO'],['FHG100STW010','GC PRO'],
+   ['FHT500NEW003','T50'],['G10HDA2CC3','GC PRO'],['TCHA4300RAH','T50'],['CHA6200CWU','T40'],
+   ['CHNJ6200WAZ','T40'],['PBT500AF','T50'],['PBT500Y','T50'],['XCIFF2610001','셀리오스'],
+   ['XCIFF2620002','T40'],['XCIFF2620004','T40'],['XCIFF2620005','T40'],['XCIFF2640004','셀리오스'],
+   ['XCIFF2640005','베스토'],['XCIFF2640007','T90'],['XCIFF2640008','T90'],['XCIFF2640009','T90'],
+   ['XCIFF2640010','T61'],['XCIFF2640011','T60AIR'],['XCIFF2640014','펑거스'],['XCIFF2640015','펑거스'],
+   ['XCIFF2640016','펑거스'],['XCIFF2640019','바스툴'],['XCIFF2640020','버튼'],['XCIFF2640021','롤리'],
+   ['ACHN6400AH','T61'],['ACHN6500AH','T61AIR'],['CHA4300AHPZ','T50'],['CHAJ4300AHZ','T50'],
+   ['CHN6211Z','T40(희의실)'],['CHNJ6200AHZ','T40'],['FHT500KI082','T50'],['HCH0020B','버튼'],
+   ['PT500CRB','T50'],['VCHA4300A','T50'],['BT500HLD211N','T50'],['CHAJ4300HEZ','T50'],
+   ['CHNJ6200WZ','T40'],['FHT500IN001','T50'],['FHT500KI452','T50'],['FHT503KI071','아이블(높이조절형)'],
+   ['MCICH5260002','베스토'],['PWT500H','T50'],['WT500HLDAGBN','T50'],['WT500HXDAGBN','T50'],
+   ['ACHN6100A','T52'],['CHA4200AU','ITIS3'],
+  ].forEach(([k,v]) => m[k] = v);
+  return m;
+})();
+
 function _normalizeSalesItem(name) {
   if (!name) return name;
+  // 단품코드 → 제품명 변환 후, 제품명 정규화 적용
+  const fromSku = _SKU_NORMALIZE[name];
+  if (fromSku) return _SALES_NORMALIZE[fromSku] || fromSku;
   return _SALES_NORMALIZE[name] || name;
 }
 let _prodBarChart = null;
@@ -5378,6 +5440,7 @@ async function loadProdDashboard() {
   const salesFiltered = _prodSalesData.filter(s => {
     if (item !== 'all' && s.item !== item) return false;
     if (country !== 'all' && s.country !== country) return false;
+    if (brand !== 'all' && s.brand !== brand) return false;
     if (from && s.year_month < from.slice(0,7)) return false;
     if (to   && s.year_month > to.slice(0,7))   return false;
     return true;
