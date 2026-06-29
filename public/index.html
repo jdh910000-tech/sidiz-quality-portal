@@ -5631,14 +5631,14 @@ function renderProdPieChart(claims) {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: '#ffffff', borderWidth: 2 }] },
     options: { responsive:true, maintainAspectRatio:false,
-      layout: { padding: { top:36, bottom:36, left:36, right:36 } },
+      layout: { padding: { top:20, bottom:20, left:20, right:20 } },
       plugins: {
-        legend: { position:'right', labels:{color:'#444455',font:{size:10},usePointStyle:true,padding:6,boxWidth:8} },
+        legend: { position:'right', labels:{color:'#444455',font:{size:12},usePointStyle:true,padding:8,boxWidth:10} },
         tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
           callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } },
         datalabels: {
           textAlign: 'center',
-          font: { size: 10, weight: 'bold', family: "'Noto Sans KR'" },
+          font: { size: 12, weight: 'bold', family: "'Noto Sans KR'" },
           color: ctx => {
             const pct = ctx.dataset.data[ctx.dataIndex] / total * 100;
             return pct >= 8 ? '#fff' : '#222';
