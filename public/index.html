@@ -4374,9 +4374,8 @@ function _renderRctProductChart() {
         _renderRctDefectChips();
         _showDefectDetail(null, null);  // 제품 필터만으로 전체 표시
       }
-    }
-  },
-  plugins: [ChartDataLabels]
+    },
+    plugins: [ChartDataLabels]
   });
   if (ctx.canvas) ctx.canvas.style.cursor = 'pointer';
 }
