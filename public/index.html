@@ -7605,7 +7605,7 @@ async function _orgSaveJobDesc() {
     {id:28, large:'불만', medium:'지원',   small:'유상',         content:'판정시 안쓰는 항목'},
   ];
 
-  let _data = [], _history = [], _dirty = false;
+  let _data = [], _history = [], _dirty = false, _prevSaved = [];
 
   function _load() {
     try { const d = localStorage.getItem(SK_DATA); _data = d ? JSON.parse(d) : JSON.parse(JSON.stringify(DEFAULT)); }
@@ -7613,6 +7613,7 @@ async function _orgSaveJobDesc() {
     try { const h = localStorage.getItem(SK_HIST); _history = h ? JSON.parse(h) : []; }
     catch(e) { _history = []; }
     _nextId = Math.max(199, ..._data.map(r => r.id)) + 1;
+    _prevSaved = JSON.parse(JSON.stringify(_data));
   }
 
   function _filtered() {
@@ -7786,6 +7787,78 @@ async function _orgSaveJobDesc() {
     });
   }
 
+  const FIELD_KO = { large:'대분류', medium:'중분류', small:'소분류', content:'내용' };
+
+  function _esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function _trunc(s, n) {
+    s = String(s||'');
+    return s.length > n ? s.slice(0, n) + '…' : s;
+  }
+
+  function _detectChanges() {
+    const prevMap = new Map(_prevSaved.map(r => [r.id, r]));
+    const currMap = new Map(_data.map(r => [r.id, r]));
+    const added = [], deleted = [], edited = [];
+    _data.forEach(r => {
+      if (!prevMap.has(r.id)) {
+        added.push(r);
+      } else {
+        const old = prevMap.get(r.id);
+        const diffs = [];
+        ['large','medium','small','content'].forEach(f => {
+          if (r[f] !== old[f]) diffs.push({ field: f, oldVal: old[f], newVal: r[f] });
+        });
+        if (diffs.length) edited.push({ row: r, old, diffs });
+      }
+    });
+    _prevSaved.forEach(r => { if (!currMap.has(r.id)) deleted.push(r); });
+    return { added, deleted, edited };
+  }
+
+  function _buildSummary(ch) {
+    const parts = [];
+    if (ch.added.length)   parts.push(`추가 ${ch.added.length}건`);
+    if (ch.deleted.length) parts.push(`삭제 ${ch.deleted.length}건`);
+    if (ch.edited.length)  parts.push(`수정 ${ch.edited.length}건`);
+    return parts.length ? parts.join(' · ') : '변경 없음';
+  }
+
+  function _buildDetails(ch) {
+    const li = (color, html) =>
+      `<div style="display:flex;gap:5px;align-items:flex-start;margin-top:4px;font-size:11px;line-height:1.5">
+        <span style="color:${color};font-weight:700;flex-shrink:0">${color==='#2db87f'?'+':color==='#FF4757'?'−':'~'}</span>
+        <span style="color:var(--text-secondary)">${html}</span>
+      </div>`;
+    const rows = [];
+    ch.added.forEach(r => {
+      rows.push(li('#2db87f', `<b>[${_esc(r.large)} › ${_esc(r.medium)} › ${_esc(r.small)}]</b> 행 추가${r.content ? ' — ' + _esc(_trunc(r.content,30)) : ''}`));
+    });
+    ch.deleted.forEach(r => {
+      rows.push(li('#FF4757', `<b>[${_esc(r.large)} › ${_esc(r.medium)} › ${_esc(r.small)}]</b> 행 삭제`));
+    });
+    ch.edited.forEach(({row, diffs}) => {
+      diffs.forEach(d => {
+        if (d.field === 'content') {
+          rows.push(li('#FF9F43',
+            `<b>[${_esc(row.large)} › ${_esc(row.medium)} › ${_esc(row.small)}]</b> 내용 수정<br>` +
+            `<span style="color:var(--text-muted)">이전:</span> ${_esc(_trunc(d.oldVal,40))}<br>` +
+            `<span style="color:var(--text-muted)">이후:</span> ${_esc(_trunc(d.newVal,40))}`
+          ));
+        } else {
+          rows.push(li('#FF9F43',
+            `${FIELD_KO[d.field]} 변경: <b>${_esc(d.oldVal)}</b> → <b>${_esc(d.newVal)}</b>`
+          ));
+        }
+      });
+    });
+    return rows.length
+      ? `<div style="margin-top:2px;padding-top:6px;border-top:1px solid var(--border)">${rows.join('')}</div>`
+      : '';
+  }
+
   function _renderHistory() {
     const el = document.getElementById('asHistoryList');
     if (!el) return;
@@ -7793,13 +7866,16 @@ async function _orgSaveJobDesc() {
       el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">아직 저장 이력이 없습니다.</div>';
       return;
     }
-    el.innerHTML = _history.map((h, i) => `
-      <div style="padding:10px 14px;${i < _history.length-1 ? 'border-bottom:1px solid var(--border);' : ''}${i===0 ? 'background:rgba(0,43,210,0.04);' : ''}">
-        <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:3px">${h.ts}</div>
-        <div style="font-size:12px;color:var(--text-primary);font-weight:${i===0?'600':'400'}">전체 ${h.rowCount}행 저장</div>
-        ${h.note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${h.note}</div>` : ''}
-      </div>
-    `).join('');
+    el.innerHTML = _history.map((h, i) => {
+      const isLatest = i === 0;
+      const summary = h.changes ? _buildSummary(h.changes) : `전체 ${h.rowCount}행 저장`;
+      const details = h.changes ? _buildDetails(h.changes) : '';
+      return `<div style="padding:10px 14px;${i < _history.length-1 ? 'border-bottom:1px solid var(--border);' : ''}${isLatest ? 'background:rgba(0,43,210,0.03);' : ''}">
+        <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:3px">${_esc(h.ts)}</div>
+        <div style="font-size:12px;font-weight:${isLatest?'600':'400'};color:${isLatest?'var(--sidiz-blue)':'var(--text-primary)'}">${summary}</div>
+        ${details}
+      </div>`;
+    }).join('');
   }
 
   function _updateBadge() {
@@ -7830,13 +7906,15 @@ async function _orgSaveJobDesc() {
   };
 
   window.asSave = function() {
+    const changes = _detectChanges();
     localStorage.setItem(SK_DATA, JSON.stringify(_data));
     const now = new Date();
     const pad = n => String(n).padStart(2,'0');
     const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    _history.unshift({ ts, rowCount: _data.length });
+    _history.unshift({ ts, rowCount: _data.length, changes });
     if (_history.length > 30) _history.pop();
     localStorage.setItem(SK_HIST, JSON.stringify(_history));
+    _prevSaved = JSON.parse(JSON.stringify(_data));
     _dirty = false;
     const notice = document.getElementById('asUnsavedNotice');
     if (notice) notice.style.display = 'none';
