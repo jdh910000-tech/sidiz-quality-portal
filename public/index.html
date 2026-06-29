@@ -7630,13 +7630,13 @@ async function _orgSaveJobDesc() {
   function _computeSpans(rows) {
     const s = rows.map(()=>({l:1,m:1,sm:1}));
     for (let i = rows.length-1; i > 0; i--) {
-      if (rows[i].large === rows[i-1].large) {
+      if (rows[i].large && rows[i].large === rows[i-1].large) {
         s[i-1].l = s[i].l + 1; s[i].l = 0;
       }
-      if (rows[i].large === rows[i-1].large && rows[i].medium === rows[i-1].medium) {
+      if (rows[i].large && rows[i].large === rows[i-1].large && rows[i].medium && rows[i].medium === rows[i-1].medium) {
         s[i-1].m = s[i].m + 1; s[i].m = 0;
       }
-      if (rows[i].large === rows[i-1].large && rows[i].medium === rows[i-1].medium && rows[i].small === rows[i-1].small) {
+      if (rows[i].large && rows[i].large === rows[i-1].large && rows[i].medium && rows[i].medium === rows[i-1].medium && rows[i].small && rows[i].small === rows[i-1].small) {
         s[i-1].sm = s[i].sm + 1; s[i].sm = 0;
       }
     }
@@ -7654,7 +7654,8 @@ async function _orgSaveJobDesc() {
     td.title = '클릭하여 편집';
     td.addEventListener('click', function() {
       if (td.querySelector('input,textarea')) return;
-      const orig = td.textContent.trim();
+      const _rd = _data.find(r => r.id === rowId);
+      const orig = _rd ? _rd[field] : '';
       const isContent = field === 'content';
       td.innerHTML = '';
 
@@ -7741,31 +7742,51 @@ async function _orgSaveJobDesc() {
       if (spans[i].l !== 0) {
         const td = document.createElement('td');
         td.rowSpan = spans[i].l;
-        td.textContent = row.large;
-        td.style.cssText = cellBase + `text-align:center;font-weight:700;font-size:12.5px;background:${largeBg[row.large]||''};color:${largeColor[row.large]||'var(--text-primary)'};width:80px`;
+        if (!row.large) {
+          td.textContent = '대분류 입력';
+          td.style.cssText = cellBase + 'text-align:center;font-weight:400;font-size:12.5px;width:80px;color:var(--text-muted);font-style:italic';
+        } else {
+          td.textContent = row.large;
+          td.style.cssText = cellBase + `text-align:center;font-weight:700;font-size:12.5px;background:${largeBg[row.large]||''};color:${largeColor[row.large]||'var(--text-primary)'};width:80px`;
+        }
         _attachEdit(td, row.id, 'large');
         tr.appendChild(td);
       }
       if (spans[i].m !== 0) {
         const td = document.createElement('td');
         td.rowSpan = spans[i].m;
-        td.textContent = row.medium;
-        td.style.cssText = cellBase + 'text-align:center;font-weight:600;font-size:12.5px;color:var(--text-secondary);width:90px';
+        if (!row.medium) {
+          td.textContent = '중분류 입력';
+          td.style.cssText = cellBase + 'text-align:center;font-weight:400;font-size:12.5px;color:var(--text-muted);font-style:italic;width:90px';
+        } else {
+          td.textContent = row.medium;
+          td.style.cssText = cellBase + 'text-align:center;font-weight:600;font-size:12.5px;color:var(--text-secondary);width:90px';
+        }
         _attachEdit(td, row.id, 'medium');
         tr.appendChild(td);
       }
       if (spans[i].sm !== 0) {
         const td = document.createElement('td');
         td.rowSpan = spans[i].sm;
-        td.textContent = row.small;
-        td.style.cssText = cellBase + 'text-align:center;font-size:12.5px;color:var(--text-primary);width:120px';
+        if (!row.small) {
+          td.textContent = '소분류 입력';
+          td.style.cssText = cellBase + 'text-align:center;font-size:12.5px;color:var(--text-muted);font-style:italic;width:120px';
+        } else {
+          td.textContent = row.small;
+          td.style.cssText = cellBase + 'text-align:center;font-size:12.5px;color:var(--text-primary);width:120px';
+        }
         _attachEdit(td, row.id, 'small');
         tr.appendChild(td);
       }
 
       const tdC = document.createElement('td');
-      tdC.textContent = row.content;
-      tdC.style.cssText = cellBase + 'font-size:12.5px;color:var(--text-primary);line-height:1.55';
+      if (!row.content) {
+        tdC.textContent = '내용 입력';
+        tdC.style.cssText = cellBase + 'font-size:12.5px;color:var(--text-muted);font-style:italic;line-height:1.55';
+      } else {
+        tdC.textContent = row.content;
+        tdC.style.cssText = cellBase + 'font-size:12.5px;color:var(--text-primary);line-height:1.55';
+      }
       _attachEdit(tdC, row.id, 'content');
       tr.appendChild(tdC);
 
@@ -7909,46 +7930,34 @@ async function _orgSaveJobDesc() {
     _render();
   };
 
-  let _modalAfterId = null;
-
   window.asAddRow = function(afterId) {
-    _modalAfterId = afterId != null ? afterId : null;
-
-    // datalist 채우기
-    const fill = (dlId, field) => {
-      const dl = document.getElementById(dlId);
-      if (!dl) return;
-      dl.innerHTML = '';
-      [...new Set(_data.map(r => r[field]).filter(Boolean))].sort().forEach(v => {
-        const o = document.createElement('option'); o.value = v; dl.appendChild(o);
-      });
-    };
-    fill('asAddDlL', 'large');
-    fill('asAddDlM', 'medium');
-    fill('asAddDlS', 'small');
-
-    // 기본값: 해당 행의 대/중/소분류 채워줌
-    let defaults = {};
+    let insertIdx = _data.length;
+    if (afterId != null) {
+      const idx = _data.findIndex(r => r.id === afterId);
+      if (idx !== -1) insertIdx = idx + 1;
+    }
+    let base = {};
     if (afterId != null) {
       const b = _data.find(r => r.id === afterId);
-      if (b) defaults = { large: b.large, medium: b.medium, small: b.small };
-    } else {
+      if (b) base = { large: b.large, medium: b.medium };
+    } else if (_data.length > 0) {
       const last = _data[_data.length - 1];
-      if (last) defaults = { large: last.large, medium: last.medium };
+      base = { large: last.large, medium: last.medium };
     }
-    document.getElementById('asAddLarge').value   = defaults.large  || '';
-    document.getElementById('asAddMedium').value  = defaults.medium || '';
-    document.getElementById('asAddSmall').value   = defaults.small  || '';
-    document.getElementById('asAddContent').value = '';
-
-    const modal = document.getElementById('asAddModal');
-    modal.style.display = 'flex';
+    const newRow = { id: _nextId++, large: base.large||'', medium: base.medium||'', small: '', content: '' };
+    _data.splice(insertIdx, 0, newRow);
+    _markDirty();
+    _rebuildFilters();
+    _render();
     setTimeout(() => {
-      if (defaults.small)        document.getElementById('asAddContent').focus();
-      else if (defaults.medium)  document.getElementById('asAddSmall').focus();
-      else if (defaults.large)   document.getElementById('asAddMedium').focus();
-      else                       document.getElementById('asAddLarge').focus();
-    }, 60);
+      const tr = document.querySelector('[data-id="' + newRow.id + '"]');
+      if (tr) {
+        tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const tds = [...tr.querySelectorAll('td:not(:last-child)')];
+        const emptyTd = tds.find(td => !td.textContent.trim() || td.textContent.trim().endsWith('입력'));
+        if (emptyTd) emptyTd.click();
+      }
+    }, 80);
   };
 
   window.asAddModalClose = function() {
