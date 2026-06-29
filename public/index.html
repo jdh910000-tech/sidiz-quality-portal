@@ -5626,14 +5626,30 @@ function renderProdPieChart(claims) {
     titleEl.appendChild(document.createTextNode(isPartMode ? `부품별 클레임 현황 (${selItem})` : '제품별 클레임 현황'));
   }
 
+  const total = values.reduce((a,b) => a+b, 0);
   _prodPieChart = new Chart(ctx, {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: '#ffffff', borderWidth: 2 }] },
     options: { responsive:true, maintainAspectRatio:false,
+      layout: { padding: { top:20, bottom:20, left:20, right:20 } },
       plugins: {
         legend: { position:'right', labels:{color:'#444455',font:{size:10},usePointStyle:true,padding:6,boxWidth:8} },
         tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
-          callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } }
+          callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } },
+        datalabels: {
+          color: '#fff',
+          anchor: 'center',
+          align: 'center',
+          textAlign: 'center',
+          font: { size: 10, weight: 'bold', family: "'Noto Sans KR'" },
+          textShadowBlur: 3,
+          textShadowColor: 'rgba(0,0,0,0.45)',
+          formatter: (value, ctx) => {
+            const pct = value / total * 100;
+            if (pct < 4) return '';
+            return ctx.chart.data.labels[ctx.dataIndex] + '\n' + value + '건';
+          }
+        }
       },
       onClick(e, elements) {
         if (!elements.length || isPartMode) return;
@@ -5642,7 +5658,8 @@ function renderProdPieChart(claims) {
         _prodDrillCat  = null;
         _refreshProdBottom();
       }
-    }
+    },
+    plugins: [ChartDataLabels]
   });
   if (ctx.canvas) ctx.canvas.style.cursor = isPartMode ? 'default' : 'pointer';
 }
