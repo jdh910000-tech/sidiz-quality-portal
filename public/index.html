@@ -1547,7 +1547,64 @@ body.share-mode .section > .header .header-left p { display: none; }
 </div>
 
 <!-- ===== AS / INSPECT / CERT ===== -->
-<div id="section-as" class="section"><button class="back-btn" onclick="showSection('home')">← 메인으로</button><div class="placeholder-section"><div class="placeholder-icon" style="background:rgba(255,107,122,0.1)">🔧</div><h2>AS판정 현황</h2><p>AS 판정 결과 및 유형별 분류 현황을 관리하는 모듈입니다.</p><div class="card-status dev" style="margin-top:14px">개발 예정</div></div></div>
+<div id="section-as" class="section">
+  <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
+  <div class="header" style="margin-bottom:20px">
+    <div class="header-left">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div style="width:36px;height:36px;background:linear-gradient(135deg,#FF6B7A,#FF4757);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🔧</div>
+        <h1 style="font-size:24px;font-weight:700;color:var(--text-primary);margin:0">AS 판정현황</h1>
+      </div>
+      <p style="color:var(--text-muted);font-size:13px;margin:0">AS 판정 기준 관리 및 현황 분석</p>
+    </div>
+  </div>
+  <div class="sub-tabs">
+    <button class="sub-tab active">판정 기준</button>
+  </div>
+  <div class="chart-card" style="padding:20px;position:relative">
+    <!-- 이력 패널 (카드 우상단 floating) -->
+    <div id="asHistoryPanel" style="position:absolute;top:12px;right:12px;width:280px;background:var(--sidiz-card);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,43,0.16);display:none;z-index:200;overflow:hidden">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--sidiz-dark2);display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
+        <span style="font-weight:700;font-size:12px;color:var(--text-primary)">📋 저장 이력</span>
+        <button onclick="asToggleHistory()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:17px;line-height:1;padding:0 2px">✕</button>
+      </div>
+      <div id="asHistoryList" style="max-height:280px;overflow-y:auto"></div>
+    </div>
+    <!-- 툴바 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <select id="asFlLarge" onchange="asApplyFilter()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--sidiz-dark2);color:var(--text-primary);cursor:pointer"><option value="all">대분류 전체</option></select>
+        <select id="asFlMedium" onchange="asApplyFilter()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--sidiz-dark2);color:var(--text-primary);cursor:pointer"><option value="all">중분류 전체</option></select>
+        <select id="asFlSmall" onchange="asApplyFilter()" style="height:32px;padding:0 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--sidiz-dark2);color:var(--text-primary);cursor:pointer"><option value="all">소분류 전체</option></select>
+        <button onclick="asResetFilter()" style="height:32px;padding:0 11px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--sidiz-dark2);color:var(--text-muted);cursor:pointer">초기화</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="asAddRow()" style="height:32px;padding:0 13px;border:1px dashed var(--border);border-radius:7px;font-size:12px;background:transparent;color:var(--text-secondary);cursor:pointer">+ 행 추가</button>
+        <button id="asSaveBtn" onclick="asSave()" style="height:32px;padding:0 16px;border:none;border-radius:7px;font-size:12px;font-weight:600;background:var(--sidiz-blue);color:#fff;cursor:pointer">저장</button>
+        <button onclick="asToggleHistory()" style="height:32px;padding:0 13px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--sidiz-dark2);color:var(--text-secondary);cursor:pointer;position:relative">
+          이력<span id="asHistBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:#FF6B7A;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span>
+        </button>
+      </div>
+    </div>
+    <!-- 미저장 경고 -->
+    <div id="asUnsavedNotice" style="display:none;margin-bottom:10px;padding:7px 12px;background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.25);border-radius:7px;font-size:11.5px;color:#FF4757">⚠️ 저장하지 않은 변경 사항이 있습니다. [저장] 버튼을 눌러주세요.</div>
+    <!-- 테이블 -->
+    <div style="overflow-x:auto">
+      <table id="asCriteriaTable" style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--sidiz-dark2)">
+            <th style="padding:10px 14px;text-align:center;font-weight:600;font-size:12px;color:var(--text-secondary);border:1px solid var(--border);width:80px">대분류</th>
+            <th style="padding:10px 14px;text-align:center;font-weight:600;font-size:12px;color:var(--text-secondary);border:1px solid var(--border);width:90px">중분류</th>
+            <th style="padding:10px 14px;text-align:center;font-weight:600;font-size:12px;color:var(--text-secondary);border:1px solid var(--border);width:120px">소분류</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:600;font-size:12px;color:var(--text-secondary);border:1px solid var(--border)">내용</th>
+            <th style="padding:10px 6px;text-align:center;font-weight:600;font-size:12px;color:var(--text-secondary);border:1px solid var(--border);width:32px"></th>
+          </tr>
+        </thead>
+        <tbody id="asCriteriaBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 <div id="section-inspect" class="section">
   <button class="back-btn" onclick="showSection('home')">← 메인으로</button>
   <div class="header">
@@ -7509,5 +7566,321 @@ async function _orgSaveJobDesc() {
     <button onclick="navigator.clipboard.writeText('https://sidiz-quality-portal.vercel.app/index.html').then(()=>{this.textContent='✅ 복사됐어요!';setTimeout(()=>this.textContent='📋 URL 복사',2000)})" style="width:100%;padding:11px;background:#0057b8;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📋 URL 복사</button>
   </div>
 </div>
+
+<script>
+// ===== AS 판정 기준 모듈 =====
+(function(){
+  const SK_DATA = 'as_criteria_v1';
+  const SK_HIST = 'as_criteria_history_v1';
+  let _nextId = 200;
+
+  const DEFAULT = [
+    {id:1,  large:'불량', medium:'제조',   small:'생산',         content:'제조 과정 중 발생한 불량'},
+    {id:2,  large:'불량', medium:'연구소', small:'설계',         content:'설계 변경 전 하자'},
+    {id:3,  large:'불량', medium:'서비스', small:'물류',         content:'물류 과정상 발생하는 파손'},
+    {id:4,  large:'불량', medium:'서비스', small:'택배',         content:'택배 과정상 발생 하는 파손'},
+    {id:5,  large:'불량', medium:'서비스', small:'시공',         content:'시공 과정상 발생 하는불량'},
+    {id:6,  large:'불량', medium:'서비스', small:'센터하자',     content:'물류,시공 과정상 발생하는 불량이나 원인이 불명확 상황 일때'},
+    {id:7,  large:'불량', medium:'서비스', small:'센터하자',     content:'미회수 건(시공분실인지, 물류 분실인지 확인 안될 때)'},
+    {id:8,  large:'불량', medium:'서비스', small:'센터하자',     content:'오접수(컨택센터)'},
+    {id:9,  large:'불만', medium:'기획',   small:'사양재검토',   content:'제품 불량 현상은 확인이 되지만, 판정 시 원인 파악이 안될 경우'},
+    {id:10, large:'불만', medium:'기획',   small:'사양재검토',   content:'개선이 필요 한 현상'},
+    {id:11, large:'불만', medium:'기획',   small:'사양재검토',   content:'고객불만을 개선진행 한 AS접수 건'},
+    {id:12, large:'불만', medium:'기획',   small:'사양재검토',   content:'천연가죽 특성(주름 등)'},
+    {id:13, large:'불만', medium:'기획',   small:'사양재검토',   content:'냄새'},
+    {id:14, large:'불만', medium:'기획',   small:'사양재검토',   content:'양산품과 동일하지만 개선이 필요한경우(품경위 등 안건으로 고객불만에서 사양재검토로 바뀌는경우)'},
+    {id:15, large:'불만', medium:'기획',   small:'세트교환요구', content:'자재교체시 필요한 자재류(예시-틸트교체 시 중심봉,볼트는 세트교환요구)'},
+    {id:16, large:'불만', medium:'기획',   small:'고객불만',     content:'회수품 확인 시 불량 현상이 없을 경우(양산품과 동일할 경우)'},
+    {id:17, large:'불만', medium:'기획',   small:'고객불만',     content:'감성적 불만'},
+    {id:18, large:'불만', medium:'기획',   small:'고객불만',     content:'고객 오요청으로 인한 접수 건'},
+    {id:19, large:'불만', medium:'기획',   small:'고객불만',     content:'고객사진,영상으로 확인안되고, 회수품도 정상일 경우'},
+    {id:20, large:'불만', medium:'지원',   small:'영업지원',     content:'사양변경으로 인해서 추가발생된 경우'},
+    {id:21, large:'불만', medium:'지원',   small:'영업지원',     content:'회수품으로 파손된 경우(예시 - 높낮이 안되는데, 중심봉파손되어 회수 될 경우)'},
+    {id:22, large:'불만', medium:'지원',   small:'영업지원',     content:'외관하자인데 귀책처가 불분명한 경우'},
+    {id:23, large:'불만', medium:'지원',   small:'영업지원',     content:'대리점에서 발생한 하자(오접수 및 시공건)'},
+    {id:24, large:'불만', medium:'지원',   small:'영업지원',     content:'해외하자 중 고객불만 및 원인파악 안되는경우'},
+    {id:25, large:'불만', medium:'지원',   small:'취소(단순조치)',content:'고객취소, 조치품이 정상회수될 경우'},
+    {id:26, large:'불만', medium:'지원',   small:'취소(유상)',   content:'고객유상건에 대해 고객취소 및 조치품정상회수될 경우'},
+    {id:27, large:'불만', medium:'지원',   small:'재접수',       content:'판정시 안쓰는 항목(내용에따라 다른 분류로 들어감)'},
+    {id:28, large:'불만', medium:'지원',   small:'유상',         content:'판정시 안쓰는 항목'},
+  ];
+
+  let _data = [], _history = [], _dirty = false;
+
+  function _load() {
+    try { const d = localStorage.getItem(SK_DATA); _data = d ? JSON.parse(d) : JSON.parse(JSON.stringify(DEFAULT)); }
+    catch(e) { _data = JSON.parse(JSON.stringify(DEFAULT)); }
+    try { const h = localStorage.getItem(SK_HIST); _history = h ? JSON.parse(h) : []; }
+    catch(e) { _history = []; }
+    _nextId = Math.max(199, ..._data.map(r => r.id)) + 1;
+  }
+
+  function _filtered() {
+    const lv = document.getElementById('asFlLarge')?.value||'all';
+    const mv = document.getElementById('asFlMedium')?.value||'all';
+    const sv = document.getElementById('asFlSmall')?.value||'all';
+    return _data.filter(r =>
+      (lv==='all'||r.large===lv) &&
+      (mv==='all'||r.medium===mv) &&
+      (sv==='all'||r.small===sv)
+    );
+  }
+
+  function _computeSpans(rows) {
+    const s = rows.map(()=>({l:1,m:1,sm:1}));
+    for (let i = rows.length-1; i > 0; i--) {
+      if (rows[i].large === rows[i-1].large) {
+        s[i-1].l = s[i].l + 1; s[i].l = 0;
+      }
+      if (rows[i].large === rows[i-1].large && rows[i].medium === rows[i-1].medium) {
+        s[i-1].m = s[i].m + 1; s[i].m = 0;
+      }
+      if (rows[i].large === rows[i-1].large && rows[i].medium === rows[i-1].medium && rows[i].small === rows[i-1].small) {
+        s[i-1].sm = s[i].sm + 1; s[i].sm = 0;
+      }
+    }
+    return s;
+  }
+
+  function _markDirty() {
+    _dirty = true;
+    const n = document.getElementById('asUnsavedNotice');
+    if (n) n.style.display = 'block';
+  }
+
+  function _attachEdit(td, rowId, field) {
+    td.style.cursor = 'pointer';
+    td.title = '클릭하여 편집';
+    td.addEventListener('click', function() {
+      if (td.querySelector('input,textarea')) return;
+      const orig = td.textContent.trim();
+      const isContent = field === 'content';
+      td.innerHTML = '';
+      let el;
+      if (isContent) {
+        el = document.createElement('textarea');
+        el.rows = 2;
+        el.style.cssText = 'width:100%;border:none;background:rgba(0,43,210,0.06);padding:5px 7px;border-radius:4px;font-size:12.5px;font-family:inherit;color:var(--text-primary);outline:2px solid var(--sidiz-blue);resize:vertical;box-sizing:border-box';
+      } else {
+        el = document.createElement('input');
+        el.style.cssText = 'width:100%;border:none;background:rgba(0,43,210,0.06);padding:5px 7px;border-radius:4px;font-size:12.5px;font-family:inherit;color:var(--text-primary);outline:2px solid var(--sidiz-blue);box-sizing:border-box';
+      }
+      el.value = orig;
+      td.appendChild(el);
+      el.focus();
+      if (!isContent) el.select();
+
+      const commit = () => {
+        const nv = el.value.trim();
+        if (nv !== orig) {
+          if (field === 'large') {
+            _data.forEach(r => { if (r.large === orig) r.large = nv; });
+          } else if (field === 'medium') {
+            const base = _data.find(r => r.id === rowId);
+            if (base) _data.forEach(r => { if (r.large === base.large && r.medium === orig) r.medium = nv; });
+          } else if (field === 'small') {
+            const base = _data.find(r => r.id === rowId);
+            if (base) _data.forEach(r => { if (r.large === base.large && r.medium === base.medium && r.small === orig) r.small = nv; });
+          } else {
+            const row = _data.find(r => r.id === rowId);
+            if (row) row[field] = nv;
+          }
+          _markDirty();
+          _rebuildFilters();
+          _render();
+        } else {
+          td.textContent = orig;
+        }
+      };
+      el.addEventListener('blur', commit);
+      el.addEventListener('keydown', e => {
+        if (!isContent && e.key === 'Enter') { e.preventDefault(); el.blur(); }
+        if (e.key === 'Escape') { el.removeEventListener('blur', commit); td.textContent = orig; }
+      });
+    });
+  }
+
+  function _rebuildFilters() {
+    const lSel = document.getElementById('asFlLarge');
+    const mSel = document.getElementById('asFlMedium');
+    const sSel = document.getElementById('asFlSmall');
+    if (!lSel) return;
+    const lv = lSel.value, mv = mSel.value, sv = sSel.value;
+    const uniq = arr => [...new Set(arr)];
+    const fill = (sel, items, all, cur) => {
+      sel.innerHTML = `<option value="all">${all}</option>`;
+      items.forEach(v => { const o = document.createElement('option'); o.value=v; o.textContent=v; if(v===cur)o.selected=true; sel.appendChild(o); });
+    };
+    fill(lSel, uniq(_data.map(r=>r.large)), '대분류 전체', lv);
+    fill(mSel, uniq(_data.map(r=>r.medium)), '중분류 전체', mv);
+    fill(sSel, uniq(_data.map(r=>r.small)), '소분류 전체', sv);
+  }
+
+  function _render() {
+    const tbody = document.getElementById('asCriteriaBody');
+    if (!tbody) return;
+    const rows = _filtered();
+    const spans = _computeSpans(rows);
+    const largeBg = { '불량':'rgba(255,71,87,0.07)', '불만':'rgba(0,43,210,0.06)' };
+    const largeColor = { '불량':'#FF4757', '불만':'#002BD2' };
+    const cellBase = 'padding:9px 12px;border:1px solid var(--border);vertical-align:middle;';
+
+    tbody.innerHTML = '';
+    rows.forEach((row, i) => {
+      const tr = document.createElement('tr');
+      tr.dataset.id = row.id;
+      tr.style.transition = 'background 0.15s';
+      tr.addEventListener('mouseenter', ()=>{ tr.style.background='rgba(0,43,210,0.025)'; });
+      tr.addEventListener('mouseleave', ()=>{ tr.style.background=''; });
+
+      if (spans[i].l !== 0) {
+        const td = document.createElement('td');
+        td.rowSpan = spans[i].l;
+        td.textContent = row.large;
+        td.style.cssText = cellBase + `text-align:center;font-weight:700;font-size:12.5px;background:${largeBg[row.large]||''};color:${largeColor[row.large]||'var(--text-primary)'};width:80px`;
+        _attachEdit(td, row.id, 'large');
+        tr.appendChild(td);
+      }
+      if (spans[i].m !== 0) {
+        const td = document.createElement('td');
+        td.rowSpan = spans[i].m;
+        td.textContent = row.medium;
+        td.style.cssText = cellBase + 'text-align:center;font-weight:600;font-size:12.5px;color:var(--text-secondary);width:90px';
+        _attachEdit(td, row.id, 'medium');
+        tr.appendChild(td);
+      }
+      if (spans[i].sm !== 0) {
+        const td = document.createElement('td');
+        td.rowSpan = spans[i].sm;
+        td.textContent = row.small;
+        td.style.cssText = cellBase + 'text-align:center;font-size:12.5px;color:var(--text-primary);width:120px';
+        _attachEdit(td, row.id, 'small');
+        tr.appendChild(td);
+      }
+
+      const tdC = document.createElement('td');
+      tdC.textContent = row.content;
+      tdC.style.cssText = cellBase + 'font-size:12.5px;color:var(--text-primary);line-height:1.55';
+      _attachEdit(tdC, row.id, 'content');
+      tr.appendChild(tdC);
+
+      const tdDel = document.createElement('td');
+      tdDel.style.cssText = 'padding:4px;text-align:center;border:1px solid var(--border)';
+      const btn = document.createElement('button');
+      btn.textContent = '✕';
+      btn.title = '행 삭제';
+      btn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:3px 6px;border-radius:4px;line-height:1';
+      btn.addEventListener('mouseenter', ()=>{ btn.style.color='#FF4757'; btn.style.background='rgba(255,71,87,0.08)'; });
+      btn.addEventListener('mouseleave', ()=>{ btn.style.color=''; btn.style.background=''; });
+      btn.addEventListener('click', () => {
+        if (!confirm('이 행을 삭제할까요?')) return;
+        _data = _data.filter(r => r.id !== row.id);
+        _markDirty();
+        _rebuildFilters();
+        _render();
+      });
+      tdDel.appendChild(btn);
+      tr.appendChild(tdDel);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function _renderHistory() {
+    const el = document.getElementById('asHistoryList');
+    if (!el) return;
+    if (_history.length === 0) {
+      el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">아직 저장 이력이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = _history.map((h, i) => `
+      <div style="padding:10px 14px;${i < _history.length-1 ? 'border-bottom:1px solid var(--border);' : ''}${i===0 ? 'background:rgba(0,43,210,0.04);' : ''}">
+        <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:3px">${h.ts}</div>
+        <div style="font-size:12px;color:var(--text-primary);font-weight:${i===0?'600':'400'}">전체 ${h.rowCount}행 저장</div>
+        ${h.note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${h.note}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function _updateBadge() {
+    const badge = document.getElementById('asHistBadge');
+    if (!badge) return;
+    if (_history.length > 0) { badge.textContent = _history.length; badge.style.display = 'inline-block'; }
+    else badge.style.display = 'none';
+  }
+
+  // 공개 함수
+  window.asApplyFilter = function() { _render(); };
+
+  window.asResetFilter = function() {
+    ['asFlLarge','asFlMedium','asFlSmall'].forEach(id => { const el = document.getElementById(id); if(el) el.value='all'; });
+    _render();
+  };
+
+  window.asAddRow = function() {
+    const last = _data[_data.length-1];
+    _data.push({ id: _nextId++, large: last?.large||'불량', medium: last?.medium||'', small: '', content: '' });
+    _markDirty();
+    _rebuildFilters();
+    _render();
+    setTimeout(() => {
+      const tbody = document.getElementById('asCriteriaBody');
+      if (tbody?.lastChild) tbody.lastChild.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }, 50);
+  };
+
+  window.asSave = function() {
+    localStorage.setItem(SK_DATA, JSON.stringify(_data));
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    _history.unshift({ ts, rowCount: _data.length });
+    if (_history.length > 30) _history.pop();
+    localStorage.setItem(SK_HIST, JSON.stringify(_history));
+    _dirty = false;
+    const notice = document.getElementById('asUnsavedNotice');
+    if (notice) notice.style.display = 'none';
+    const btn = document.getElementById('asSaveBtn');
+    if (btn) { const orig = btn.style.background; btn.textContent = '✅ 저장됨'; btn.style.background = '#2db87f'; setTimeout(() => { btn.textContent = '저장'; btn.style.background = orig; }, 1600); }
+    _updateBadge();
+    _renderHistory();
+    // 패널 열려있지 않으면 살짝 표시
+    const panel = document.getElementById('asHistoryPanel');
+    if (panel && panel.style.display === 'none') {
+      panel.style.display = 'block';
+      setTimeout(() => { if (!_panelPinned) panel.style.display = 'none'; }, 2500);
+    }
+  };
+
+  let _panelPinned = false;
+  window.asToggleHistory = function() {
+    const panel = document.getElementById('asHistoryPanel');
+    if (!panel) return;
+    _panelPinned = panel.style.display === 'none';
+    panel.style.display = _panelPinned ? 'block' : 'none';
+    if (_panelPinned) _renderHistory();
+  };
+
+  window.asInit = function() {
+    _load();
+    _rebuildFilters();
+    _render();
+    _renderHistory();
+    _updateBadge();
+    _dirty = false;
+    const notice = document.getElementById('asUnsavedNotice');
+    if (notice) notice.style.display = 'none';
+  };
+
+  // showSection 훅
+  const _orig = window.showSection;
+  if (typeof _orig === 'function') {
+    window.showSection = function(sec) {
+      _orig(sec);
+      if (sec === 'as') setTimeout(window.asInit, 60);
+    };
+  }
+})();
+</script>
 </body>
 </html>
