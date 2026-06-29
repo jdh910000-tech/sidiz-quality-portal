@@ -1,4 +1,4 @@
-/* incoming-data.js — 인수검사 (볼트/중심봉/스폰지) Supabase 연동 + 차트 + 입력 + 리포트 */
+﻿/* incoming-data.js — 인수검사 (볼트/중심봉/스폰지) Supabase 연동 + 차트 + 입력 + 리포트 */
 (function () {
 'use strict';
 
@@ -2975,277 +2975,280 @@ window.initInspectSection = async function () {
 };
 
 // ===== 인수검사 일보 =====
-STATE.dailyLog = { data: null, selectedDate: null };
+STATE.dailyLog = { date: null };
 
-function _parseDailyLogExcel(workbook) {
-  const result = { yearMonth: '', sheets: [] };
-  workbook.SheetNames.forEach(sname => {
-    const ws = workbook.Sheets[sname];
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    if (!rows || rows.length < 10) return;
+const DL_FIELDS = [
+  { label: '입고수량계', tk: 'inbound_today', ak: 'inbound_accum', id: 'inbound' },
+  { label: '검사수량계', tk: 'inspect_today', ak: 'inspect_accum', id: 'inspect' },
+  { label: '불량수량계', tk: 'defect_today',  ak: 'defect_accum',  id: 'defect'  },
+  { label: '반품수량계', tk: 'return_today',  ak: 'return_accum',  id: 'ret'     },
+  { label: '특채수량계', tk: 'special_today', ak: 'special_accum', id: 'special' },
+  { label: '합격수량계', tk: 'pass_today',    ak: 'pass_accum',    id: 'pass'    },
+];
 
-    // 기준일: 행4 열18 → 인덱스[3][17]
-    const dateRaw = rows[3]?.[17] || '';
-    let isoDate = '';
-    if (dateRaw) {
-      if (typeof dateRaw === 'number') {
-        // Excel 날짜 시리얼 → UTC
-        const d = new Date(Math.round((dateRaw - 25569) * 86400000));
-        isoDate = d.toISOString().substring(0, 10);
-      } else {
-        isoDate = String(dateRaw).substring(0, 10);
-      }
-    }
+async function _dlGet(table, date) {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}?log_date=eq.${date}&order=no.asc`, { headers: SB_HEADERS });
+  return res.ok ? res.json() : [];
+}
 
-    const num = v => (v === '' || v === null || v === undefined) ? 0 : (Number(v) || 0);
-    const t = rows[5] || [], a = rows[6] || [];
-    const summary = {
-      today: { inbound: num(t[2]), inspect: num(t[5]), defect: num(t[8]), ret: num(t[11]), special: num(t[14]), pass: num(t[17]) },
-      accum: { inbound: num(a[2]), inspect: num(a[5]), defect: num(a[8]), ret: num(a[11]), special: num(a[14]), pass: num(a[17]) }
-    };
+window.dlLoadDate = async function () {
+  const d = $('dl-date-input')?.value;
+  if (!d) { alert('날짜를 선택해주세요.'); return; }
+  STATE.dailyLog.date = d;
+  const el = $('dl-editor');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ 불러오는 중...</div>';
+  const [sumArr, details, notes] = await Promise.all([
+    _dlGet('daily_log_summary', d),
+    _dlGet('daily_log_details', d),
+    _dlGet('daily_log_notes', d),
+  ]);
+  _dlRender(d, sumArr[0] || {}, details, notes);
+};
 
-    // 검사내역: 행11~35 → 인덱스10~34
-    const details = [];
-    for (let i = 10; i <= 34; i++) {
-      const r = rows[i] || [];
-      if (!r[1] && !r[2] && !r[5]) continue;
-      details.push({ no: r[0], company: r[1], code: r[2], name: r[5], judge: r[8], inbound: r[9], ret: r[10], pass: r[11], method: r[12], inspector: r[13], defectInfo: r[14], action: r[18], note: r[19] });
-    }
+STATE._dlDr = 0;
+STATE._dlNr = 0;
 
-    // 특이사항: 행37~51 → 인덱스36~50
-    const notes = [];
-    for (let i = 36; i <= 50; i++) {
-      const r = rows[i] || [];
-      if (!r[1] && !r[2] && !r[4]) continue;
-      notes.push({ no: r[0], type: r[1], product: r[2], content: r[4], supplier: r[14], date: r[16], note: r[18] });
-    }
+function _inp(val, extra, type) {
+  if (extra === undefined) extra = '';
+  if (type === undefined) type = 'text';
+  const v = escHtml(val != null ? val : '');
+  return '<input type="' + type + '" value="' + v + '" style="width:100%;padding:5px 7px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:12px;box-sizing:border-box;' + extra + '">';
+}
 
-    result.sheets.push({ date: sname, isoDate, summary, details, notes });
+function _dlDetailRow(no, d) {
+  if (!d) d = {};
+  const id = ++STATE._dlDr;
+  const td = 'padding:4px 5px;border-bottom:1px solid var(--border)';
+  return '<tr id="dldr-' + id + '">'
+    + '<td style="' + td + ';text-align:center;color:var(--text-muted);font-size:11px;width:34px">' + no + '</td>'
+    + '<td style="' + td + '">' + _inp(d.company) + '</td>'
+    + '<td style="' + td + '">' + _inp(d.code, 'font-family:monospace;font-size:11px') + '</td>'
+    + '<td style="' + td + '">' + _inp(d.name) + '</td>'
+    + '<td style="' + td + '">' + _inp(d.judge, 'text-align:center;max-width:70px') + '</td>'
+    + '<td style="' + td + '">' + _inp(d.inbound, 'text-align:right;max-width:65px', 'number') + '</td>'
+    + '<td style="' + td + '">' + _inp(d.return_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
+    + '<td style="' + td + '">' + _inp(d.pass_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
+    + '<td style="' + td + '">' + _inp(d.method) + '</td>'
+    + '<td style="' + td + '">' + _inp(d.inspector) + '</td>'
+    + '<td style="' + td + '">' + _inp(d.defect_info) + '</td>'
+    + '<td style="' + td + '">' + _inp(d.action) + '</td>'
+    + '<td style="' + td + '">' + _inp(d.note) + '</td>'
+    + '<td style="' + td + ';text-align:center;width:30px"><button onclick="dlRemRow(\'dldr-' + id + '\')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button></td>'
+    + '</tr>';
+}
+
+function _dlNoteRow(no, n) {
+  if (!n) n = {};
+  const id = ++STATE._dlNr;
+  const td = 'padding:4px 5px;border-bottom:1px solid var(--border)';
+  return '<tr id="dlnr-' + id + '">'
+    + '<td style="' + td + ';text-align:center;color:var(--text-muted);font-size:11px;width:34px">' + no + '</td>'
+    + '<td style="' + td + '">' + _inp(n.type, 'max-width:90px') + '</td>'
+    + '<td style="' + td + '">' + _inp(n.product) + '</td>'
+    + '<td style="' + td + '">' + _inp(n.content, 'min-width:180px') + '</td>'
+    + '<td style="' + td + '">' + _inp(n.supplier, 'max-width:80px') + '</td>'
+    + '<td style="' + td + '">' + _inp(n.note_date, 'max-width:90px') + '</td>'
+    + '<td style="' + td + '">' + _inp(n.note) + '</td>'
+    + '<td style="' + td + ';text-align:center;width:30px"><button onclick="dlRemRow(\'dlnr-' + id + '\')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button></td>'
+    + '</tr>';
+}
+
+function _dlRender(date, sum, details, notes) {
+  const el = $('dl-editor');
+  if (!el) return;
+  const th = 'padding:8px 10px;background:var(--sidiz-dark2);color:var(--text-muted);font-size:11px;font-weight:600;text-align:center;white-space:nowrap;border-bottom:1px solid var(--border)';
+  const td = 'padding:6px 8px;border-bottom:1px solid var(--border)';
+
+  const inpStyle = 'width:100%;padding:5px 7px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:right;box-sizing:border-box';
+
+  let section1 = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:14px">1. 인수검사현황'
+    + '<span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px">기준일 ' + date + '</span></div>'
+    + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr>'
+    + '<th style="' + th + ';text-align:left;min-width:70px">구분</th>'
+    + DL_FIELDS.map(function(f) { return '<th style="' + th + '">' + f.label + '</th>'; }).join('')
+    + '</tr></thead><tbody><tr>'
+    + '<td style="' + td + ';font-weight:600;font-size:12px">Today</td>'
+    + DL_FIELDS.map(function(f) { return '<td style="' + td + '"><input type="number" id="dlt-' + f.id + '" value="' + (sum[f.tk] || 0) + '" min="0" style="' + inpStyle + '"></td>'; }).join('')
+    + '</tr><tr>'
+    + '<td style="' + td + ';font-weight:600;font-size:12px;color:var(--text-muted)">월 누적</td>'
+    + DL_FIELDS.map(function(f) { return '<td style="' + td + '"><input type="number" id="dla-' + f.id + '" value="' + (sum[f.ak] || 0) + '" min="0" style="' + inpStyle + '"></td>'; }).join('')
+    + '</tr></tbody></table></div></div>';
+
+  let detailBody = details.length === 0
+    ? '<tr id="dl-detail-empty"><td colspan="14" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>'
+    : details.map(function(d, i) { return _dlDetailRow(i + 1, d); }).join('');
+
+  let section2 = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    + '<div style="font-size:13px;font-weight:700">2. 검사내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(불합격 내용 기재)</span></div>'
+    + '<button onclick="dlAddDetail()" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">+ 행 추가</button>'
+    + '</div><div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:860px"><thead><tr>'
+    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사방법','검사자','불합격정보','처리','비고',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
+    + '</tr></thead><tbody id="dl-detail-body">' + detailBody + '</tbody></table></div></div>';
+
+  let notesBody = notes.length === 0
+    ? '<tr id="dl-notes-empty"><td colspan="8" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">특이사항이 없습니다. + 행 추가로 입력하세요.</td></tr>'
+    : notes.map(function(n, i) { return _dlNoteRow(i + 1, n); }).join('');
+
+  let section3 = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    + '<div style="font-size:13px;font-weight:700">3. 특이사항 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(업체 협의, 4M, 입고품변경 등)</span></div>'
+    + '<button onclick="dlAddNote()" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">+ 행 추가</button>'
+    + '</div><div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:680px"><thead><tr>'
+    + ['NO','구분','제품','내용','공급처','날짜','비고',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
+    + '</tr></thead><tbody id="dl-notes-body">' + notesBody + '</tbody></table></div></div>';
+
+  const saveBtn = '<div style="display:flex;justify-content:flex-end;margin-top:4px">'
+    + '<button onclick="dlSave()" style="padding:10px 32px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">💾 저장</button></div>';
+
+  el.innerHTML = section1 + section2 + section3 + saveBtn;
+}
+
+window.dlAddDetail = function () {
+  const tbody = $('dl-detail-body');
+  if (!tbody) return;
+  $('dl-detail-empty') && $('dl-detail-empty').remove();
+  const cnt = tbody.querySelectorAll('tr').length + 1;
+  tbody.insertAdjacentHTML('beforeend', _dlDetailRow(cnt));
+};
+
+window.dlAddNote = function () {
+  const tbody = $('dl-notes-body');
+  if (!tbody) return;
+  $('dl-notes-empty') && $('dl-notes-empty').remove();
+  const cnt = tbody.querySelectorAll('tr').length + 1;
+  tbody.insertAdjacentHTML('beforeend', _dlNoteRow(cnt));
+};
+
+window.dlRemRow = function (id) { document.getElementById(id) && document.getElementById(id).remove(); };
+
+window.dlSave = async function () {
+  const date = STATE.dailyLog.date;
+  if (!date) return;
+
+  const getN = function(id) { const el = document.getElementById(id); return el ? (Number(el.value) || 0) : 0; };
+  const summaryData = { log_date: date };
+  DL_FIELDS.forEach(function(f) {
+    summaryData[f.tk] = getN('dlt-' + f.id);
+    summaryData[f.ak] = getN('dla-' + f.id);
   });
-  if (result.sheets.length > 0 && result.sheets[0].isoDate) {
-    result.yearMonth = result.sheets[0].isoDate.substring(0, 7);
+
+  const detailRows = [];
+  document.querySelectorAll('#dl-detail-body tr:not(#dl-detail-empty)').forEach(function(tr, i) {
+    const inp = Array.from(tr.querySelectorAll('input'));
+    if (inp.length < 11) return;
+    const v = function(j) { return inp[j] ? inp[j].value.trim() : ''; };
+    const nv = function(j) { return inp[j] ? (Number(inp[j].value) || 0) : 0; };
+    if (!v(0) && !v(1) && !v(2)) return;
+    detailRows.push({ log_date: date, no: i + 1, company: v(0), code: v(1), name: v(2), judge: v(3), inbound: nv(4), return_qty: nv(5), pass_qty: nv(6), method: v(7), inspector: v(8), defect_info: v(9), action: v(10), note: v(11) });
+  });
+
+  const noteRows = [];
+  document.querySelectorAll('#dl-notes-body tr:not(#dl-notes-empty)').forEach(function(tr, i) {
+    const inp = Array.from(tr.querySelectorAll('input'));
+    if (inp.length < 6) return;
+    const v = function(j) { return inp[j] ? inp[j].value.trim() : ''; };
+    if (!v(0) && !v(1) && !v(2)) return;
+    noteRows.push({ log_date: date, no: i + 1, type: v(0), product: v(1), content: v(2), supplier: v(3), note_date: v(4), note: v(5) });
+  });
+
+  try {
+    const up = Object.assign({}, SB_HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
+    const rp = Object.assign({}, SB_HEADERS, { 'Prefer': 'return=minimal' });
+
+    await fetch(SB_URL + '/rest/v1/daily_log_summary', { method: 'POST', headers: up, body: JSON.stringify(summaryData) });
+    await fetch(SB_URL + '/rest/v1/daily_log_details?log_date=eq.' + date, { method: 'DELETE', headers: SB_HEADERS });
+    if (detailRows.length) await fetch(SB_URL + '/rest/v1/daily_log_details', { method: 'POST', headers: rp, body: JSON.stringify(detailRows) });
+    await fetch(SB_URL + '/rest/v1/daily_log_notes?log_date=eq.' + date, { method: 'DELETE', headers: SB_HEADERS });
+    if (noteRows.length) await fetch(SB_URL + '/rest/v1/daily_log_notes', { method: 'POST', headers: rp, body: JSON.stringify(noteRows) });
+
+    alert('저장되었습니다.');
+  } catch (e) {
+    alert('저장 오류: ' + e.message);
   }
-  return result;
-}
-
-window.loadDailyLogFile = function(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    if (typeof XLSX === 'undefined') { alert('라이브러리 로드 중 오류. 잠시 후 다시 시도해주세요.'); return; }
-    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-    STATE.dailyLog.data = _parseDailyLogExcel(wb);
-    STATE.dailyLog.selectedDate = STATE.dailyLog.data.sheets[0]?.date || null;
-    const { yearMonth, sheets } = STATE.dailyLog.data;
-    const fn = document.getElementById('dailylog-filename');
-    if (fn) fn.textContent = `${file.name}  ·  ${yearMonth}  ·  ${sheets.length}일`;
-    const rb = document.getElementById('dailylog-report-btn');
-    if (rb) rb.style.display = 'inline-flex';
-    _renderDailyLogDateTabs();
-    _renderDailyLogContent();
-  };
-  reader.readAsArrayBuffer(file);
 };
-
-function _renderDailyLogDateTabs() {
-  const { data } = STATE.dailyLog;
-  if (!data) return;
-  const wrap = document.getElementById('dailylog-date-tabs');
-  const btns = document.getElementById('dailylog-date-btns');
-  if (!wrap || !btns) return;
-  wrap.style.display = 'block';
-  btns.innerHTML = data.sheets.map(s => {
-    const active = STATE.dailyLog.selectedDate === s.date;
-    return `<button onclick="selectDailyLogDate('${s.date}')"
-      style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
-      border:1px solid ${active ? 'var(--sidiz-blue)' : 'var(--border)'};
-      background:${active ? 'var(--sidiz-blue)' : 'var(--sidiz-card)'};
-      color:${active ? '#fff' : 'var(--text-primary)'};transition:all 0.15s">${s.date}</button>`;
-  }).join('');
-}
-
-window.selectDailyLogDate = function(date) {
-  STATE.dailyLog.selectedDate = date;
-  _renderDailyLogDateTabs();
-  _renderDailyLogContent();
-};
-
-function _renderDailyLogContent() {
-  const { data, selectedDate } = STATE.dailyLog;
-  const el = document.getElementById('dailylog-content');
-  if (!el || !data || !selectedDate) return;
-  const sheet = data.sheets.find(s => s.date === selectedDate);
-  if (!sheet) return;
-
-  const s = sheet.summary;
-  const N = v => Number(v).toLocaleString();
-  const thStyle = 'padding:7px 12px;text-align:center;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap';
-  const tdStyle = 'padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px';
-
-  // 1. 인수검사현황
-  const labels = ['입고수량계','검사수량계','불량수량계','반품수량계','특채수량계','합격수량계'];
-  const todayVals = [s.today.inbound, s.today.inspect, s.today.defect, s.today.ret, s.today.special, s.today.pass];
-  const accumVals = [s.accum.inbound, s.accum.inspect, s.accum.defect, s.accum.ret, s.accum.special, s.accum.pass];
-
-  const kpiHtml = `
-<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px">
-  <div style="font-size:13px;font-weight:700;margin-bottom:12px">1. 인수검사현황 <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px">기준일 ${sheet.isoDate}</span></div>
-  <div style="overflow-x:auto">
-  <table style="border-collapse:collapse;width:100%">
-    <thead><tr style="background:var(--sidiz-dark2)">
-      <th style="${thStyle};text-align:left">구분</th>
-      ${labels.map(l => `<th style="${thStyle}">${l}</th>`).join('')}
-    </tr></thead>
-    <tbody>
-      <tr>
-        <td style="${tdStyle};font-weight:600">Today</td>
-        ${todayVals.map((v,i) => `<td style="${tdStyle};text-align:right;font-weight:700;color:${i===2&&v>0?'var(--sidiz-red)':i===5?'var(--sidiz-blue)':'var(--text-primary)'}">${N(v)}</td>`).join('')}
-      </tr>
-      <tr>
-        <td style="${tdStyle};color:var(--text-muted)">월 누적</td>
-        ${accumVals.map((v,i) => `<td style="${tdStyle};text-align:right;color:${i===2&&v>0?'var(--sidiz-red)':'var(--text-muted)'}">${N(v)}</td>`).join('')}
-      </tr>
-    </tbody>
-  </table>
-  </div>
-</div>`;
-
-  // 2. 검사내역
-  const detailHtml = `
-<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px">
-  <div style="font-size:13px;font-weight:700;margin-bottom:12px">2. 검사내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(불합격 내용 기재)</span></div>
-  ${sheet.details.length === 0
-    ? '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">불합격 내역 없음</div>'
-    : `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%">
-      <thead><tr style="background:var(--sidiz-dark2)">
-        ${['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사방법','검사자','불합격정보','처리','비고'].map(h=>`<th style="${thStyle}">${h}</th>`).join('')}
-      </tr></thead>
-      <tbody>
-        ${sheet.details.map(d => `<tr>
-          <td style="${tdStyle};text-align:center;color:var(--text-muted)">${d.no}</td>
-          <td style="${tdStyle};white-space:nowrap">${d.company}</td>
-          <td style="${tdStyle};white-space:nowrap;font-family:monospace;font-size:11px">${d.code}</td>
-          <td style="${tdStyle}">${d.name}</td>
-          <td style="${tdStyle};text-align:center;font-weight:700;color:${d.judge==='합격'?'var(--sidiz-blue)':d.judge==='불합격'?'var(--sidiz-red)':'var(--text-primary)'}">${d.judge}</td>
-          <td style="${tdStyle};text-align:right">${d.inbound}</td>
-          <td style="${tdStyle};text-align:right;color:${Number(d.ret)>0?'var(--sidiz-red)':''}">${d.ret}</td>
-          <td style="${tdStyle};text-align:right">${d.pass}</td>
-          <td style="${tdStyle};text-align:center;color:var(--text-muted)">${d.method}</td>
-          <td style="${tdStyle};text-align:center">${d.inspector}</td>
-          <td style="${tdStyle}">${d.defectInfo}</td>
-          <td style="${tdStyle}">${d.action}</td>
-          <td style="${tdStyle}">${d.note}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div>`}
-</div>`;
-
-  // 3. 특이사항
-  const notesHtml = `
-<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
-  <div style="font-size:13px;font-weight:700;margin-bottom:12px">3. 특이사항 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(업체 협의, 4M, 입고품변경 등)</span></div>
-  ${sheet.notes.length === 0
-    ? '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">특이사항 없음</div>'
-    : `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%">
-      <thead><tr style="background:var(--sidiz-dark2)">
-        ${['번호','구분','제품','내용','공급처','날짜','비고'].map(h=>`<th style="${thStyle}">${h}</th>`).join('')}
-      </tr></thead>
-      <tbody>
-        ${sheet.notes.map(n => `<tr>
-          <td style="${tdStyle};text-align:center;color:var(--text-muted)">${n.no}</td>
-          <td style="${tdStyle};white-space:nowrap;font-weight:600;color:var(--sidiz-blue)">${n.type}</td>
-          <td style="${tdStyle};white-space:nowrap">${n.product}</td>
-          <td style="${tdStyle};line-height:1.6">${String(n.content).replace(/\n/g,'<br>')}</td>
-          <td style="${tdStyle};white-space:nowrap">${n.supplier}</td>
-          <td style="${tdStyle};white-space:nowrap">${n.date}</td>
-          <td style="${tdStyle};line-height:1.6">${String(n.note).replace(/\n/g,'<br>')}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div>`}
-</div>`;
-
-  el.innerHTML = kpiHtml + detailHtml + notesHtml;
-}
 
 function renderDailyLog() {
-  if (!STATE.dailyLog.data) {
-    const el = document.getElementById('dailylog-content');
-    if (el && !el.querySelector('[data-placeholder]')) return;
-  } else {
-    _renderDailyLogContent();
-  }
+  const di = $('dl-date-input'), mi = $('dl-month-input');
+  const today = new Date().toISOString().substring(0, 10);
+  if (di && !di.value) di.value = today;
+  if (mi && !mi.value) mi.value = today.substring(0, 7);
 }
 
-window.generateDailyLogReport = function() {
-  const { data } = STATE.dailyLog;
-  if (!data || !data.sheets.length) return;
-  const N = v => Number(v).toLocaleString();
-  const last = data.sheets[data.sheets.length - 1];
+window.dlGenerateReport = async function () {
+  const month = $('dl-month-input') ? $('dl-month-input').value : '';
+  if (!month) { alert('연월을 선택해주세요.'); return; }
+  const parts = month.split('-');
+  const yr = parts[0], mo = parts[1];
+  const from = month + '-01', to = month + '-31';
 
-  const summaryRows = data.sheets.map(s => `
-    <tr>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center">${s.date}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(s.summary.today.inbound)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(s.summary.today.inspect)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right;color:${s.summary.today.defect>0?'red':''}">${N(s.summary.today.defect)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(s.summary.today.ret)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(s.summary.today.special)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right;color:navy">${N(s.summary.today.pass)}</td>
-    </tr>`).join('');
+  const results = await Promise.all([
+    fetch(SB_URL + '/rest/v1/daily_log_summary?log_date=gte.' + from + '&log_date=lte.' + to + '&order=log_date.asc', { headers: SB_HEADERS }).then(function(r) { return r.json(); }),
+    fetch(SB_URL + '/rest/v1/daily_log_notes?log_date=gte.' + from + '&log_date=lte.' + to + '&order=log_date.asc,no.asc', { headers: SB_HEADERS }).then(function(r) { return r.json(); }),
+  ]);
+  const summaries = results[0], allNotes = results[1];
+  if (!summaries.length) { alert('해당 월의 데이터가 없습니다.'); return; }
 
-  const allNotes = data.sheets.flatMap(s => s.notes.map(n => ({ ...n, sheetDate: s.date })));
-  const notesRows = allNotes.map(n => `
-    <tr>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;white-space:nowrap">${n.sheetDate}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center">${n.no}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;white-space:nowrap">${n.type}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px">${n.product}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px">${String(n.content).replace(/\n/g,'<br>')}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;white-space:nowrap">${n.supplier}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;white-space:nowrap">${n.date}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px">${String(n.note).replace(/\n/g,'<br>')}</td>
-    </tr>`).join('');
+  const N = function(v) { return Number(v || 0).toLocaleString(); };
+  const last = summaries[summaries.length - 1];
+  const thS = 'border:1px solid #ccc;padding:6px 10px;background:#f0f0f0;font-size:10pt;white-space:nowrap';
+  const tdR = 'border:1px solid #ccc;padding:6px 10px;text-align:right';
+  const tdC = 'border:1px solid #ccc;padding:6px 10px;text-align:center';
 
-  const th = t => `<th style="border:1px solid #ccc;padding:6px 10px;background:#f0f0f0;white-space:nowrap">${t}</th>`;
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>${data.yearMonth} 인수검사 일보 월간보고서</title>
-<style>body{font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:10pt;color:#000;max-width:1200px;margin:0 auto;padding:24px}
-h2{text-align:center;font-size:14pt;margin-bottom:6px}
-.sub{text-align:center;color:#666;margin-bottom:28px;font-size:10pt}
-h3{font-size:11pt;margin:28px 0 10px}
-table{width:100%;border-collapse:collapse}
-@media print{@page{margin:15mm}}</style>
-</head><body>
-<h2>인수검사 일보 월간보고서</h2>
-<p class="sub">기준월: ${data.yearMonth} &nbsp;|&nbsp; 총 ${data.sheets.length}일 &nbsp;|&nbsp; 작성일: ${new Date().toLocaleDateString('ko-KR')}</p>
+  const sRows = summaries.map(function(s) {
+    return '<tr>'
+      + '<td style="' + tdC + '">' + s.log_date.substring(5) + '</td>'
+      + '<td style="' + tdR + '">' + N(s.inbound_today) + '</td>'
+      + '<td style="' + tdR + '">' + N(s.inspect_today) + '</td>'
+      + '<td style="' + tdR + (s.defect_today > 0 ? ';color:red' : '') + '">' + N(s.defect_today) + '</td>'
+      + '<td style="' + tdR + '">' + N(s.return_today) + '</td>'
+      + '<td style="' + tdR + '">' + N(s.special_today) + '</td>'
+      + '<td style="' + tdR + ';color:navy">' + N(s.pass_today) + '</td>'
+      + '</tr>';
+  }).join('');
 
-<h3>1. 월간 인수검사 현황</h3>
-<table>
-  <thead><tr>${['날짜','입고수량','검사수량','불량수량','반품수량','특채수량','합격수량'].map(th).join('')}</tr></thead>
-  <tbody>
-    ${summaryRows}
-    <tr style="font-weight:bold;background:#f9f9f9">
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center">월 누적</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(last.summary.accum.inbound)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(last.summary.accum.inspect)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right;color:${last.summary.accum.defect>0?'red':''}">${N(last.summary.accum.defect)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(last.summary.accum.ret)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right">${N(last.summary.accum.special)}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:right;color:navy">${N(last.summary.accum.pass)}</td>
-    </tr>
-  </tbody>
-</table>
+  const nRows = allNotes.map(function(n) {
+    return '<tr>'
+      + '<td style="' + tdC + ';white-space:nowrap">' + n.log_date.substring(5) + '</td>'
+      + '<td style="' + tdC + '">' + (n.no || '') + '</td>'
+      + '<td style="border:1px solid #ccc;padding:6px 10px;white-space:nowrap">' + (n.type || '') + '</td>'
+      + '<td style="border:1px solid #ccc;padding:6px 10px">' + (n.product || '') + '</td>'
+      + '<td style="border:1px solid #ccc;padding:6px 10px">' + String(n.content || '').replace(/\n/g, '<br>') + '</td>'
+      + '<td style="border:1px solid #ccc;padding:6px 10px;white-space:nowrap">' + (n.supplier || '') + '</td>'
+      + '<td style="border:1px solid #ccc;padding:6px 10px;white-space:nowrap">' + (n.note_date || '') + '</td>'
+      + '<td style="border:1px solid #ccc;padding:6px 10px">' + String(n.note || '').replace(/\n/g, '<br>') + '</td>'
+      + '</tr>';
+  }).join('');
 
-<h3>2. 특이사항 종합</h3>
-${allNotes.length === 0 ? '<p style="color:#666">특이사항이 없습니다.</p>' : `<table>
-  <thead><tr>${['일보날짜','번호','구분','제품','내용','공급처','날짜','비고'].map(th).join('')}</tr></thead>
-  <tbody>${notesRows}</tbody>
-</table>`}
-</body></html>`;
+  const thCols = ['날짜','입고수량','검사수량','불량수량','반품수량','특채수량','합격수량'].map(function(t) { return '<th style="' + thS + '">' + t + '</th>'; }).join('');
+  const thNotes = ['날짜','번호','구분','제품','내용','공급처','날짜','비고'].map(function(t) { return '<th style="' + thS + '">' + t + '</th>'; }).join('');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>' + month + ' 인수검사 일보 월간보고서</title>'
+    + '<style>body{font-family:\'맑은 고딕\',\'Malgun Gothic\',sans-serif;font-size:10pt;color:#000;max-width:1200px;margin:0 auto;padding:24px}'
+    + 'h2{text-align:center;font-size:14pt;margin-bottom:6px}.sub{text-align:center;color:#666;margin-bottom:28px}'
+    + 'h3{font-size:11pt;margin:28px 0 10px}table{width:100%;border-collapse:collapse}'
+    + '@media print{@page{margin:15mm}}</style></head><body>'
+    + '<h2>인수검사 일보 월간보고서</h2>'
+    + '<p class="sub">' + yr + '년 ' + parseInt(mo) + '월 &nbsp;|&nbsp; ' + summaries.length + '일 &nbsp;|&nbsp; 작성일: ' + new Date().toLocaleDateString('ko-KR') + '</p>'
+    + '<h3>1. 월간 인수검사 현황</h3>'
+    + '<table><thead><tr>' + thCols + '</tr></thead><tbody>' + sRows
+    + '<tr style="font-weight:bold;background:#f9f9f9">'
+    + '<td style="' + tdC + '">월 누적</td>'
+    + '<td style="' + tdR + '">' + N(last.inbound_accum) + '</td>'
+    + '<td style="' + tdR + '">' + N(last.inspect_accum) + '</td>'
+    + '<td style="' + tdR + (last.defect_accum > 0 ? ';color:red' : '') + '">' + N(last.defect_accum) + '</td>'
+    + '<td style="' + tdR + '">' + N(last.return_accum) + '</td>'
+    + '<td style="' + tdR + '">' + N(last.special_accum) + '</td>'
+    + '<td style="' + tdR + ';color:navy">' + N(last.pass_accum) + '</td>'
+    + '</tr></tbody></table>'
+    + '<h3>2. 특이사항 종합</h3>'
+    + (allNotes.length === 0 ? '<p>특이사항이 없습니다.</p>' : '<table><thead><tr>' + thNotes + '</tr></thead><tbody>' + nRows + '</tbody></table>')
+    + '</body></html>';
 
   const w = window.open('', '_blank');
-  if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 600); }
+  if (w) { w.document.write(html); w.document.close(); setTimeout(function() { w.print(); }, 600); }
 };
 
 })();
