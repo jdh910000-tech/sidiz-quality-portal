@@ -896,6 +896,10 @@ body.share-mode .section > .header .header-left p { display: none; }
         월별 클레임 건수 <span id="prodMonthlyBarTitle" style="font-size:11px;color:var(--text-muted);font-weight:400"></span>
       </h3>
       <div style="position:relative;height:200px"><canvas id="prodMonthlyBarChart"></canvas></div>
+      <!-- 월별 매출량·클레임·불량지수 요약 표 -->
+      <div style="overflow-x:auto;margin-top:16px" id="prodMonthlySummaryWrap">
+        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">조회 후 표시됩니다.</div>
+      </div>
     </div>
 
     <!-- 월별 상세 표 -->
@@ -5473,6 +5477,7 @@ async function loadProdDashboard() {
   renderProdPieChart(filtered);
   renderProdTrendChart(filtered, from, to);
   renderProdMonthlyBarChart(noDateFiltered, item);
+  renderProdMonthlySummaryTable(noDateFiltered);
   renderProdMonthlyTable(noDateFiltered, item, country);
 
   if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${item !== 'all' ? item : '전체'} · ${from||'전체'}~${to||'현재'})`;
@@ -5537,6 +5542,7 @@ function _refreshProdBottom() {
   const dispItem = _prodDrillItem || (item !== 'all' ? item : '전체');
   renderProdTrendChart(drillFiltered, from, to);
   renderProdMonthlyBarChart(noDateFiltered, dispItem);
+  renderProdMonthlySummaryTable(noDateFiltered);
   renderProdMonthlyTable(noDateFiltered, _prodDrillItem || item, country);
   const el = id => document.getElementById(id);
   if (el('prodTrendTitle')) el('prodTrendTitle').textContent = `(${dispItem} · ${from||'전체'}~${to||'현재'})`;
@@ -5802,6 +5808,89 @@ function renderProdMonthlyBarChart(allData, item) {
     },
     plugins: [ChartDataLabels]
   });
+}
+
+// ─── 월별 매출량·클레임건·불량지수 요약 표 ───
+function renderProdMonthlySummaryTable(claims) {
+  const wrap = document.getElementById('prodMonthlySummaryWrap'); if (!wrap) return;
+  const year = new Date().getFullYear();
+  const item    = document.getElementById('prodItemSelect')?.value  || 'all';
+  const brand   = document.getElementById('prodBrandSel')?.value    || 'all';
+  const country = document.getElementById('prodCountrySel')?.value  || 'all';
+  const allMonths = Array.from({length:12}, (_,i) => `${year}-${String(i+1).padStart(2,'0')}`);
+
+  // 클레임 건수 (월별)
+  const claimCnt = {};
+  allMonths.forEach(m => claimCnt[m] = 0);
+  claims.forEach(c => {
+    const m = c.claim_date?.slice(0,7);
+    if (m && claimCnt[m] !== undefined) claimCnt[m]++;
+  });
+
+  // 매출량 (월별) — _prodSalesData 기준, 기간 필터 무관
+  const salesCnt = {};
+  allMonths.forEach(m => salesCnt[m] = 0);
+  (_prodSalesData || []).forEach(s => {
+    const m = s.year_month?.slice(0,7);
+    if (!m || salesCnt[m] === undefined) return;
+    if (item    !== 'all' && s.item    !== item)    return;
+    if (brand   !== 'all' && s.brand   !== brand)   return;
+    if (country !== 'all' && s.country !== country) return;
+    salesCnt[m] += (s.sales_count || 0);
+  });
+
+  const totalClaim = allMonths.reduce((s,m) => s + claimCnt[m], 0);
+  const totalSales = allMonths.reduce((s,m) => s + salesCnt[m], 0);
+  const totalIdx   = totalSales > 0 ? ((totalClaim / totalSales) * 100).toFixed(2) : '-';
+
+  const thStyle = 'padding:6px 10px;text-align:center;font-size:11px;font-weight:700;white-space:nowrap;background:var(--sidiz-dark2);color:var(--text-muted);border-bottom:1px solid var(--border)';
+  const labelStyle = 'padding:6px 10px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;border-right:1px solid var(--border)';
+
+  const monthHeaders = allMonths.map(m => `<th style="${thStyle}">${parseInt(m.slice(5))}월</th>`).join('');
+
+  const salesRow = allMonths.map(m => {
+    const v = salesCnt[m];
+    return `<td style="text-align:center;font-size:11px;padding:5px 8px;color:${v>0?'var(--text-primary)':'var(--text-muted)'}">${v>0?v.toLocaleString():'-'}</td>`;
+  }).join('');
+
+  const claimRow = allMonths.map(m => {
+    const v = claimCnt[m];
+    return `<td style="text-align:center;font-size:11px;font-weight:${v>0?'700':'400'};padding:5px 8px;color:${v>0?'var(--sidiz-blue-bright)':'var(--text-muted)'}">${v>0?v:'-'}</td>`;
+  }).join('');
+
+  const idxRow = allMonths.map(m => {
+    const c = claimCnt[m], s = salesCnt[m];
+    if (s === 0) return `<td style="text-align:center;font-size:11px;padding:5px 8px;color:var(--text-muted)">-</td>`;
+    const idx = ((c / s) * 100).toFixed(2);
+    const color = parseFloat(idx) >= 1 ? 'var(--accent-rose)' : parseFloat(idx) >= 0.5 ? 'var(--accent-amber)' : 'var(--accent-emerald)';
+    return `<td style="text-align:center;font-size:11px;font-weight:700;padding:5px 8px;color:${color}">${idx}%</td>`;
+  }).join('');
+
+  wrap.innerHTML = `
+  <table style="width:100%;border-collapse:collapse;font-family:'Noto Sans KR',sans-serif">
+    <thead><tr>
+      <th style="${thStyle};text-align:left;min-width:70px">항목</th>
+      ${monthHeaders}
+      <th style="${thStyle};background:var(--sidiz-blue);color:#fff">합계</th>
+    </tr></thead>
+    <tbody>
+      <tr style="background:var(--sidiz-dark)">
+        <td style="${labelStyle};color:var(--text-muted)">매출량</td>
+        ${salesRow}
+        <td style="text-align:center;font-size:11px;font-weight:700;padding:5px 8px;color:${totalSales>0?'var(--text-primary)':'var(--text-muted)'};background:var(--sidiz-blue-pale)">${totalSales>0?totalSales.toLocaleString():'-'}</td>
+      </tr>
+      <tr>
+        <td style="${labelStyle};color:var(--sidiz-blue-bright)">클레임건</td>
+        ${claimRow}
+        <td style="text-align:center;font-size:11px;font-weight:700;padding:5px 8px;color:var(--sidiz-blue-bright);background:var(--sidiz-blue-pale)">${totalClaim}</td>
+      </tr>
+      <tr style="background:var(--sidiz-dark)">
+        <td style="${labelStyle};color:var(--text-muted)">불량지수(%)</td>
+        ${idxRow}
+        <td style="text-align:center;font-size:11px;font-weight:700;padding:5px 8px;color:${totalIdx!=='-'&&parseFloat(totalIdx)>=1?'var(--accent-rose)':totalIdx!=='-'&&parseFloat(totalIdx)>=0.5?'var(--accent-amber)':'var(--accent-emerald)'};background:var(--sidiz-blue-pale)">${totalIdx!=='-'?totalIdx+'%':'-'}</td>
+      </tr>
+    </tbody>
+  </table>`;
 }
 
 function saveProdRowStatus(key, val) {
