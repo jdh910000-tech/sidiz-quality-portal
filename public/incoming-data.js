@@ -225,17 +225,42 @@ function makeDoughnut(key, ctx, labels, data, colors, opts = {}) {
     data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
     options: Object.assign({
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 16, bottom: 16, left: 16, right: 16 } },
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, padding: 8, boxWidth: 10 } },
         datalabels: {
-          color: '#fff', font: { weight: 700, size: 12 },
+          textAlign: 'center',
+          font: { size: 11, weight: 'bold' },
+          color: ctx => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = total ? ctx.dataset.data[ctx.dataIndex] / total * 100 : 0;
+            return pct >= 8 ? '#fff' : '#222';
+          },
+          anchor: ctx => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = total ? ctx.dataset.data[ctx.dataIndex] / total * 100 : 0;
+            return pct >= 8 ? 'center' : 'end';
+          },
+          align: ctx => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = total ? ctx.dataset.data[ctx.dataIndex] / total * 100 : 0;
+            return pct >= 8 ? 'center' : 'end';
+          },
+          offset: ctx => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = total ? ctx.dataset.data[ctx.dataIndex] / total * 100 : 0;
+            return pct >= 8 ? 0 : 6;
+          },
           formatter: (v, ctx) => {
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            return total && v ? Math.round(v / total * 100) + '%' : '';
+            const pct = total ? v / total * 100 : 0;
+            if (pct < 2) return '';
+            return ctx.chart.data.labels[ctx.dataIndex] + '\n' + v + '건';
           }
         }
       }
-    }, opts)
+    }, opts),
+    plugins: [ChartDataLabels]
   });
 }
 
@@ -2586,8 +2611,8 @@ function _getColorimetryAnalysis(rows) {
 window.generateBoltReport = function () {
   const from     = $('inq-bolt-from')?.value || '';
   const to       = $('inq-bolt-to')?.value   || '';
-  const supplier = $('inq-bolt-supplier')?.value || '전체';
-  const code     = $('inq-bolt-code')?.value || '전체 자재';
+  const supplier = $('inq-bolt-supplier')?.value || [...new Set(getBoltFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
+  const code     = $('inq-bolt-code')?.value || [...new Set(getBoltFiltered().map(r => r.code).filter(Boolean))].sort().join(', ') || '전체 자재';
   const period   = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
   const rows = getBoltFiltered();
@@ -2607,8 +2632,8 @@ window.generateBoltReport = function () {
     if (ngCount > 0) recs.push({ level:'critical', text:`이상치(HV<250 또는 >550) ${ngCount}건 발견. 해당 LOT 원인 조사 필요.` });
   }
   const recHtml = _recToHtml(recs);
-  const imgTrend    = _captureInspectChart('rep-bolt-trend');
-  const imgSupplier = _captureInspectChart('rep-bolt-supplier');
+  const imgTrend    = _captureInspectChart('inq-bolt-trend');
+  const imgSupplier = _captureInspectChart('inq-bolt-supplier-bar');
 
   const html = `<!DOCTYPE html>
 <html>
@@ -2640,8 +2665,8 @@ ${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급�
 window.generateRodReport = function () {
   const from     = $('inq-rod-from')?.value || '';
   const to       = $('inq-rod-to')?.value   || '';
-  const supplier = $('inq-rod-supplier')?.value || '전체';
-  const code     = $('inq-rod-code')?.value || '전체 자재';
+  const supplier = $('inq-rod-supplier')?.value || [...new Set(getRodFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
+  const code     = $('inq-rod-code')?.value || [...new Set(getRodFiltered().map(r => r.code).filter(Boolean))].sort().join(', ') || '전체 자재';
   const period   = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
   const rows = getRodFiltered();
@@ -2661,8 +2686,8 @@ window.generateRodReport = function () {
     if (wobbleNG.length) recs.push({ level:'critical', text:`흔들림 기준(≤ 1.0 mm) 이탈 ${wobbleNG.length}건.` });
   }
   const recHtml = _recToHtml(recs);
-  const imgTrend    = _captureInspectChart('rep-rod-trend');
-  const imgSupplier = _captureInspectChart('rep-rod-supplier');
+  const imgTrend    = _captureInspectChart('inq-rod-trend');
+  const imgSupplier = _captureInspectChart('inq-rod-wobble');
 
   const html = `<!DOCTYPE html>
 <html>
@@ -2695,7 +2720,7 @@ ${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급�
 window.generateSpongeReport = function () {
   const from   = $('inq-sponge-from')?.value || '';
   const to     = $('inq-sponge-to')?.value   || '';
-  const code   = $('inq-sponge-code')?.value || '전체 자재';
+  const code   = $('inq-sponge-code')?.value || [...new Set(getSpongeFiltered().map(r => r.code).filter(Boolean))].sort().join(', ') || '전체 자재';
   const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
 
   const rows = getSpongeFiltered();
@@ -2716,8 +2741,8 @@ window.generateSpongeReport = function () {
     });
   }
   const recHtml = _recToHtml(recs);
-  const imgTrend = _captureInspectChart('rep-sponge-trend');
-  const imgSpec  = _captureInspectChart('rep-sponge-spec');
+  const imgTrend = _captureInspectChart('inq-sponge-trend');
+  const imgSpec  = _captureInspectChart('inq-sponge-spec-pie');
 
   const html = `<!DOCTYPE html>
 <html>
@@ -2751,8 +2776,8 @@ window.generateReamerReport = function () {
   const from = $('inq-reamer-from')?.value || '';
   const to   = $('inq-reamer-to')?.value   || '';
   const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
-  const supplier = $('inq-reamer-supplier')?.value || '전체';
-  const product  = $('inq-reamer-product')?.value  || '전체 기종';
+  const supplier = $('inq-reamer-supplier')?.value || [...new Set(getReamerFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
+  const product  = $('inq-reamer-product')?.value  || [...new Set(getReamerFiltered().map(r => r.product).filter(Boolean))].sort().join(', ') || '전체 기종';
 
   const recs = _getReamerAnalysis(rows);
   const recHtml = _recToHtml(recs);
@@ -2799,8 +2824,8 @@ window.generateRoughnessReport = function () {
   const from = $('inq-rough-from')?.value || '';
   const to   = $('inq-rough-to')?.value   || '';
   const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
-  const supplier = $('inq-rough-supplier')?.value || '전체';
-  const product  = $('inq-rough-product')?.value  || '전체 기종';
+  const supplier = $('inq-rough-supplier')?.value || [...new Set(getRoughnessFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
+  const product  = $('inq-rough-product')?.value  || [...new Set(getRoughnessFiltered().map(r => r.product).filter(Boolean))].sort().join(', ') || '전체 기종';
 
   const recs = _getRoughnessAnalysis(rows);
   const recHtml = _recToHtml(recs);
@@ -2847,8 +2872,8 @@ window.generateColorimetryReport = function () {
   const from = $('inq-color-from')?.value || '';
   const to   = $('inq-color-to')?.value   || '';
   const period = from && to ? `${from} ~ ${to}` : from ? `${from} 이후` : to ? `~ ${to}` : '전체 기간';
-  const supplier  = $('inq-color-supplier')?.value || '전체';
-  const colorCode = $('inq-color-code')?.value     || '전체 색상';
+  const supplier  = $('inq-color-supplier')?.value || [...new Set(getColorimetryFiltered().map(r => r.supplier).filter(Boolean))].sort().join(', ') || '전체';
+  const colorCode = $('inq-color-code')?.value     || [...new Set(getColorimetryFiltered().map(r => r.color_code).filter(Boolean))].sort().join(', ') || '전체 색상';
 
   const recs = _getColorimetryAnalysis(rows);
   const recHtml = _recToHtml(recs);
