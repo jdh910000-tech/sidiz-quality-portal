@@ -7657,35 +7657,39 @@ async function _orgSaveJobDesc() {
       const orig = td.textContent.trim();
       const isContent = field === 'content';
       td.innerHTML = '';
+
       let el;
       if (isContent) {
         el = document.createElement('textarea');
         el.rows = 2;
         el.style.cssText = 'width:100%;border:none;background:rgba(0,43,210,0.06);padding:5px 7px;border-radius:4px;font-size:12.5px;font-family:inherit;color:var(--text-primary);outline:2px solid var(--sidiz-blue);resize:vertical;box-sizing:border-box';
+        el.value = orig;
+        td.appendChild(el);
+        el.focus();
       } else {
+        // 대/중/소분류: datalist 자동완성 + 그 행만 변경
+        const dlId = '_asDL_' + field + '_' + rowId;
         el = document.createElement('input');
+        el.setAttribute('list', dlId);
+        el.value = orig;
         el.style.cssText = 'width:100%;border:none;background:rgba(0,43,210,0.06);padding:5px 7px;border-radius:4px;font-size:12.5px;font-family:inherit;color:var(--text-primary);outline:2px solid var(--sidiz-blue);box-sizing:border-box';
+        const dl = document.createElement('datalist');
+        dl.id = dlId;
+        [...new Set(_data.map(r => r[field]).filter(Boolean))].sort().forEach(v => {
+          const opt = document.createElement('option'); opt.value = v; dl.appendChild(opt);
+        });
+        td.appendChild(el);
+        td.appendChild(dl);
+        el.focus();
+        el.select();
       }
-      el.value = orig;
-      td.appendChild(el);
-      el.focus();
-      if (!isContent) el.select();
 
       const commit = () => {
         const nv = el.value.trim();
         if (nv !== orig) {
-          if (field === 'large') {
-            _data.forEach(r => { if (r.large === orig) r.large = nv; });
-          } else if (field === 'medium') {
-            const base = _data.find(r => r.id === rowId);
-            if (base) _data.forEach(r => { if (r.large === base.large && r.medium === orig) r.medium = nv; });
-          } else if (field === 'small') {
-            const base = _data.find(r => r.id === rowId);
-            if (base) _data.forEach(r => { if (r.large === base.large && r.medium === base.medium && r.small === orig) r.small = nv; });
-          } else {
-            const row = _data.find(r => r.id === rowId);
-            if (row) row[field] = nv;
-          }
+          // 항상 그 행만 변경 → 새 값이면 자연스럽게 병합 분리, 기존 값이면 자동 병합
+          const row = _data.find(r => r.id === rowId);
+          if (row) row[field] = nv;
           _markDirty();
           _rebuildFilters();
           _render();
