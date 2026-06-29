@@ -7765,23 +7765,35 @@ async function _orgSaveJobDesc() {
       _attachEdit(tdC, row.id, 'content');
       tr.appendChild(tdC);
 
-      const tdDel = document.createElement('td');
-      tdDel.style.cssText = 'padding:4px;text-align:center;border:1px solid var(--border)';
-      const btn = document.createElement('button');
-      btn.textContent = '✕';
-      btn.title = '행 삭제';
-      btn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:3px 6px;border-radius:4px;line-height:1';
-      btn.addEventListener('mouseenter', ()=>{ btn.style.color='#FF4757'; btn.style.background='rgba(255,71,87,0.08)'; });
-      btn.addEventListener('mouseleave', ()=>{ btn.style.color=''; btn.style.background=''; });
-      btn.addEventListener('click', () => {
+      const tdAct = document.createElement('td');
+      tdAct.style.cssText = 'padding:3px 4px;text-align:center;border:1px solid var(--border);width:54px;white-space:nowrap';
+
+      const btnIns = document.createElement('button');
+      btnIns.textContent = '+';
+      btnIns.title = '아래에 행 추가';
+      btnIns.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;font-weight:700;padding:3px 5px;border-radius:4px;line-height:1';
+      btnIns.addEventListener('mouseenter', ()=>{ btnIns.style.color='#2db87f'; btnIns.style.background='rgba(45,184,127,0.1)'; });
+      btnIns.addEventListener('mouseleave', ()=>{ btnIns.style.color=''; btnIns.style.background=''; });
+      btnIns.addEventListener('click', e => { e.stopPropagation(); window.asAddRow(row.id); });
+
+      const btnDel = document.createElement('button');
+      btnDel.textContent = '✕';
+      btnDel.title = '행 삭제';
+      btnDel.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:11px;padding:3px 5px;border-radius:4px;line-height:1';
+      btnDel.addEventListener('mouseenter', ()=>{ btnDel.style.color='#FF4757'; btnDel.style.background='rgba(255,71,87,0.08)'; });
+      btnDel.addEventListener('mouseleave', ()=>{ btnDel.style.color=''; btnDel.style.background=''; });
+      btnDel.addEventListener('click', e => {
+        e.stopPropagation();
         if (!confirm('이 행을 삭제할까요?')) return;
         _data = _data.filter(r => r.id !== row.id);
         _markDirty();
         _rebuildFilters();
         _render();
       });
-      tdDel.appendChild(btn);
-      tr.appendChild(tdDel);
+
+      tdAct.appendChild(btnIns);
+      tdAct.appendChild(btnDel);
+      tr.appendChild(tdAct);
 
       tbody.appendChild(tr);
     });
@@ -7893,16 +7905,35 @@ async function _orgSaveJobDesc() {
     _render();
   };
 
-  window.asAddRow = function() {
-    const last = _data[_data.length-1];
-    _data.push({ id: _nextId++, large: last?.large||'불량', medium: last?.medium||'', small: '', content: '' });
+  window.asAddRow = function(afterId) {
+    let insertIdx = _data.length;
+    let baseRow = _data[_data.length - 1];
+
+    if (afterId != null) {
+      const idx = _data.findIndex(r => r.id === afterId);
+      if (idx !== -1) { insertIdx = idx + 1; baseRow = _data[idx]; }
+    }
+
+    const newRow = {
+      id: _nextId++,
+      large: baseRow?.large || '불량',
+      medium: baseRow?.medium || '',
+      small: baseRow?.small || '',
+      content: ''
+    };
+    _data.splice(insertIdx, 0, newRow);
     _markDirty();
     _rebuildFilters();
     _render();
+
     setTimeout(() => {
-      const tbody = document.getElementById('asCriteriaBody');
-      if (tbody?.lastChild) tbody.lastChild.scrollIntoView({behavior:'smooth', block:'nearest'});
-    }, 50);
+      const tr = document.querySelector(`[data-id="${newRow.id}"]`);
+      if (tr) {
+        tr.scrollIntoView({ behavior:'smooth', block:'nearest' });
+        const contentCell = tr.querySelector('td:nth-last-child(2)');
+        if (contentCell) contentCell.click();
+      }
+    }, 80);
   };
 
   window.asSave = function() {
