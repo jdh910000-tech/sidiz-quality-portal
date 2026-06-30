@@ -1635,26 +1635,32 @@ body.share-mode .section > .header .header-left p { display: none; }
 
   <!-- ===== 인수검사 일보 탭 ===== -->
   <div id="inspect-pane-dailylog" class="inspect-pane" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <!-- 컨트롤 헤더 -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:8px">
-        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">날짜</label>
-        <input type="date" id="dl-date-input" class="date-input">
-        <button onclick="dlLoadDate()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회 / 작성</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">월간보고서</label>
+        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">월별 현황</label>
         <input type="month" id="dl-month-input" class="date-input" style="min-width:130px">
+        <button onclick="dlLoadMonth()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회</button>
+      </div>
+      <div style="width:1px;height:28px;background:var(--border)"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">일보 작성</label>
+        <input type="date" id="dl-date-input" class="date-input">
+        <button onclick="dlLoadDate()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">작성 / 조회</button>
+      </div>
+      <div style="margin-left:auto">
         <button onclick="dlGenerateReport()" style="padding:7px 16px;background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📊 보고서 작성</button>
       </div>
     </div>
-    <div id="dl-dashboard" style="display:none;margin-bottom:20px"></div>
-    <div id="dl-editor">
+    <!-- 월별 현황 -->
+    <div id="dl-monthly">
       <div style="text-align:center;padding:60px 20px;color:var(--text-muted);font-size:13px">
-        <div style="font-size:40px;margin-bottom:16px">📋</div>
-        <div style="font-weight:600;margin-bottom:8px">인수검사 일보</div>
-        <div>날짜를 선택하고 <b>조회 / 작성</b>을 누르면 일보를 작성하거나 확인할 수 있습니다.</div>
+        <div style="font-size:36px;margin-bottom:12px">📅</div>
+        <div>월을 선택하고 <b>조회</b>를 눌러주세요.</div>
       </div>
     </div>
+    <!-- 일보 작성 -->
+    <div id="dl-editor" style="margin-top:16px"></div>
   </div>
 
   <!-- ===== 볼트 탭 ===== -->
