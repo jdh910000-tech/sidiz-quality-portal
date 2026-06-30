@@ -2989,7 +2989,8 @@ const DL_FIELDS = [
 ];
 
 async function _dlGet(table, date) {
-  const res = await fetch(`${SB_URL}/rest/v1/${table}?log_date=eq.${date}&order=no.asc`, { headers: SB_HEADERS });
+  var orderParam = (table === 'daily_log_summary') ? '' : '&order=no.asc';
+  const res = await fetch(SB_URL + '/rest/v1/' + table + '?log_date=eq.' + date + orderParam, { headers: SB_HEADERS });
   return res.ok ? res.json() : [];
 }
 
@@ -3016,6 +3017,11 @@ function _inp(val, extra, type) {
   const v = escHtml(val != null ? val : '');
   return '<input type="' + type + '" value="' + v + '" style="width:100%;padding:5px 7px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:12px;box-sizing:border-box;' + extra + '">';
 }
+function _inpList(val, listId, extra) {
+  if (!extra) extra = '';
+  const v = escHtml(val != null ? val : '');
+  return '<input list="' + listId + '" value="' + v + '" autocomplete="off" style="width:100%;padding:5px 7px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:12px;box-sizing:border-box;' + extra + '">';
+}
 
 function _dlDetailRow(no, d) {
   if (!d) d = {};
@@ -3030,11 +3036,9 @@ function _dlDetailRow(no, d) {
     + '<td style="' + td + '">' + _inp(d.inbound, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.return_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.pass_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
-    + '<td style="' + td + '">' + _inp(d.method) + '</td>'
-    + '<td style="' + td + '">' + _inp(d.inspector) + '</td>'
-    + '<td style="' + td + '">' + _inp(d.defect_info) + '</td>'
+    + '<td style="' + td + ';min-width:90px">' + _inpList(d.inspector, 'dl-inspector-list') + '</td>'
+    + '<td style="' + td + ';min-width:220px">' + _inp(d.defect_info, 'min-width:220px') + '</td>'
     + '<td style="' + td + '">' + _inp(d.action) + '</td>'
-    + '<td style="' + td + '">' + _inp(d.note) + '</td>'
     + '<td style="' + td + ';text-align:center;width:30px"><button onclick="dlRemRow(\'dldr-' + id + '\')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button></td>'
     + '</tr>';
 }
@@ -3072,9 +3076,6 @@ function _dlRender(date, sum, details, notes) {
     + '</tr></thead><tbody><tr>'
     + '<td style="' + td + ';font-weight:600;font-size:12px">Today</td>'
     + DL_FIELDS.map(function(f) { return '<td style="' + td + '"><input type="number" id="dlt-' + f.id + '" value="' + (sum[f.tk] || 0) + '" min="0" style="' + inpStyle + '"></td>'; }).join('')
-    + '</tr><tr>'
-    + '<td style="' + td + ';font-weight:600;font-size:12px;color:var(--text-muted)">월 누적</td>'
-    + DL_FIELDS.map(function(f) { return '<td style="' + td + '"><input type="number" id="dla-' + f.id + '" value="' + (sum[f.ak] || 0) + '" min="0" style="' + inpStyle + '"></td>'; }).join('')
     + '</tr></tbody></table></div></div>';
 
   let detailBody = details.length === 0
@@ -3085,8 +3086,10 @@ function _dlRender(date, sum, details, notes) {
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
     + '<div style="font-size:13px;font-weight:700">2. 검사내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(불합격 내용 기재)</span></div>'
     + '<button onclick="dlAddDetail()" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">+ 행 추가</button>'
-    + '</div><div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:860px"><thead><tr>'
-    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사방법','검사자','불합격정보','처리','비고',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
+    + '</div>'
+    + '<datalist id="dl-inspector-list"><option value="김철우"><option value="이광원"></datalist>'
+    + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:780px"><thead><tr>'
+    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사자','불합격정보(내용)','처리',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
     + '</tr></thead><tbody id="dl-detail-body">' + detailBody + '</tbody></table></div></div>';
 
   let notesBody = notes.length === 0
@@ -3101,10 +3104,16 @@ function _dlRender(date, sum, details, notes) {
     + ['NO','구분','제품','내용','공급처','날짜','비고',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
     + '</tr></thead><tbody id="dl-notes-body">' + notesBody + '</tbody></table></div></div>';
 
+  const uploadBar = '<div style="display:flex;justify-content:flex-start;margin-bottom:14px">'
+    + '<label style="cursor:pointer;padding:7px 16px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px">'
+    + '📁 엑셀 업로드 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(인수검사현황 + 검사내역)</span>'
+    + '<input type="file" accept=".xlsx,.xls" onchange="dlUploadExcel(this)" style="display:none"></label>'
+    + '</div>';
+
   const saveBtn = '<div style="display:flex;justify-content:flex-end;margin-top:4px">'
     + '<button onclick="dlSave()" style="padding:10px 32px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">💾 저장</button></div>';
 
-  el.innerHTML = section1 + section2 + section3 + saveBtn;
+  el.innerHTML = uploadBar + section1 + section2 + section3 + saveBtn;
 }
 
 window.dlAddDetail = function () {
@@ -3133,17 +3142,16 @@ window.dlSave = async function () {
   const summaryData = { log_date: date };
   DL_FIELDS.forEach(function(f) {
     summaryData[f.tk] = getN('dlt-' + f.id);
-    summaryData[f.ak] = getN('dla-' + f.id);
   });
 
   const detailRows = [];
   document.querySelectorAll('#dl-detail-body tr:not(#dl-detail-empty)').forEach(function(tr, i) {
     const inp = Array.from(tr.querySelectorAll('input'));
-    if (inp.length < 11) return;
+    if (inp.length < 6) return;
     const v = function(j) { return inp[j] ? inp[j].value.trim() : ''; };
     const nv = function(j) { return inp[j] ? (Number(inp[j].value) || 0) : 0; };
     if (!v(0) && !v(1) && !v(2)) return;
-    detailRows.push({ log_date: date, no: i + 1, company: v(0), code: v(1), name: v(2), judge: v(3), inbound: nv(4), return_qty: nv(5), pass_qty: nv(6), method: v(7), inspector: v(8), defect_info: v(9), action: v(10), note: v(11) });
+    detailRows.push({ log_date: date, no: i + 1, company: v(0), code: v(1), name: v(2), judge: v(3), inbound: nv(4), return_qty: nv(5), pass_qty: nv(6), inspector: v(7), defect_info: v(8), action: v(9) });
   });
 
   const noteRows = [];
@@ -3408,6 +3416,82 @@ window.dlOpenWrite = function() {
 window.dlCloseWrite = function() {
   var overlay = $('dl-write-overlay');
   if (overlay) overlay.remove();
+};
+
+window.dlUploadExcel = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { alert('엑셀 라이브러리가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.'); input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      let summarySheet = null, detailSheet = null;
+      wb.SheetNames.forEach(function(name) {
+        const n = name.toLowerCase();
+        if (!summarySheet && (n.includes('현황') || n.includes('summary'))) { summarySheet = wb.Sheets[name]; }
+        else if (!detailSheet && (n.includes('내역') || n.includes('detail'))) { detailSheet = wb.Sheets[name]; }
+      });
+      if (!summarySheet && wb.SheetNames.length >= 1) summarySheet = wb.Sheets[wb.SheetNames[0]];
+      if (!detailSheet && wb.SheetNames.length >= 2) detailSheet = wb.Sheets[wb.SheetNames[1]];
+
+      const sColMap = { inbound: ['입고수량','입고'], inspect: ['검사수량','검사'], defect: ['불량수량','불량','부적합수량'], ret: ['반품수량','반품'], special: ['특채수량','특채'], pass: ['합격수량','합격'] };
+      const dColMap = { company: ['업체명','업체','공급업체','거래처'], code: ['자재코드','코드','품번','자재번호'], name: ['자재명','품명','자재'], judge: ['판정','합불','결과','검사결과'], inbound: ['입고수량','입고','수량'], return_qty: ['반품수량','반품'], pass_qty: ['합격수량','합격'], inspector: ['검사자','담당자','검사원'], defect_info: ['불합격정보','불량내용','부적합내용','불합격내용','내용','부적합'], action: ['처리','처리내용','조치','조치내용'] };
+
+      let summaryFilled = false, detailFilled = false;
+
+      if (summarySheet) {
+        const rows = XLSX.utils.sheet_to_json(summarySheet, { defval: 0, raw: true });
+        if (rows.length > 0) {
+          const row = rows[0];
+          DL_FIELDS.forEach(function(f) {
+            const keys = sColMap[f.id] || [];
+            for (var i = 0; i < keys.length; i++) {
+              if (row[keys[i]] !== undefined) {
+                const el = $('dlt-' + f.id);
+                if (el) { el.value = Number(row[keys[i]]) || 0; summaryFilled = true; }
+                break;
+              }
+            }
+          });
+        }
+      }
+
+      if (detailSheet) {
+        const rows = XLSX.utils.sheet_to_json(detailSheet, { defval: '', raw: false });
+        if (rows.length > 0) {
+          const tbody = $('dl-detail-body');
+          if (tbody) {
+            tbody.innerHTML = '';
+            STATE._dlDr = 0;
+            var cnt = 0;
+            rows.forEach(function(row) {
+              const d = {};
+              Object.keys(dColMap).forEach(function(field) {
+                const keys = dColMap[field];
+                for (var ki = 0; ki < keys.length; ki++) {
+                  if (row[keys[ki]] !== undefined && row[keys[ki]] !== '') { d[field] = String(row[keys[ki]]); break; }
+                }
+              });
+              if (d.company || d.name || d.code) {
+                tbody.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt, d));
+                detailFilled = true;
+              }
+            });
+            if (!detailFilled) tbody.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>';
+          }
+        }
+      }
+
+      var msg = '엑셀 업로드 완료\n';
+      if (summaryFilled) msg += '✅ 인수검사현황 데이터 입력됨\n';
+      if (detailFilled) msg += '✅ 검사내역 데이터 입력됨\n';
+      if (!summaryFilled && !detailFilled) msg += '⚠️ 매칭되는 컬럼을 찾지 못했습니다.\n헤더명을 확인해주세요.';
+      alert(msg);
+    } catch(err) { alert('파일 파싱 오류: ' + err.message); }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 };
 
 function renderDailyLog() {
