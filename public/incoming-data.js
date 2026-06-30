@@ -3497,19 +3497,24 @@ window.dlUploadExcel = function(input) {
           }
         });
 
+        // 검사내역: 불합격 행만 로드 (합격여부 != '합격')
+        var failRows = allRows.filter(function(row) {
+          var judge = String(row['합격여부'] || row['판정'] || '').trim();
+          return judge !== '합격' && judge !== '';
+        });
         var tbody = $('dl-detail-body');
         if (tbody) {
           tbody.innerHTML = '';
           STATE._dlDr = 0;
           var cnt = 0;
-          allRows.forEach(function(row) {
+          failRows.forEach(function(row) {
             var d = mapDetail(row);
             if (d.company || d.name || d.code) {
               tbody.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt, d));
               detailFilled = true;
             }
           });
-          if (!detailFilled) tbody.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>';
+          if (!detailFilled) tbody.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다.</td></tr>';
         }
       } else {
         // ── 표준 2시트 형식 ──
@@ -3547,7 +3552,7 @@ window.dlUploadExcel = function(input) {
 
       var msg = '엑셀 업로드 완료' + (isERP ? ' (ERP 포맷 인식)' : '') + '\n';
       if (summaryFilled) msg += '✅ 인수검사현황: ' + (isERP ? '합계 자동 계산' : '데이터 입력됨') + '\n';
-      if (detailFilled) msg += '✅ 검사내역: ' + (isERP ? allRows.length + '건 로드됨' : '데이터 입력됨') + '\n';
+      if (detailFilled) msg += '✅ 검사내역: ' + (isERP ? failRows.length + '건 (불합격) / 전체 ' + allRows.length + '건' : '데이터 입력됨') + '\n';
       if (!summaryFilled && !detailFilled) msg += '⚠️ 매칭되는 컬럼을 찾지 못했습니다.\n컬럼명을 확인해주세요.';
       alert(msg);
     } catch(err) { alert('파일 파싱 오류: ' + err.message); }
