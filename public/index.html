@@ -1619,7 +1619,7 @@ body.share-mode .section > .header .header-left p { display: none; }
 
   <!-- 서브탭 -->
   <div class="sub-tabs">
-    <button class="sub-tab inspect-subtab" data-tab="dailylog" onclick="switchInspectTab('dailylog')">📋 인수검사 일보</button>
+    <button class="sub-tab inspect-subtab" data-tab="dailylog" onclick="switchInspectTab('dailylog')">📋 인수검사 현황</button>
     <button class="sub-tab inspect-subtab active" data-tab="bolt" onclick="switchInspectTab('bolt')">🔩 볼트 (경도)</button>
     <button class="sub-tab inspect-subtab" data-tab="rod" onclick="switchInspectTab('rod')">⚙ 중심봉 (테이퍼/와블)</button>
     <button class="sub-tab inspect-subtab" data-tab="sponge" onclick="switchInspectTab('sponge')">🧊 스폰지 (경도)</button>
@@ -1633,34 +1633,40 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div>⏳ 데이터 로드 중...</div>
   </div>
 
-  <!-- ===== 인수검사 일보 탭 ===== -->
+  <!-- ===== 인수검사 현황 탭 ===== -->
   <div id="inspect-pane-dailylog" class="inspect-pane" style="display:none">
-    <!-- 컨트롤 헤더 -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <!-- 기간 필터 + 버튼 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:8px">
-        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">월별 현황</label>
-        <input type="month" id="dl-month-input" class="date-input" style="min-width:130px">
-        <button onclick="dlLoadMonth()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회</button>
+        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">기간</label>
+        <input type="month" id="dl-from-input" class="date-input" style="min-width:128px">
+        <span style="color:var(--text-muted);font-size:13px">~</span>
+        <input type="month" id="dl-to-input" class="date-input" style="min-width:128px">
+        <button onclick="dlLoadPeriod()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회</button>
       </div>
-      <div style="width:1px;height:28px;background:var(--border)"></div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">일보 작성</label>
-        <input type="date" id="dl-date-input" class="date-input">
-        <button onclick="dlLoadDate()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">작성 / 조회</button>
-      </div>
-      <div style="margin-left:auto">
-        <button onclick="dlGenerateReport()" style="padding:7px 16px;background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📊 보고서 작성</button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="dlOpenWrite()" style="padding:7px 16px;background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--sidiz-blue);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">✏️ 일보 작성</button>
+        <button onclick="dlGenerateReport()" style="padding:7px 16px;background:var(--sidiz-card);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📊 보고서</button>
       </div>
     </div>
-    <!-- 월별 현황 -->
-    <div id="dl-monthly">
-      <div style="text-align:center;padding:60px 20px;color:var(--text-muted);font-size:13px">
-        <div style="font-size:36px;margin-bottom:12px">📅</div>
-        <div>월을 선택하고 <b>조회</b>를 눌러주세요.</div>
+    <!-- KPI 카드 (2행 3열) -->
+    <div id="dl-kpi" style="margin-bottom:16px">
+      <div style="text-align:center;padding:50px 20px;color:var(--text-muted);font-size:13px">
+        <div style="font-size:32px;margin-bottom:12px">📊</div>
+        <div>기간을 선택하고 <b>조회</b>를 눌러주세요.</div>
       </div>
     </div>
-    <!-- 일보 작성 -->
-    <div id="dl-editor" style="margin-top:16px"></div>
+    <!-- 업체 필터 -->
+    <div id="dl-company-filter" style="display:none;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;font-weight:600">업체 필터</span>
+      <div id="dl-company-btns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <!-- 차트 2×2 -->
+    <div id="dl-charts" style="margin-bottom:16px"></div>
+    <!-- 특이사항 -->
+    <div id="dl-notes-section" style="margin-bottom:16px"></div>
+    <!-- 일보 작성 패널 -->
+    <div id="dl-write-panel" style="display:none"></div>
   </div>
 
   <!-- ===== 볼트 탭 ===== -->
