@@ -1639,9 +1639,10 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:8px">
         <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">기간</label>
-        <input type="month" id="dl-from-input" class="date-input" style="min-width:128px">
+        <input type="date" id="dl-from-input" class="date-input" style="min-width:128px">
         <span style="color:var(--text-muted);font-size:13px">~</span>
-        <input type="month" id="dl-to-input" class="date-input" style="min-width:128px">
+        <input type="date" id="dl-to-input" class="date-input" style="min-width:128px">
+        <select id="dl-company-select" onchange="dlSetCompany(this.value === '' ? null : this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-primary);background:var(--sidiz-card);cursor:pointer;min-width:90px"><option value="">전체</option></select>
         <button onclick="dlLoadPeriod()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회</button>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
@@ -1655,11 +1656,6 @@ body.share-mode .section > .header .header-left p { display: none; }
         <div style="font-size:32px;margin-bottom:12px">📊</div>
         <div>기간을 선택하고 <b>조회</b>를 눌러주세요.</div>
       </div>
-    </div>
-    <!-- 업체 필터 -->
-    <div id="dl-company-filter" style="display:none;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;font-weight:600">업체 필터</span>
-      <div id="dl-company-btns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <!-- 차트 2×2 -->
     <div id="dl-charts" style="margin-bottom:16px"></div>

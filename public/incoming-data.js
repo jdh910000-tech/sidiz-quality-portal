@@ -3179,6 +3179,7 @@ window.dlSave = async function () {
     }
 
     alert('저장되었습니다.');
+    dlCloseWrite();
     if ($('dl-from-input') && $('dl-from-input').value) { dlLoadPeriod(); }
   } catch (e) {
     alert('저장 오류: ' + e.message);
@@ -3189,11 +3190,11 @@ window.dlLoadPeriod = async function () {
   var from = $('dl-from-input') ? $('dl-from-input').value : '';
   var to = $('dl-to-input') ? $('dl-to-input').value : '';
   if (!from || !to) { alert('기간을 선택해주세요.'); return; }
-  if (from > to) { alert('시작월이 종료월보다 클 수 없습니다.'); return; }
+  if (from > to) { alert('시작일이 종료일보다 클 수 없습니다.'); return; }
   var kpiEl = $('dl-kpi');
   if (kpiEl) kpiEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">⏳ 불러오는 중...</div>';
-  var fromDate = from + '-01', toDate = to + '-31';
-  var year = from.split('-')[0];
+  var fromDate = from, toDate = to;
+  var year = from.substring(0, 4);
   var yearFrom = year + '-01-01', yearTo = year + '-12-31';
   var results = await Promise.all([
     fetch(SB_URL + '/rest/v1/daily_log_summary?log_date=gte.' + fromDate + '&log_date=lte.' + toDate + '&order=log_date.asc', { headers: SB_HEADERS }).then(function(r) { return r.ok ? r.json() : []; }),
@@ -3221,8 +3222,7 @@ function _dlRenderKPI(from, to, summaries) {
   var total = { inbound_today: 0, inspect_today: 0, defect_today: 0, return_today: 0, special_today: 0, pass_today: 0 };
   summaries.forEach(function(s) { Object.keys(total).forEach(function(k) { total[k] += (s[k] || 0); }); });
   var defRate = total.inspect_today > 0 ? (total.defect_today / total.inspect_today * 100).toFixed(2) : '0.00';
-  var fm = from.split('-'), tm = to.split('-');
-  var periodLabel = fm[0] + '년 ' + parseInt(fm[1]) + '월' + (from === to ? '' : ' ~ ' + parseInt(tm[1]) + '월');
+  var periodLabel = from === to ? from : from + ' ~ ' + to;
   var cardDefs = [
     { label: '입고수량', val: total.inbound_today, color: null },
     { label: '검사수량', val: total.inspect_today, color: null },
@@ -3244,27 +3244,25 @@ function _dlRenderKPI(from, to, summaries) {
 }
 
 function _dlRenderCompanyFilter(details) {
-  var cf = $('dl-company-filter'), cb = $('dl-company-btns');
-  if (!cf || !cb) return;
+  var sel = $('dl-company-select');
+  if (!sel) return;
   var companies = [], seen = {};
   details.forEach(function(d) { if (d.company && !seen[d.company]) { seen[d.company] = 1; companies.push(d.company); } });
   companies.sort();
-  if (!companies.length) { cf.style.display = 'none'; return; }
-  cf.style.display = 'flex';
-  var bs = 'padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;';
   var cur = STATE.dlCompanyFilter;
-  cb.innerHTML = '<button onclick="dlSetCompany(null)" style="' + bs + (cur === null ? 'border-color:var(--sidiz-blue);background:var(--sidiz-blue);color:#fff' : 'border-color:var(--border);background:var(--sidiz-dark2);color:var(--text-muted)') + '">전체</button>'
+  sel.innerHTML = '<option value="">전체</option>'
     + companies.map(function(c) {
-        var safe = c.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        return '<button onclick="dlSetCompany(\'' + safe + '\')" style="' + bs + (cur === c ? 'border-color:var(--sidiz-blue);background:var(--sidiz-blue);color:#fff' : 'border-color:var(--border);background:var(--sidiz-dark2);color:var(--text-muted)') + '">' + escHtml(c) + '</button>';
+        return '<option value="' + escHtml(c) + '"' + (cur === c ? ' selected' : '') + '>' + escHtml(c) + '</option>';
       }).join('');
+  if (cur) sel.value = cur;
 }
 
 window.dlSetCompany = function(company) {
-  STATE.dlCompanyFilter = company;
+  STATE.dlCompanyFilter = company || null;
+  var sel = $('dl-company-select');
+  if (sel) sel.value = company || '';
   var d = STATE.dlPeriodData;
   if (!d) return;
-  _dlRenderCompanyFilter(d.details);
   _dlRenderCharts(d.summaries, d.details, d.year, d.yearSummaries);
 };
 
@@ -3274,9 +3272,9 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
   var chartCard = function(id, title) {
     return '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px">'
       + '<div style="font-size:12px;font-weight:700;margin-bottom:10px">' + title + '</div>'
-      + '<div style="position:relative;height:200px"><canvas id="' + id + '"></canvas></div></div>';
+      + '<div style="position:relative;height:260px"><canvas id="' + id + '"></canvas></div></div>';
   };
-  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">'
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">'
     + chartCard('dl-chart-daily', '일 불합격 발생율')
     + chartCard('dl-chart-monthly', year + '년 월별 불량률 현황')
     + chartCard('dl-chart-deftype', '부적합 발생유형')
@@ -3386,36 +3384,38 @@ function _dlRenderNotesSection(notes) {
 }
 
 window.dlOpenWrite = function() {
-  var panel = $('dl-write-panel');
-  if (!panel) return;
+  if ($('dl-write-overlay')) return;
   var today = new Date().toISOString().substring(0, 10);
-  panel.innerHTML = '<div style="background:var(--sidiz-card);border:2px solid var(--sidiz-blue);border-radius:12px;padding:18px 20px;margin-top:16px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-    + '<div style="font-size:13px;font-weight:700">✏️ 인수검사 일보 작성 / 조회</div>'
-    + '<button onclick="dlCloseWrite()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>'
+  var overlay = document.createElement('div');
+  overlay.id = 'dl-write-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) dlCloseWrite(); });
+  overlay.innerHTML = '<div style="background:var(--sidiz-card);border-radius:16px;padding:24px 28px;width:94%;max-width:1000px;max-height:88vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    + '<div style="font-size:15px;font-weight:700">✏️ 인수검사 일보 작성 / 조회</div>'
+    + '<button onclick="dlCloseWrite()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:22px;line-height:1;padding:2px 8px;border-radius:6px" title="닫기">✕</button>'
     + '</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">'
     + '<label style="font-size:12px;color:var(--text-muted);white-space:nowrap">작성일</label>'
     + '<input type="date" id="dl-date-input" class="date-input" value="' + today + '">'
     + '<button onclick="dlLoadDate()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회 / 작성</button>'
     + '</div>'
     + '<div id="dl-editor"></div>'
     + '</div>';
-  panel.style.display = 'block';
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.body.appendChild(overlay);
 };
 
 window.dlCloseWrite = function() {
-  var panel = $('dl-write-panel');
-  if (panel) panel.style.display = 'none';
+  var overlay = $('dl-write-overlay');
+  if (overlay) overlay.remove();
 };
 
 function renderDailyLog() {
   var today = new Date().toISOString().substring(0, 10);
-  var month = today.substring(0, 7);
+  var firstDay = today.substring(0, 7) + '-01';
   var fi = $('dl-from-input'), ti = $('dl-to-input');
-  if (fi && !fi.value) fi.value = month;
-  if (ti && !ti.value) ti.value = month;
+  if (fi && !fi.value) fi.value = firstDay;
+  if (ti && !ti.value) ti.value = today;
   dlLoadPeriod();
 }
 
@@ -3423,9 +3423,7 @@ window.dlGenerateReport = async function () {
   const fromM = $('dl-from-input') ? $('dl-from-input').value : '';
   const toM = $('dl-to-input') ? $('dl-to-input').value : '';
   if (!fromM || !toM) { alert('기간을 선택해주세요.'); return; }
-  const parts = fromM.split('-');
-  const yr = parts[0], mo = parts[1];
-  const from = fromM + '-01', to = toM + '-31';
+  const from = fromM, to = toM;
 
   const results = await Promise.all([
     fetch(SB_URL + '/rest/v1/daily_log_summary?log_date=gte.' + from + '&log_date=lte.' + to + '&order=log_date.asc', { headers: SB_HEADERS }).then(function(r) { return r.json(); }),
@@ -3485,7 +3483,7 @@ window.dlGenerateReport = async function () {
 
   const kpiBoxStyle = 'display:inline-block;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;padding:10px 20px;margin:4px;text-align:center;min-width:110px';
 
-  const periodTitle = yr + '년 ' + parseInt(mo) + '월' + (fromM !== toM ? ' ~ ' + parseInt(toM.split('-')[1]) + '월' : '');
+  const periodTitle = from + (from !== to ? ' ~ ' + to : '');
   const html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
     + '<title>' + periodTitle + ' 인수검사 현황 보고서</title>'
     + '<style>body{font-family:\'맑은 고딕\',\'Malgun Gothic\',sans-serif;font-size:10pt;color:#000;max-width:1200px;margin:0 auto;padding:24px}'
