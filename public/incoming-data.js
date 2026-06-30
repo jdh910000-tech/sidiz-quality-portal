@@ -3425,7 +3425,7 @@ window.dlUploadExcel = function(input) {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const wb = XLSX.read(e.target.result, { type: 'array', codepage: 949 });
       let summarySheet = null, detailSheet = null;
       wb.SheetNames.forEach(function(name) {
         const n = name.toLowerCase();
@@ -3435,58 +3435,120 @@ window.dlUploadExcel = function(input) {
       if (!summarySheet && wb.SheetNames.length >= 1) summarySheet = wb.Sheets[wb.SheetNames[0]];
       if (!detailSheet && wb.SheetNames.length >= 2) detailSheet = wb.Sheets[wb.SheetNames[1]];
 
-      const sColMap = { inbound: ['입고수량','입고'], inspect: ['검사수량','검사'], defect: ['불량수량','불량','부적합수량'], ret: ['반품수량','반품'], special: ['특채수량','특채'], pass: ['합격수량','합격'] };
-      const dColMap = { company: ['업체명','업체','공급업체','거래처'], code: ['자재코드','코드','품번','자재번호'], name: ['자재명','품명','자재'], judge: ['판정','합불','결과','검사결과'], inbound: ['입고수량','입고','수량'], return_qty: ['반품수량','반품'], pass_qty: ['합격수량','합격'], inspector: ['검사자','담당자','검사원'], defect_info: ['불합격정보','불량내용','부적합내용','불합격내용','내용','부적합'], action: ['처리','처리내용','조치','조치내용'] };
+      // 컬럼 매핑 (ERP 컬럼명 포함)
+      const sColMap = {
+        inbound: ['입고수량','입고','입하수량','입하'],
+        inspect: ['검사수량','검사'],
+        defect:  ['불량수량','불량','부적합수량'],
+        ret:     ['반품수량','반품'],
+        special: ['특채수량','특채'],
+        pass:    ['합격수량','합격'],
+      };
+      const dColMap = {
+        company:     ['업체명','업체','공급업체','거래처','거래처명'],
+        code:        ['자재코드','코드','품번','자재번호'],
+        name:        ['자재명','품명','자재'],
+        judge:       ['판정','합불','결과','검사결과','합격여부'],
+        inbound:     ['입고수량','입고','수량','입하수량','입하'],
+        return_qty:  ['반품수량','반품'],
+        pass_qty:    ['합격수량','합격'],
+        inspector:   ['검사자','담당자','검사원'],
+        defect_info: ['불합격정보','불량내용','부적합내용','불합격내용','내용','부적합'],
+        action:      ['처리','처리내용','조치','조치내용'],
+      };
+
+      function getNum(row, cols) { for(var i=0;i<cols.length;i++){var v=Number(row[cols[i]]);if(!isNaN(v)&&row[cols[i]]!=='')return v;} return 0; }
+      function mapDetail(row) {
+        var d = {};
+        Object.keys(dColMap).forEach(function(field) {
+          var keys = dColMap[field];
+          for(var ki=0;ki<keys.length;ki++){
+            if(row[keys[ki]]!==undefined && row[keys[ki]]!==''){d[field]=String(row[keys[ki]]);break;}
+          }
+        });
+        var color = row['색상'] || row['컬러'] || '';
+        if (d.name && color) d.name = d.name + ' [' + color + ']';
+        return d;
+      }
 
       let summaryFilled = false, detailFilled = false;
+      const allRows = XLSX.utils.sheet_to_json(summarySheet, { defval: '', raw: true });
 
-      if (summarySheet) {
-        const rows = XLSX.utils.sheet_to_json(summarySheet, { defval: 0, raw: true });
-        if (rows.length > 0) {
-          const row = rows[0];
+      // ERP 포맷 감지: 거래처명·합격여부·입하수량 컬럼 존재 여부
+      const firstRow = allRows[0] || {};
+      const isERP = firstRow['거래처명'] !== undefined || firstRow['합격여부'] !== undefined || firstRow['입하수량'] !== undefined;
+
+      if (isERP) {
+        // ── ERP 1시트 형식: 합계 → 인수검사현황, 전체 행 → 검사내역 ──
+        var totals = { inbound:0, inspect:0, defect:0, ret:0, special:0, pass:0 };
+        allRows.forEach(function(row) {
+          totals.inbound += getNum(row, ['입하수량','입고수량','입고']);
+          totals.inspect += getNum(row, ['검사수량','검사']);
+          totals.defect  += getNum(row, ['불량수량','불량']);
+          totals.ret     += getNum(row, ['반품수량','반품']);
+          totals.special += getNum(row, ['특채수량','특채']);
+          totals.pass    += getNum(row, ['합격수량','합격']);
+        });
+        var tMap = { inbound:'inbound', inspect:'inspect', defect:'defect', ret:'ret', special:'special', pass:'pass' };
+        DL_FIELDS.forEach(function(f) {
+          if (tMap[f.id]) {
+            var el = $('dlt-' + f.id);
+            if (el) { el.value = totals[tMap[f.id]]; summaryFilled = true; }
+          }
+        });
+
+        var tbody = $('dl-detail-body');
+        if (tbody) {
+          tbody.innerHTML = '';
+          STATE._dlDr = 0;
+          var cnt = 0;
+          allRows.forEach(function(row) {
+            var d = mapDetail(row);
+            if (d.company || d.name || d.code) {
+              tbody.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt, d));
+              detailFilled = true;
+            }
+          });
+          if (!detailFilled) tbody.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>';
+        }
+      } else {
+        // ── 표준 2시트 형식 ──
+        if (allRows.length > 0) {
+          var row0 = allRows[0];
           DL_FIELDS.forEach(function(f) {
-            const keys = sColMap[f.id] || [];
-            for (var i = 0; i < keys.length; i++) {
-              if (row[keys[i]] !== undefined) {
-                const el = $('dlt-' + f.id);
-                if (el) { el.value = Number(row[keys[i]]) || 0; summaryFilled = true; }
+            var keys = sColMap[f.id] || [];
+            for(var i=0;i<keys.length;i++){
+              if(row0[keys[i]]!==undefined){
+                var el=$('dlt-'+f.id);
+                if(el){el.value=Number(row0[keys[i]])||0;summaryFilled=true;}
                 break;
               }
             }
           });
         }
-      }
-
-      if (detailSheet) {
-        const rows = XLSX.utils.sheet_to_json(detailSheet, { defval: '', raw: false });
-        if (rows.length > 0) {
-          const tbody = $('dl-detail-body');
-          if (tbody) {
-            tbody.innerHTML = '';
+        if (detailSheet) {
+          var dRows = XLSX.utils.sheet_to_json(detailSheet, { defval: '', raw: true });
+          var tbody2 = $('dl-detail-body');
+          if (tbody2 && dRows.length > 0) {
+            tbody2.innerHTML = '';
             STATE._dlDr = 0;
-            var cnt = 0;
-            rows.forEach(function(row) {
-              const d = {};
-              Object.keys(dColMap).forEach(function(field) {
-                const keys = dColMap[field];
-                for (var ki = 0; ki < keys.length; ki++) {
-                  if (row[keys[ki]] !== undefined && row[keys[ki]] !== '') { d[field] = String(row[keys[ki]]); break; }
-                }
-              });
+            var cnt2 = 0;
+            dRows.forEach(function(row) {
+              var d = mapDetail(row);
               if (d.company || d.name || d.code) {
-                tbody.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt, d));
+                tbody2.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt2, d));
                 detailFilled = true;
               }
             });
-            if (!detailFilled) tbody.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>';
+            if (!detailFilled) tbody2.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>';
           }
         }
       }
 
-      var msg = '엑셀 업로드 완료\n';
-      if (summaryFilled) msg += '✅ 인수검사현황 데이터 입력됨\n';
-      if (detailFilled) msg += '✅ 검사내역 데이터 입력됨\n';
-      if (!summaryFilled && !detailFilled) msg += '⚠️ 매칭되는 컬럼을 찾지 못했습니다.\n헤더명을 확인해주세요.';
+      var msg = '엑셀 업로드 완료' + (isERP ? ' (ERP 포맷 인식)' : '') + '\n';
+      if (summaryFilled) msg += '✅ 인수검사현황: ' + (isERP ? '합계 자동 계산' : '데이터 입력됨') + '\n';
+      if (detailFilled) msg += '✅ 검사내역: ' + (isERP ? allRows.length + '건 로드됨' : '데이터 입력됨') + '\n';
+      if (!summaryFilled && !detailFilled) msg += '⚠️ 매칭되는 컬럼을 찾지 못했습니다.\n컬럼명을 확인해주세요.';
       alert(msg);
     } catch(err) { alert('파일 파싱 오류: ' + err.message); }
     input.value = '';
