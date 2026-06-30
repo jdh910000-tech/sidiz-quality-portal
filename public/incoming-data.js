@@ -3457,7 +3457,6 @@ window.dlUploadExcel = function(input) {
         action:      ['처리','처리내용','조치','조치내용'],
       };
 
-      function getNum(row, cols) { for(var i=0;i<cols.length;i++){var v=Number(row[cols[i]]);if(!isNaN(v)&&row[cols[i]]!=='')return v;} return 0; }
       function mapDetail(row) {
         var d = {};
         Object.keys(dColMap).forEach(function(field) {
@@ -3466,12 +3465,11 @@ window.dlUploadExcel = function(input) {
             if(row[keys[ki]]!==undefined && row[keys[ki]]!==''){d[field]=String(row[keys[ki]]);break;}
           }
         });
-        var color = row['색상'] || row['컬러'] || '';
-        if (d.name && color) d.name = d.name + ' [' + color + ']';
         return d;
       }
 
       let summaryFilled = false, detailFilled = false;
+      var failRows = [];
       const allRows = XLSX.utils.sheet_to_json(summarySheet, { defval: '', raw: true });
 
       // ERP 포맷 감지: 거래처명·합격여부·입하수량 컬럼 존재 여부
@@ -3479,27 +3477,30 @@ window.dlUploadExcel = function(input) {
       const isERP = firstRow['거래처명'] !== undefined || firstRow['합격여부'] !== undefined || firstRow['입하수량'] !== undefined;
 
       if (isERP) {
-        // ── ERP 1시트 형식: 합계 → 인수검사현황, 전체 행 → 검사내역 ──
-        var totals = { inbound:0, inspect:0, defect:0, ret:0, special:0, pass:0 };
-        allRows.forEach(function(row) {
-          totals.inbound += getNum(row, ['입하수량','입고수량','입고']);
-          totals.inspect += getNum(row, ['검사수량','검사']);
-          totals.defect  += getNum(row, ['불량수량','불량']);
-          totals.ret     += getNum(row, ['반품수량','반품']);
-          totals.special += getNum(row, ['특채수량','특채']);
-          totals.pass    += getNum(row, ['합격수량','합격']);
-        });
-        var tMap = { inbound:'inbound', inspect:'inspect', defect:'defect', ret:'ret', special:'special', pass:'pass' };
-        DL_FIELDS.forEach(function(f) {
-          if (tMap[f.id]) {
-            var el = $('dlt-' + f.id);
-            if (el) { el.value = totals[tMap[f.id]]; summaryFilled = true; }
-          }
-        });
+        // ── ERP 1시트 형식 ──
 
-        // 검사내역: 불합격 행만 로드 (합격여부 != '합격')
-        var failRows = allRows.filter(function(row) {
-          var judge = String(row['합격여부'] || row['판정'] || '').trim();
+        // 인수검사현황: TOTAL 행(번호·거래처명이 모두 빈, 마지막 숫자 행)의 값 직접 사용
+        var totalRow = null;
+        for (var ti = allRows.length - 1; ti >= 0; ti--) {
+          var tr2 = allRows[ti];
+          if (!String(tr2['번호']||'').trim() && !String(tr2['거래처명']||'').trim() && Number(tr2['입하수량']||0) > 0) {
+            totalRow = tr2; break;
+          }
+        }
+        if (totalRow) {
+          var erp2f = { inbound:'입하수량', inspect:'검사수량', defect:'불량수량', ret:'반품수량', special:'특채수량', pass:'합격수량' };
+          DL_FIELDS.forEach(function(f) {
+            var col = erp2f[f.id];
+            if (col) { var el=$('dlt-'+f.id); if(el){el.value=Number(totalRow[col]||0);summaryFilled=true;} }
+          });
+        }
+
+        // 검사내역: 거래처명 있는 실제 데이터 행 중 불합격만
+        var dataRows = allRows.filter(function(row) {
+          return String(row['거래처명']||'').trim() !== '';
+        });
+        failRows = dataRows.filter(function(row) {
+          var judge = String(row['합격여부']||row['판정']||'').trim();
           return judge !== '합격' && judge !== '';
         });
         var tbody = $('dl-detail-body');
