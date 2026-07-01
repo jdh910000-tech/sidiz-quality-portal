@@ -434,88 +434,57 @@ function renderRodKPI(rows) {
 function renderRodCharts(rows) {
   const dates = uniq(rows.map(r => r.measure_date).filter(Boolean)).sort();
   const sups  = uniq(rows.map(r => r.supplier).filter(Boolean)).sort();
-  const codes = uniq(rows.map(r => r.code).filter(Boolean)).sort();
 
-  // 1) 일별 평균 테이퍼 높이 추이 (업체별 solid + 자재별 dashed + 기준선)
-  const _hDs = [
+  // 1) 일별 평균 테이퍼 높이 추이 (업체별 + 기준선)
+  makeLine('rodTrend', $('inq-rod-trend').getContext('2d'), dates, [
     ...sups.map((s, i) => ({
       label: s,
       data: dates.map(d => { const vs = rows.filter(r => r.measure_date === d && r.supplier === s).map(rodH).filter(v => v !== null); return vs.length ? +avg(vs).toFixed(2) : null; }),
       borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
-      tension: 0.3, pointRadius: 2, borderWidth: 2.5, spanGaps: true, fill: false
-    })),
-    ...codes.map((c, i) => ({
-      label: c,
-      data: dates.map(d => { const vs = rows.filter(r => r.measure_date === d && r.code === c).map(rodH).filter(v => v !== null); return vs.length ? +avg(vs).toFixed(2) : null; }),
-      borderColor: PALETTE[(sups.length + i) % PALETTE.length], backgroundColor: 'transparent',
-      borderDash: [4, 4], tension: 0.3, pointRadius: 2, borderWidth: 1.5, spanGaps: true, fill: false
+      tension: 0.3, pointRadius: 2, borderWidth: 2, spanGaps: true, fill: false
     })),
     { label: '상한 (7.0)', data: dates.map(() => 7.0), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
     { label: '하한 (5.0)', data: dates.map(() => 5.0), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
-  ];
-  makeLine('rodTrend', $('inq-rod-trend').getContext('2d'), dates, _hDs, {
+  ], {
     scales: {
       x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
       y: { suggestedMin: 4.5, suggestedMax: 7.5, title: { display: true, text: '높이 (mm)', font: { size: 10 } }, grid: { color: SIDIZ_COLORS.border } }
     }
   });
 
-  // 2) 일별 평균 와블 추이 (업체별 solid + 자재별 dashed + 기준선)
-  const _wDs = [
+  // 2) 일별 평균 와블 추이 (업체별 + 기준선)
+  makeLine('rodWobbleTrend', $('inq-rod-wobble-trend').getContext('2d'), dates, [
     ...sups.map((s, i) => ({
       label: s,
       data: dates.map(d => { const vs = rows.filter(r => r.measure_date === d && r.supplier === s).map(r => r.wobble).filter(v => v != null); return vs.length ? +avg(vs).toFixed(2) : null; }),
       borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
-      tension: 0.3, pointRadius: 2, borderWidth: 2.5, spanGaps: true, fill: false
-    })),
-    ...codes.map((c, i) => ({
-      label: c,
-      data: dates.map(d => { const vs = rows.filter(r => r.measure_date === d && r.code === c).map(r => r.wobble).filter(v => v != null); return vs.length ? +avg(vs).toFixed(2) : null; }),
-      borderColor: PALETTE[(sups.length + i) % PALETTE.length], backgroundColor: 'transparent',
-      borderDash: [4, 4], tension: 0.3, pointRadius: 2, borderWidth: 1.5, spanGaps: true, fill: false
+      tension: 0.3, pointRadius: 2, borderWidth: 2, spanGaps: true, fill: false
     })),
     { label: '와블 한계 (1.0)', data: dates.map(() => 1.0), borderColor: SIDIZ_COLORS.rose, borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
-  ];
-  makeLine('rodWobbleTrend', $('inq-rod-wobble-trend').getContext('2d'), dates, _wDs, {
+  ], {
     scales: {
       x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
       y: { beginAtZero: true, suggestedMax: 1.5, title: { display: true, text: '와블 (mm)', font: { size: 10 } }, grid: { color: SIDIZ_COLORS.border } }
     }
   });
 
-  // 3) 공급업체별 평균 와블 (기준선 전폭 점선 + y축 1.0 붉은색)
+  // 3) 공급업체별 평균 와블 (bar + line 기준선)
   const wAvgs = sups.map(s => avg(rows.filter(r => r.supplier === s).map(r => r.wobble)));
   destroyChart('rodWobble');
   STATE.charts['rodWobble'] = new Chart($('inq-rod-wobble').getContext('2d'), {
     type: 'bar',
     data: { labels: sups, datasets: [
-      { label: '평균 와블', data: wAvgs, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6 },
+      { label: '평균 와블', data: wAvgs, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6, type: 'bar' },
+      { label: '기준 ≤1.0', data: sups.map(() => 1.0), type: 'line', borderColor: SIDIZ_COLORS.rose, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
     ]},
     options: {
       responsive: true, maintainAspectRatio: false,
-      scales: {
-        y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: SIDIZ_COLORS.border },
-          ticks: { color: ctx => ctx.tick.value === 1 ? SIDIZ_COLORS.rose : SIDIZ_COLORS.text, font: ctx => ctx.tick.value === 1 ? { weight: 'bold', size: 11 } : { size: 10 } } },
-        x: { grid: { display: false } }
-      },
+      scales: { y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } },
       plugins: {
         legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
-        datalabels: { display: true, anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) }
+        datalabels: { display: ctx => ctx.datasetIndex === 0, anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) }
       }
-    },
-    plugins: [{
-      id: 'rodWobbleRef',
-      afterDraw(chart) {
-        const { ctx, chartArea: { left, right }, scales: { y } } = chart;
-        const yPos = y.getPixelForValue(1.0);
-        ctx.save();
-        ctx.strokeStyle = SIDIZ_COLORS.rose;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath(); ctx.moveTo(left, yPos); ctx.lineTo(right, yPos); ctx.stroke();
-        ctx.setLineDash([]); ctx.restore();
-      }
-    }]
+    }
   });
 
   // 4) 공급업체별 측정 비율
