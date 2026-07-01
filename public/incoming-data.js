@@ -2748,7 +2748,7 @@ window.generateRodReport = function () {
   }
   const recHtml = _recToHtml(recs);
 
-  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린)
+  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린, 꺾은선)
   const _rm = {};
   STATE.rods.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
@@ -2759,12 +2759,12 @@ window.generateRodReport = function () {
   const _rmKeys = Object.keys(_rm).sort();
   const _rmLabels = _rmKeys.map(m => parseInt(m.split('-')[1]) + '월');
   const imgTrend = _makeReportChartSync({
-    type: 'bar',
+    type: 'line',
     data: { labels: _rmLabels, datasets: [
-      { label: 'OK', data: _rmKeys.map(m => _rm[m].ok), backgroundColor: '#00b87a', borderRadius: 4, stack: 's' },
-      { label: 'NG', data: _rmKeys.map(m => _rm[m].ng), backgroundColor: '#FF6C39', borderRadius: 4, stack: 's' },
+      { label: 'OK', data: _rmKeys.map(m => _rm[m].ok), borderColor: '#00b87a', backgroundColor: '#00b87a20', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
+      { label: 'NG', data: _rmKeys.map(m => _rm[m].ng), borderColor: '#FF6C39', backgroundColor: '#FF6C3920', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
     ]},
-    options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
+    options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
   });
 
   // 2) 공급업체별 평균 와블 + 기준선 1.0 (오프스크린, 전체 데이터)
@@ -2835,7 +2835,7 @@ window.generateSpongeReport = function () {
   }
   const recHtml = _recToHtml(recs);
 
-  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린, 전체 데이터)
+  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린, 꺾은선, 전체 데이터)
   const _sm = {};
   STATE.sponges.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
@@ -2846,12 +2846,12 @@ window.generateSpongeReport = function () {
   const _smKeys = Object.keys(_sm).sort();
   const _smLabels = _smKeys.map(m => parseInt(m.split('-')[1]) + '월');
   const imgTrend = _makeReportChartSync({
-    type: 'bar',
+    type: 'line',
     data: { labels: _smLabels, datasets: [
-      { label: 'OK', data: _smKeys.map(m => _sm[m].ok), backgroundColor: '#00b87a', borderRadius: 4, stack: 's' },
-      { label: 'NG', data: _smKeys.map(m => _sm[m].ng), backgroundColor: '#FF6C39', borderRadius: 4, stack: 's' },
+      { label: 'OK', data: _smKeys.map(m => _sm[m].ok), borderColor: '#00b87a', backgroundColor: '#00b87a20', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
+      { label: 'NG', data: _smKeys.map(m => _sm[m].ng), borderColor: '#FF6C39', backgroundColor: '#FF6C3920', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
     ]},
-    options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
+    options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
   });
 
   // 2) 자재별 일자 기준 누적 추이 (오프스크린, 기준선 포함)
