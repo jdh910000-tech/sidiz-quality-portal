@@ -460,9 +460,22 @@ function renderRodCharts(rows) {
     sups.map(s => rows.filter(r => r.supplier === s).length), PALETTE);
 
   const wAvgs = sups.map(s => avg(rows.filter(r => r.supplier === s).map(r => r.wobble)));
-  makeBar('rodWobble', $('inq-rod-wobble').getContext('2d'), sups, [
-    { label: '평균 와블', data: wAvgs, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6 }
-  ], { scales: { y: { beginAtZero: true, suggestedMax: 1.2, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } } });
+  destroyChart('rodWobble');
+  STATE.charts['rodWobble'] = new Chart($('inq-rod-wobble').getContext('2d'), {
+    type: 'bar',
+    data: { labels: sups, datasets: [
+      { label: '평균 와블', data: wAvgs, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6, type: 'bar' },
+      { label: '기준 ≤1.0', data: sups.map(() => 1.0), type: 'line', borderColor: SIDIZ_COLORS.rose, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
+        datalabels: { display: ctx => ctx.datasetIndex === 0, anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) }
+      }
+    }
+  });
 
   const ok = rows.filter(r => rodJudge(r) === 'OK').length;
   const ng = rows.filter(r => rodJudge(r) === 'NG').length;
@@ -2513,6 +2526,37 @@ function _recToHtml(recs) {
   }).join('\n');
 }
 
+// 보고서용 오프스크린 Chart.js 차트 → PNG dataURL 동기 생성
+function _makeReportChartSync(config, width, height) {
+  if (!window.Chart) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = width || 900;
+  canvas.height = height || 280;
+  canvas.style.cssText = 'position:fixed;left:-9999px;top:-9999px;visibility:hidden';
+  document.body.appendChild(canvas);
+  if (!config.options) config.options = {};
+  config.options.animation = false;
+  config.options.responsive = false;
+  if (!config.options.plugins) config.options.plugins = {};
+  if (!config.options.plugins.datalabels) config.options.plugins.datalabels = { display: false };
+  try {
+    const chart = new Chart(canvas, config);
+    const off = document.createElement('canvas');
+    off.width = canvas.width; off.height = canvas.height;
+    const ctx2 = off.getContext('2d');
+    ctx2.fillStyle = '#ffffff';
+    ctx2.fillRect(0, 0, off.width, off.height);
+    ctx2.drawImage(canvas, 0, 0);
+    const dataURL = off.toDataURL('image/png');
+    chart.destroy();
+    document.body.removeChild(canvas);
+    return dataURL;
+  } catch(e) {
+    try { document.body.removeChild(canvas); } catch(_) {}
+    return null;
+  }
+}
+
 // ── 리머 자동 분석 ──────────────────────────────────────
 function _getReamerAnalysis(rows) {
   const recs = [];
@@ -2634,7 +2678,22 @@ window.generateBoltReport = function () {
     if (ngCount > 0) recs.push({ level:'critical', text:`이상치(HV<250 또는 >550) ${ngCount}건 발견. 해당 LOT 원인 조사 필요.` });
   }
   const recHtml = _recToHtml(recs);
-  const imgTrend    = _captureInspectChart('inq-bolt-trend');
+  // 26년 1월부터 월별 누적 HV 추이 (오프스크린 차트 — 필터 무관)
+  const _bm = {};
+  STATE.bolts.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m || m < '2026-01') return;
+    if (!_bm[m]) _bm[m] = [];
+    const hv = boltHV(r);
+    if (hv !== null) _bm[m].push(hv);
+  });
+  const _bmKeys = Object.keys(_bm).sort();
+  const _bmLabels = _bmKeys.map(m => parseInt(m.split('-')[1]) + '월');
+  const imgTrend = _makeReportChartSync({
+    type: 'bar',
+    data: { labels: _bmLabels, datasets: [{ label: '월별 평균 HV', data: _bmKeys.map(m => { const v = _bm[m]; return v.length ? +avg(v).toFixed(1) : null; }), backgroundColor: '#002BD2', borderRadius: 6 }] },
+    options: { scales: { y: { beginAtZero: false, grid: { color: '#E2E2EA' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', color: '#111111', font: { weight: 700, size: 11 }, formatter: v => v != null ? v.toFixed(1) : '-' } } }
+  });
   const imgSupplier = _captureInspectChart('inq-bolt-supplier-bar');
 
   const html = `<!DOCTYPE html>
@@ -2688,8 +2747,40 @@ window.generateRodReport = function () {
     if (wobbleNG.length) recs.push({ level:'critical', text:`흔들림 기준(≤ 1.0 mm) 이탈 ${wobbleNG.length}건.` });
   }
   const recHtml = _recToHtml(recs);
-  const imgTrend    = _captureInspectChart('inq-rod-trend');
-  const imgSupplier = _captureInspectChart('inq-rod-wobble');
+
+  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린)
+  const _rm = {};
+  STATE.rods.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m || m < '2026-01') return;
+    if (!_rm[m]) _rm[m] = { ok: 0, ng: 0 };
+    if (rodJudge(r) === 'NG') _rm[m].ng++; else _rm[m].ok++;
+  });
+  const _rmKeys = Object.keys(_rm).sort();
+  const _rmLabels = _rmKeys.map(m => parseInt(m.split('-')[1]) + '월');
+  const imgTrend = _makeReportChartSync({
+    type: 'bar',
+    data: { labels: _rmLabels, datasets: [
+      { label: 'OK', data: _rmKeys.map(m => _rm[m].ok), backgroundColor: '#00b87a', borderRadius: 4, stack: 's' },
+      { label: 'NG', data: _rmKeys.map(m => _rm[m].ng), backgroundColor: '#FF6C39', borderRadius: 4, stack: 's' },
+    ]},
+    options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
+  });
+
+  // 2) 공급업체별 평균 와블 + 기준선 1.0 (오프스크린, 전체 데이터)
+  const _rsups = [...new Set(STATE.rods.map(r => r.supplier).filter(Boolean))].sort();
+  const _rWavgs = _rsups.map(s => avg(STATE.rods.filter(r => r.supplier === s).map(r => r.wobble)));
+  const imgSupplier = _makeReportChartSync({
+    type: 'bar',
+    data: { labels: _rsups, datasets: [
+      { label: '평균 와블', data: _rWavgs, backgroundColor: ['#002BD2','#54DBC2','#00b87a','#e6a800','#FF6C39','#7c5fe6','#3C7DFF','#94a3b8'].slice(0, _rsups.length), borderRadius: 6, type: 'bar' },
+      { label: '기준 ≤1.0', data: _rsups.map(() => 1.0), type: 'line', borderColor: '#FF6C39', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
+    ]},
+    options: {
+      scales: { y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: '#E2E2EA' } }, x: { grid: { display: false } } },
+      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: ctx => ctx.datasetIndex === 0, anchor: 'end', align: 'top', color: '#111111', font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
+    }
+  });
 
   const html = `<!DOCTYPE html>
 <html>
@@ -2700,7 +2791,7 @@ window.generateRodReport = function () {
 <body style="font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; font-size: 10pt; line-height: 1.8; color: #000000;">
 <p style="font-weight: bold; font-size: 10pt; margin: 20px 0 8px 0;">1. 검사 정보</p>
 <p style="margin: 3px 0 3px 15px; font-size: 10pt;">1) 검사 내용 : 중심봉 치수 검사 (높이 / 흔들림)</p>
-<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 버니어캘리퍼스 / 다이얼게이지</p>
+<p style="margin: 3px 0 3px 15px; font-size: 10pt;">2) 측정 도구 : 검사 지그</p>
 <p style="margin: 3px 0 3px 15px; font-size: 10pt;">3) 검사 일자 : ${period}</p>
 <p style="margin: 3px 0 3px 15px; font-size: 10pt;">4) 공급업체 : ${supplier}</p>
 <p style="margin: 3px 0 3px 15px; font-size: 10pt;">5) 자재 코드 : ${code}</p>
@@ -2709,9 +2800,9 @@ window.generateRodReport = function () {
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
 ${recHtml}
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이 (2026년 1월 누적)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급업체별 NG율</p>
+${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급업체별 평균 와블 (기준 ≤1.0)</p>
 <img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 </body>
 </html>`;
@@ -2743,8 +2834,67 @@ window.generateSpongeReport = function () {
     });
   }
   const recHtml = _recToHtml(recs);
-  const imgTrend = _captureInspectChart('inq-sponge-trend');
-  const imgSpec  = _captureInspectChart('inq-sponge-spec-pie');
+
+  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린, 전체 데이터)
+  const _sm = {};
+  STATE.sponges.forEach(r => {
+    const m = (r.measure_date || '').slice(0, 7);
+    if (!m || m < '2026-01') return;
+    if (!_sm[m]) _sm[m] = { ok: 0, ng: 0 };
+    if (spongeJudge(r) === 'NG') _sm[m].ng++; else _sm[m].ok++;
+  });
+  const _smKeys = Object.keys(_sm).sort();
+  const _smLabels = _smKeys.map(m => parseInt(m.split('-')[1]) + '월');
+  const imgTrend = _makeReportChartSync({
+    type: 'bar',
+    data: { labels: _smLabels, datasets: [
+      { label: 'OK', data: _smKeys.map(m => _sm[m].ok), backgroundColor: '#00b87a', borderRadius: 4, stack: 's' },
+      { label: 'NG', data: _smKeys.map(m => _sm[m].ng), backgroundColor: '#FF6C39', borderRadius: 4, stack: 's' },
+    ]},
+    options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
+  });
+
+  // 2) 자재별 일자 기준 누적 추이 (오프스크린, 기준선 포함)
+  const _scodes = uniq(STATE.sponges.map(r => r.code)).sort();
+  const _sMaterialCharts = [];
+  for (const sc of _scodes) {
+    const cRows = STATE.sponges.filter(r => r.code === sc).sort((a, b) => (a.measure_date || '').localeCompare(b.measure_date || ''));
+    if (!cRows.length) continue;
+    const codeName = cRows[0].name || sc;
+    const target = cRows[0].spec_target;
+    const tol = cRows[0].spec_tol != null ? cRows[0].spec_tol : 5;
+    const dates = uniq(cRows.map(r => r.measure_date)).sort();
+    const dateData = dates.map(d => {
+      const ms = cRows.filter(r => r.measure_date === d).map(spongeAvg).filter(v => v !== null);
+      return ms.length ? +avg(ms).toFixed(1) : null;
+    });
+    const datasets = [
+      { label: '측정값', data: dateData, borderColor: '#002BD2', backgroundColor: '#002BD220', tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true }
+    ];
+    if (target !== null && target !== undefined) {
+      datasets.push(
+        { label: `목표 ${target}`, data: dates.map(() => target), borderColor: '#00b87a', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false },
+        { label: `상한 ${target + tol}`, data: dates.map(() => target + tol), borderColor: '#FF6C39', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false },
+        { label: `하한 ${target - tol}`, data: dates.map(() => target - tol), borderColor: '#FF6C39', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false }
+      );
+    }
+    const img = _makeReportChartSync({
+      type: 'line',
+      data: { labels: dates, datasets },
+      options: {
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
+          y: { beginAtZero: false, title: { display: true, text: '두께', font: { size: 10 } }, grid: { color: '#E2E2EA' } }
+        },
+        plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: false } }
+      }
+    });
+    _sMaterialCharts.push({ code: sc, name: codeName, target, tol, img });
+  }
+  const _sMaterialHtml = _sMaterialCharts.map((mc, i) => mc.img
+    ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">${i + 1}) ${escHtml(mc.name)}${mc.target !== null && mc.target !== undefined ? ` — 기준 ${mc.target}±${mc.tol}` : ''}</p>\n<img src="${mc.img}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">`
+    : '').join('\n');
 
   const html = `<!DOCTYPE html>
 <html>
@@ -2763,10 +2913,9 @@ window.generateSpongeReport = function () {
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
 ${recHtml}
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이 (2026년 1월 누적)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgSpec ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 제품별 NG율 / 평균 편차</p>
-<img src="${imgSpec}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
+${_sMaterialCharts.length > 0 ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 자재별 두께 추이 (일자 기준 누적, 기준값 포함)</p>\n${_sMaterialHtml}` : ''}
 </body>
 </html>`;
   _downloadInspectReport(html, '스폰지_두께검사_보고서.html');
