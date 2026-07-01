@@ -5752,36 +5752,32 @@ function renderProdPieChart(claims) {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: '#ffffff', borderWidth: 2 }] },
     options: { responsive:true, maintainAspectRatio:false,
-      layout: { padding: { top:20, bottom:20, left:20, right:20 } },
+      layout: { padding: { top:10, bottom:10, left:10, right:10 } },
       plugins: {
-        legend: { position:'right', labels:{color:'#444455',font:{size:12},usePointStyle:true,padding:8,boxWidth:10} },
+        legend: { position:'right', labels:{
+          color:'#333344', font:{size:11}, usePointStyle:true, padding:10, boxWidth:10,
+          generateLabels: function(chart) {
+            var ds = chart.data.datasets[0];
+            var tot = ds.data.reduce(function(a,b){return a+b;}, 0);
+            return chart.data.labels.map(function(label, i) {
+              var pct = tot ? (ds.data[i] / tot * 100).toFixed(1) : '0.0';
+              return { text: label + '  ' + ds.data[i] + '건 (' + pct + '%)', fillStyle: ds.backgroundColor[i], strokeStyle:'#fff', lineWidth:1, hidden:false, index:i, pointStyle:'circle' };
+            });
+          }
+        }},
         tooltip: { backgroundColor:'#ffffff',titleColor:'#111111',bodyColor:'#444455',borderColor:'#E2E2EA',borderWidth:1,
           callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } },
         datalabels: {
           textAlign: 'center',
-          font: { size: 12, weight: 'bold', family: "'Noto Sans KR'" },
-          color: ctx => {
-            const pct = ctx.dataset.data[ctx.dataIndex] / total * 100;
-            return pct >= 8 ? '#fff' : '#222';
-          },
-          anchor: ctx => {
-            const pct = ctx.dataset.data[ctx.dataIndex] / total * 100;
-            return pct >= 8 ? 'center' : 'end';
-          },
-          align: ctx => {
-            const pct = ctx.dataset.data[ctx.dataIndex] / total * 100;
-            return pct >= 8 ? 'center' : 'end';
-          },
-          offset: ctx => {
-            const pct = ctx.dataset.data[ctx.dataIndex] / total * 100;
-            return pct >= 8 ? 0 : 6;
-          },
-          textShadowBlur: ctx => ctx.dataset.data[ctx.dataIndex] / total * 100 >= 8 ? 3 : 0,
-          textShadowColor: 'rgba(0,0,0,0.4)',
-          clamp: false,
-          formatter: (value, ctx) => {
-            const pct = value / total * 100;
-            if (pct < 2) return '';
+          font: { size: 11, weight: 'bold', family: "'Noto Sans KR'" },
+          color: '#ffffff',
+          anchor: 'center',
+          align: 'center',
+          textShadowBlur: 3,
+          textShadowColor: 'rgba(0,0,0,0.5)',
+          formatter: function(value, ctx) {
+            var pct = value / total * 100;
+            if (pct < 5) return '';
             return ctx.chart.data.labels[ctx.dataIndex] + '\n' + value + '건';
           }
         }
