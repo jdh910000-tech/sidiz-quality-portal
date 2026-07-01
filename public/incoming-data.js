@@ -2748,50 +2748,104 @@ window.generateRodReport = function () {
   }
   const recHtml = _recToHtml(recs);
 
-  // 1) 자재별 월 평균 높이 추이 (26년 1월 누적, 오프스크린, TOP5)
-  const _rmMonthMap = {};
+  // 1) 월별 평균 테이퍼 높이/와블 추이 (dual-axis, 26년 1월 누적)
+  const _rmAll = {};
   STATE.rods.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
-    if (!m || m < '2026-01' || !r.code) return;
-    const h = rodH(r);
-    if (h === null) return;
-    if (!_rmMonthMap[m]) _rmMonthMap[m] = {};
-    if (!_rmMonthMap[m][r.code]) _rmMonthMap[m][r.code] = [];
-    _rmMonthMap[m][r.code].push(h);
+    if (!m || m < '2026-01') return;
+    const h = rodH(r), w = r.wobble;
+    if (!_rmAll[m]) _rmAll[m] = { h: [], w: [] };
+    if (h !== null) _rmAll[m].h.push(h);
+    if (w != null) _rmAll[m].w.push(w);
   });
-  const _rmKeys = Object.keys(_rmMonthMap).sort();
-  const _rmLabels = _rmKeys.map(m => parseInt(m.split('-')[1]) + '월');
-  const _rmCodeCounts = {};
-  STATE.rods.forEach(r => { if (r.code) _rmCodeCounts[r.code] = (_rmCodeCounts[r.code] || 0) + 1; });
-  const _rmTopCodes = Object.entries(_rmCodeCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+  const _rmMKeys = Object.keys(_rmAll).sort();
+  const _rmMLabels = _rmMKeys.map(m => parseInt(m.split('-')[1]) + '월');
   const imgTrend = _makeReportChartSync({
     type: 'line',
-    data: { labels: _rmLabels, datasets: _rmTopCodes.map((code, i) => ({
-      label: code,
-      data: _rmKeys.map(m => { const v = (_rmMonthMap[m] && _rmMonthMap[m][code]) || []; return v.length ? +avg(v).toFixed(2) : null; }),
-      borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
-      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false
-    }))},
+    data: { labels: _rmMLabels, datasets: [
+      { label: '테이퍼 높이', data: _rmMKeys.map(m => _rmAll[m].h.length ? +avg(_rmAll[m].h).toFixed(2) : null), yAxisID: 'y', borderColor: '#002BD2', backgroundColor: '#002BD220', tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false },
+      { label: '높이 상한', data: _rmMKeys.map(() => 7.0), yAxisID: 'y', borderColor: '#FF6C39', borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
+      { label: '높이 하한', data: _rmMKeys.map(() => 5.0), yAxisID: 'y', borderColor: '#FF6C39', borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
+      { label: '와블', data: _rmMKeys.map(m => _rmAll[m].w.length ? +avg(_rmAll[m].w).toFixed(2) : null), yAxisID: 'y2', borderColor: '#e6a800', backgroundColor: '#e6a80020', tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false },
+      { label: '와블 한계', data: _rmMKeys.map(() => 1.0), yAxisID: 'y2', borderColor: '#FF6C39', borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
+    ]},
     options: {
       interaction: { mode: 'index', intersect: false },
-      scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: false, title: { display: true, text: '높이 (mm)', font: { size: 10 } }, grid: { color: '#E2E2EA' } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { type: 'linear', position: 'left', title: { display: true, text: '높이 (mm)', font: { size: 10 } }, min: 4.5, suggestedMax: 7.5, grid: { color: '#E2E2EA' } },
+        y2: { type: 'linear', position: 'right', title: { display: true, text: '와블', font: { size: 10 } }, min: 0, suggestedMax: 1.6, grid: { drawOnChartArea: false } }
+      },
       plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: false } }
     }
-  });
+  }, 900, 280);
 
-  // 2) 공급업체별 평균 와블 + 기준선 1.0 (오프스크린, 전체 데이터)
+  // 2) 자재별 테이퍼 높이/와블 추이 (필터된 rows 기준 — 해당 기간 자재만)
+  const _rCodesList = uniq(rows.map(r => r.code).filter(Boolean)).sort();
+  const _rCodeCharts = [];
+  for (const rc of _rCodesList) {
+    const cRows = rows.filter(r => r.code === rc).sort((a, b) => (a.measure_date || '').localeCompare(b.measure_date || ''));
+    if (!cRows.length) continue;
+    const dates = uniq(cRows.map(r => r.measure_date)).sort();
+    const dateH = dates.map(d => { const vs = cRows.filter(r => r.measure_date === d).map(rodH).filter(v => v !== null); return vs.length ? +avg(vs).toFixed(2) : null; });
+    const dateW = dates.map(d => { const vs = cRows.filter(r => r.measure_date === d).map(r => r.wobble).filter(v => v != null); return vs.length ? +avg(vs).toFixed(2) : null; });
+    const img = _makeReportChartSync({
+      type: 'line',
+      data: { labels: dates, datasets: [
+        { label: '테이퍼 높이', data: dateH, yAxisID: 'y', borderColor: '#002BD2', backgroundColor: '#002BD220', tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false },
+        { label: '높이 상한 (7.0)', data: dates.map(() => 7.0), yAxisID: 'y', borderColor: '#FF6C39', borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
+        { label: '높이 하한 (5.0)', data: dates.map(() => 5.0), yAxisID: 'y', borderColor: '#FF6C39', borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
+        { label: '와블', data: dateW, yAxisID: 'y2', borderColor: '#e6a800', backgroundColor: '#e6a80020', tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false },
+        { label: '와블 한계 (1.0)', data: dates.map(() => 1.0), yAxisID: 'y2', borderColor: '#e6a800', borderWidth: 1, borderDash: [5, 4], pointRadius: 0, fill: false },
+      ]},
+      options: {
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
+          y: { type: 'linear', position: 'left', title: { display: true, text: '높이 (mm)', font: { size: 10 } }, min: 4.5, suggestedMax: 7.5, grid: { color: '#E2E2EA' } },
+          y2: { type: 'linear', position: 'right', title: { display: true, text: '와블', font: { size: 10 } }, min: 0, suggestedMax: 1.6, grid: { drawOnChartArea: false } }
+        },
+        plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: false } }
+      }
+    });
+    _rCodeCharts.push({ code: rc, img });
+  }
+  const _rCodeHtml = _rCodeCharts.map(mc => mc.img
+    ? `<p style="margin: 3px 0 6px 30px; font-size: 10pt;">  - ${escHtml(mc.code)}</p>\n<img src="${mc.img}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">`
+    : '').join('\n');
+
+  // 3) 공급업체별 평균 와블 (기준선 전폭 + y축 1.0 붉은색)
   const _rsups = [...new Set(STATE.rods.map(r => r.supplier).filter(Boolean))].sort();
   const _rWavgs = _rsups.map(s => avg(STATE.rods.filter(r => r.supplier === s).map(r => r.wobble)));
   const imgSupplier = _makeReportChartSync({
     type: 'bar',
     data: { labels: _rsups, datasets: [
-      { label: '평균 와블', data: _rWavgs, backgroundColor: ['#002BD2','#54DBC2','#00b87a','#e6a800','#FF6C39','#7c5fe6','#3C7DFF','#94a3b8'].slice(0, _rsups.length), borderRadius: 6, type: 'bar' },
-      { label: '기준 ≤1.0', data: _rsups.map(() => 1.0), type: 'line', borderColor: '#FF6C39', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
+      { label: '평균 와블', data: _rWavgs, backgroundColor: ['#002BD2','#54DBC2','#00b87a','#e6a800','#FF6C39','#7c5fe6','#3C7DFF','#94a3b8'].slice(0, _rsups.length), borderRadius: 6 },
     ]},
     options: {
-      scales: { y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: '#E2E2EA' } }, x: { grid: { display: false } } },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: ctx => ctx.datasetIndex === 0, anchor: 'end', align: 'top', color: '#111111', font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
-    }
+      scales: {
+        y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: '#E2E2EA' }, ticks: { color: ctx => ctx.tick.value === 1 ? '#FF6C39' : '#111', font: ctx => ctx.tick.value === 1 ? { weight: 'bold', size: 11 } : { size: 10 } } },
+        x: { grid: { display: false } }
+      },
+      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: true, anchor: 'end', align: 'top', color: '#111111', font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
+    },
+    plugins: [{
+      id: 'refLine',
+      afterDraw(chart) {
+        const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+        const yPos = y.getPixelForValue(1.0);
+        ctx.save();
+        ctx.strokeStyle = '#FF6C39';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(left, yPos);
+        ctx.lineTo(right, yPos);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }]
   });
 
   const html = `<!DOCTYPE html>
@@ -2812,9 +2866,10 @@ window.generateRodReport = function () {
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
 ${recHtml}
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 자재별 경도 추이 (2026년 1월 누적 월 평균)</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 평균 테이퍼 높이/와블 추이</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급업체별 평균 와블 (기준 ≤1.0)</p>
+${_rCodeCharts.length > 0 ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 자재별 테이퍼 높이/와블 추이</p>\n${_rCodeHtml}` : ''}
+${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">3) 공급업체별 평균 와블 (기준 ≤1.0)</p>
 <img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 </body>
 </html>`;
@@ -2879,11 +2934,14 @@ window.generateSpongeReport = function () {
     }
   });
 
-  // 2) 자재별 일자 기준 누적 추이 (오프스크린, 기준선 포함)
+  // 2) 자재별 일자 기준 최근 6개월 추이 (오프스크린, 기준선 포함)
+  const _s6ago = new Date();
+  _s6ago.setMonth(_s6ago.getMonth() - 6);
+  const _s6MonthCutoff = `${_s6ago.getFullYear()}-${String(_s6ago.getMonth()+1).padStart(2,'0')}-01`;
   const _scodes = uniq(STATE.sponges.map(r => r.code)).sort();
   const _sMaterialCharts = [];
   for (const sc of _scodes) {
-    const cRows = STATE.sponges.filter(r => r.code === sc).sort((a, b) => (a.measure_date || '').localeCompare(b.measure_date || ''));
+    const cRows = STATE.sponges.filter(r => r.code === sc && (r.measure_date || '') >= _s6MonthCutoff).sort((a, b) => (a.measure_date || '').localeCompare(b.measure_date || ''));
     if (!cRows.length) continue;
     const codeName = cRows[0].name || sc;
     const target = cRows[0].spec_target;
@@ -2917,8 +2975,8 @@ window.generateSpongeReport = function () {
     });
     _sMaterialCharts.push({ code: sc, name: codeName, target, tol, img });
   }
-  const _sMaterialHtml = _sMaterialCharts.map((mc, i) => mc.img
-    ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">${i + 1}) ${escHtml(mc.name)}${mc.target !== null && mc.target !== undefined ? ` — 기준 ${mc.target}±${mc.tol}` : ''}</p>\n<img src="${mc.img}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">`
+  const _sMaterialHtml = _sMaterialCharts.map((mc) => mc.img
+    ? `<p style="margin: 3px 0 6px 30px; font-size: 10pt;">  - ${escHtml(mc.name)}${mc.target !== null && mc.target !== undefined ? ` — 기준 ${mc.target}±${mc.tol}` : ''}</p>\n<img src="${mc.img}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">`
     : '').join('\n');
 
   const html = `<!DOCTYPE html>
@@ -2938,9 +2996,9 @@ window.generateSpongeReport = function () {
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
 ${recHtml}
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 자재별 경도 추이 (2026년 1월 누적 월 평균)</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 경도 추이 (전체)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
-${_sMaterialCharts.length > 0 ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 자재별 두께 추이 (일자 기준 누적, 기준값 포함)</p>\n${_sMaterialHtml}` : ''}
+${_sMaterialCharts.length > 0 ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 경도 추이(자재별)</p>\n${_sMaterialHtml}` : ''}
 </body>
 </html>`;
   _downloadInspectReport(html, '스폰지_두께검사_보고서.html');
