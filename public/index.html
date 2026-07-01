@@ -5245,13 +5245,8 @@ async function loadProdTab() {
       _updateProdCatLabel();
     }
 
-    // 기본 기간: 이번 달 1일 ~ 오늘
-    const _today = new Date();
-    const _monthFirst = new Date(_today.getFullYear(), _today.getMonth(), 1).toISOString().split('T')[0];
-    const _todayStr = _today.toISOString().split('T')[0];
-    const _df = document.getElementById('prodDateFrom'); if (_df) _df.value = _monthFirst;
-    const _dt = document.getElementById('prodDateTo');   if (_dt) _dt.value = _todayStr;
-    document.querySelectorAll('.prod-quick-btn').forEach(b => { b.style.background='var(--sidiz-dark2)'; b.style.color='var(--text-muted)'; });
+    // 기본 기간: 최근 1개월 (이번 달 1일이면 데이터 없는 문제 방지)
+    setProdQuick('1m');
     loadProdDashboard();
   } catch(e) {
     console.error('loadProdTab error:', e);
