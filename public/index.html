@@ -4900,6 +4900,15 @@ function _updateReceiptUI() {}
 let _prodAllData = [];
 let _prodSalesData = [];  // product_sales_monthly
 
+// sessionStorage 캐시 헬퍼 (10분 TTL)
+const _PROD_CACHE_TTL = 10 * 60 * 1000;
+function _getProdCache(key) {
+  try { const r = sessionStorage.getItem(key); if (!r) return null; const {ts,data} = JSON.parse(r); if (Date.now()-ts > _PROD_CACHE_TTL) { sessionStorage.removeItem(key); return null; } return data; } catch { return null; }
+}
+function _setProdCache(key, data) {
+  try { sessionStorage.setItem(key, JSON.stringify({ts: Date.now(), data})); } catch {}
+}
+
 // claims.item 정규화 맵 (DB에 잘못된 코드로 입력된 미분류 항목 처리)
 const _CLAIMS_NORMALIZE = (() => {
   const m = {};
@@ -5215,11 +5224,17 @@ function _getProdSelectedCats() {
 
 async function loadProdTab() {
   try {
-    // claims + product_sales_monthly 병렬 로드
-    const [rows, salesRows] = await Promise.all([
-      SupabaseClient.fetchAllClaims(),
-      SupabaseClient.fetchProductSalesMonthly()
-    ]);
+    // sessionStorage 캐시 우선 조회 (10분 TTL) → 없으면 Supabase 재요청
+    let rows = _getProdCache('sidiz_prod_claims_v1');
+    let salesRows = _getProdCache('sidiz_prod_sales_v1');
+    if (!rows || !salesRows) {
+      [rows, salesRows] = await Promise.all([
+        SupabaseClient.fetchAllClaims(),
+        SupabaseClient.fetchProductSalesMonthly()
+      ]);
+      if (rows)      _setProdCache('sidiz_prod_claims_v1', rows);
+      if (salesRows) _setProdCache('sidiz_prod_sales_v1', salesRows);
+    }
     _prodAllData = (rows || []).map(r => r.item ? {...r, item: _normalizeClaimsItem(r.item)} : r);
     _prodSalesData = (salesRows || []).map(s => s.item ? {...s, item: _normalizeSalesItem(s.item)} : s);
 
@@ -5245,8 +5260,8 @@ async function loadProdTab() {
       _updateProdCatLabel();
     }
 
-    // 기본 기간: 최근 1개월 (이번 달 1일이면 데이터 없는 문제 방지)
-    setProdQuick('1m');
+    // 기본 기간: 최근 3개월 (월초 진입 시 전월 매출 데이터 포함 보장)
+    setProdQuick('3m');
     loadProdDashboard();
   } catch(e) {
     console.error('loadProdTab error:', e);
