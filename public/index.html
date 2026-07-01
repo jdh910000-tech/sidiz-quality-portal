@@ -3072,7 +3072,7 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.plugins = Chart.defaults.plugins || {};
 }
 </script>
-<script src="supabase-client.js"></script>
+<script src="supabase-client.js?v=20260701"></script>
 <script src="incoming-data.js"></script>
 <script src="strength-data.js"></script>
 <script src="symptom-data.js"></script>
@@ -3887,16 +3887,26 @@ function setRctDateMode(mode) {
   loadReceiptDashboard();
 }
 
-// 날짜 기본값 세팅 (이번달 1일 ~ 오늘)
+// 날짜 기본값 세팅 (이번달 1일 ~ 전일 / 오늘이 1일이면 전월 전체)
+// ※ toISOString()은 UTC 기준이라 KST에서 날짜 오류 → 로컬 날짜 값으로 직접 조합
 function initReceiptDateDefaults() {
-  const today = new Date();
-  const y = today.getFullYear(), m = today.getMonth();
-  const firstDay = `${y}-${String(m+1).padStart(2,'0')}-01`;
-  const todayStr = today.toISOString().split('T')[0];
   const fromEl = document.getElementById('rctDateFrom');
   const toEl   = document.getElementById('rctDateTo');
-  if (fromEl && !fromEl.value) fromEl.value = firstDay;
-  if (toEl   && !toEl.value)   toEl.value   = todayStr;
+  if (fromEl?.value && toEl?.value) return;
+  const t = new Date();
+  const y = t.getFullYear(), mo = t.getMonth() + 1, d = t.getDate();
+  let from, to;
+  if (d === 1) {
+    const pm = mo === 1 ? 12 : mo - 1, py = mo === 1 ? y - 1 : y;
+    const lastDay = new Date(y, t.getMonth(), 0).getDate();
+    from = `${py}-${String(pm).padStart(2,'0')}-01`;
+    to   = `${py}-${String(pm).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  } else {
+    from = `${y}-${String(mo).padStart(2,'0')}-01`;
+    to   = `${y}-${String(mo).padStart(2,'0')}-${String(d-1).padStart(2,'0')}`;
+  }
+  if (fromEl && !fromEl.value) fromEl.value = from;
+  if (toEl   && !toEl.value)   toEl.value   = to;
 }
 
 function setRctQuick(period) {
@@ -5260,8 +5270,23 @@ async function loadProdTab() {
       _updateProdCatLabel();
     }
 
-    // 기본 기간: 최근 3개월 (월초 진입 시 전월 매출 데이터 포함 보장)
-    setProdQuick('3m');
+    // 기본 기간: 이번달 1일 ~ 전일 (오늘이 1일이면 전월 전체)
+    // ※ toISOString()은 UTC 기준이라 KST에서 날짜 오류 발생 → 로컬 날짜 값으로 직접 조합
+    { const _t = new Date();
+      const y = _t.getFullYear(), mo = _t.getMonth() + 1, d = _t.getDate();
+      let _f, _to;
+      if (d === 1) {
+        const pm = mo === 1 ? 12 : mo - 1, py = mo === 1 ? y - 1 : y;
+        const lastDay = new Date(y, _t.getMonth(), 0).getDate();
+        _f  = `${py}-${String(pm).padStart(2,'0')}-01`;
+        _to = `${py}-${String(pm).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+      } else {
+        _f  = `${y}-${String(mo).padStart(2,'0')}-01`;
+        _to = `${y}-${String(mo).padStart(2,'0')}-${String(d-1).padStart(2,'0')}`;
+      }
+      const _df = document.getElementById('prodDateFrom'); if (_df) _df.value = _f;
+      const _dt = document.getElementById('prodDateTo');   if (_dt) _dt.value = _to;
+    }
     loadProdDashboard();
   } catch(e) {
     console.error('loadProdTab error:', e);

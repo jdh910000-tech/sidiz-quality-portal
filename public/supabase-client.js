@@ -33,104 +33,59 @@ async function supabaseCountFiltered(table, params = '') {
   return parseInt(res.headers.get('content-range')?.split('/')[1] || '0');
 }
 
+// ─── 병렬 페이지네이션 헬퍼 ───
+// 첫 요청으로 총 건수를 파악한 뒤, 나머지 페이지를 Promise.all로 동시 요청
+async function _fetchAllPaginated(url) {
+  const PAGE = 1000;
+  const res0 = await fetch(url, {
+    headers: { ...supabaseHeaders, 'Range': `0-${PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' }
+  });
+  if (!res0.ok) return [];
+  const total = parseInt(res0.headers.get('content-range')?.split('/')[1] || '0');
+  const page0 = await res0.json();
+  if (!Array.isArray(page0)) return [];
+  if (total <= PAGE) return page0;
+
+  const pageCount = Math.ceil(total / PAGE);
+  const rest = await Promise.all(
+    Array.from({ length: pageCount - 1 }, (_, i) => {
+      const s = (i + 1) * PAGE;
+      return fetch(url, {
+        headers: { ...supabaseHeaders, 'Range': `${s}-${s + PAGE - 1}`, 'Range-Unit': 'items' }
+      }).then(r => r.ok ? r.json() : []);
+    })
+  );
+  return [page0, ...rest].flat();
+}
+
 // ─── claims (회수일 기준, 기존) ───
 async function fetchClaims(params) { return supabaseFetch('claims', params || 'select=*&order=claim_date.desc&limit=5000'); }
 
-// ─── claims 필터 포함 전체 로드 (Range 페이지네이션, max_rows 1000 제한 우회) ───
+// ─── claims 필터 포함 전체 로드 ───
 async function fetchAllClaimsFiltered(params) {
-  const PAGE = 1000;
-  let all = [], offset = 0;
-  while (true) {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/claims?${params}`,
-      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
-    );
-    if (!res.ok) break;
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) break;
-    all = all.concat(rows);
-    if (rows.length < PAGE) break;
-    offset += PAGE;
-  }
-  return all;
+  return _fetchAllPaginated(`${SUPABASE_URL}/rest/v1/claims?${params}`);
 }
 
-// ─── claims 전체 로드 (Range 헤더 페이지네이션, max_rows 제한 우회) ───
+// ─── claims 전체 로드 ───
 async function fetchAllClaims() {
-  const PAGE = 1000;
-  let all = [], offset = 0;
-  while (true) {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/claims?select=*&order=claim_date.asc`,
-      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
-    );
-    if (!res.ok) break;
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) break;
-    all = all.concat(rows);
-    if (rows.length < PAGE) break;  // 마지막 페이지
-    offset += PAGE;
-  }
-  return all;
+  return _fetchAllPaginated(`${SUPABASE_URL}/rest/v1/claims?select=*&order=claim_date.asc`);
 }
 
 // ─── claims_receipt (접수일 기준, 신규) ───
 async function fetchReceiptClaims(params) { return supabaseFetch('claims_receipt', params || 'select=*&order=receipt_date.desc&limit=5000'); }
 
-// ─── claims_receipt 전체 로드 (Range 헤더 페이지네이션, max_rows 제한 우회) ───
+// ─── claims_receipt 전체 로드 ───
 async function fetchAllReceiptClaims() {
-  const PAGE = 1000;
-  let all = [], offset = 0;
-  while (true) {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/claims_receipt?select=*&order=receipt_date.asc`,
-      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
-    );
-    if (!res.ok) break;
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) break;
-    all = all.concat(rows);
-    if (rows.length < PAGE) break;  // 마지막 페이지
-    offset += PAGE;
-  }
-  return all;
+  return _fetchAllPaginated(`${SUPABASE_URL}/rest/v1/claims_receipt?select=*&order=receipt_date.asc`);
 }
 
 async function fetchReceiptByDateRange(from, to) {
-  const PAGE = 1000;
-  let all = [], offset = 0;
-  while (true) {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/claims_receipt?select=*&receipt_date=gte.${from}&receipt_date=lte.${to}&order=receipt_date.asc`,
-      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
-    );
-    if (!res.ok) break;
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) break;
-    all = all.concat(rows);
-    if (rows.length < PAGE) break;
-    offset += PAGE;
-  }
-  return all;
+  return _fetchAllPaginated(`${SUPABASE_URL}/rest/v1/claims_receipt?select=*&receipt_date=gte.${from}&receipt_date=lte.${to}&order=receipt_date.asc`);
 }
 
 // ─── claims_receipt (업로드일 기준) ───
 async function fetchReceiptByUploadedDate(from, to) {
-  const PAGE = 1000;
-  let all = [], offset = 0;
-  while (true) {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/claims_receipt?select=*&uploaded_at=gte.${from}&uploaded_at=lte.${to}&order=uploaded_at.asc`,
-      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
-    );
-    if (!res.ok) break;
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) break;
-    all = all.concat(rows);
-    if (rows.length < PAGE) break;
-    offset += PAGE;
-  }
-  return all;
+  return _fetchAllPaginated(`${SUPABASE_URL}/rest/v1/claims_receipt?select=*&uploaded_at=gte.${from}&uploaded_at=lte.${to}&order=uploaded_at.asc`);
 }
 
 async function fetchReceiptByDefect(item, defectType) {
@@ -140,23 +95,9 @@ async function fetchReceiptByDefect(item, defectType) {
 // ─── sales_monthly (매출량) ───
 async function fetchSalesMonthly() { return supabaseFetch('sales_monthly', 'select=*&order=year_month.desc'); }
 
-// ─── product_sales_monthly (제품별 매출량, 전체 페이지네이션) ───
+// ─── product_sales_monthly (제품별 매출량, 병렬 페이지네이션) ───
 async function fetchProductSalesMonthly() {
-  const PAGE = 1000;
-  let all = [], offset = 0;
-  while (true) {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/product_sales_monthly?select=*&order=year_month.asc`,
-      { headers: { ...supabaseHeaders, 'Range': `${offset}-${offset + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=exact' } }
-    );
-    if (!res.ok) break;
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) break;
-    all = all.concat(rows);
-    if (rows.length < PAGE) break;
-    offset += PAGE;
-  }
-  return all;
+  return _fetchAllPaginated(`${SUPABASE_URL}/rest/v1/product_sales_monthly?select=*&order=year_month.asc`);
 }
 
 // ─── failure_costs (실패비용) ───
