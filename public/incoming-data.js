@@ -2748,23 +2748,35 @@ window.generateRodReport = function () {
   }
   const recHtml = _recToHtml(recs);
 
-  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린, 꺾은선)
-  const _rm = {};
+  // 1) 자재별 월 평균 높이 추이 (26년 1월 누적, 오프스크린, TOP5)
+  const _rmMonthMap = {};
   STATE.rods.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
-    if (!m || m < '2026-01') return;
-    if (!_rm[m]) _rm[m] = { ok: 0, ng: 0 };
-    if (rodJudge(r) === 'NG') _rm[m].ng++; else _rm[m].ok++;
+    if (!m || m < '2026-01' || !r.code) return;
+    const h = rodH(r);
+    if (h === null) return;
+    if (!_rmMonthMap[m]) _rmMonthMap[m] = {};
+    if (!_rmMonthMap[m][r.code]) _rmMonthMap[m][r.code] = [];
+    _rmMonthMap[m][r.code].push(h);
   });
-  const _rmKeys = Object.keys(_rm).sort();
+  const _rmKeys = Object.keys(_rmMonthMap).sort();
   const _rmLabels = _rmKeys.map(m => parseInt(m.split('-')[1]) + '월');
+  const _rmCodeCounts = {};
+  STATE.rods.forEach(r => { if (r.code) _rmCodeCounts[r.code] = (_rmCodeCounts[r.code] || 0) + 1; });
+  const _rmTopCodes = Object.entries(_rmCodeCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
   const imgTrend = _makeReportChartSync({
     type: 'line',
-    data: { labels: _rmLabels, datasets: [
-      { label: 'OK', data: _rmKeys.map(m => _rm[m].ok), borderColor: '#00b87a', backgroundColor: '#00b87a20', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
-      { label: 'NG', data: _rmKeys.map(m => _rm[m].ng), borderColor: '#FF6C39', backgroundColor: '#FF6C3920', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
-    ]},
-    options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
+    data: { labels: _rmLabels, datasets: _rmTopCodes.map((code, i) => ({
+      label: code,
+      data: _rmKeys.map(m => { const v = (_rmMonthMap[m] && _rmMonthMap[m][code]) || []; return v.length ? +avg(v).toFixed(2) : null; }),
+      borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false
+    }))},
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: false, title: { display: true, text: '높이 (mm)', font: { size: 10 } }, grid: { color: '#E2E2EA' } } },
+      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: false } }
+    }
   });
 
   // 2) 공급업체별 평균 와블 + 기준선 1.0 (오프스크린, 전체 데이터)
@@ -2800,7 +2812,7 @@ window.generateRodReport = function () {
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
 ${recHtml}
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이 (2026년 1월 누적)</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 자재별 경도 추이 (2026년 1월 누적 월 평균)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 ${imgSupplier ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 공급업체별 평균 와블 (기준 ≤1.0)</p>
 <img src="${imgSupplier}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
@@ -2835,23 +2847,36 @@ window.generateSpongeReport = function () {
   }
   const recHtml = _recToHtml(recs);
 
-  // 1) 26년 1월부터 월별 OK/NG 누적 추이 (오프스크린, 꺾은선, 전체 데이터)
-  const _sm = {};
+  // 1) 자재별 월 평균 두께 추이 (26년 1월 누적, 오프스크린, TOP5)
+  const _smMonthMap = {};
   STATE.sponges.forEach(r => {
     const m = (r.measure_date || '').slice(0, 7);
-    if (!m || m < '2026-01') return;
-    if (!_sm[m]) _sm[m] = { ok: 0, ng: 0 };
-    if (spongeJudge(r) === 'NG') _sm[m].ng++; else _sm[m].ok++;
+    if (!m || m < '2026-01' || !r.code) return;
+    const a = spongeAvg(r);
+    if (a === null) return;
+    if (!_smMonthMap[m]) _smMonthMap[m] = {};
+    if (!_smMonthMap[m][r.code]) _smMonthMap[m][r.code] = [];
+    _smMonthMap[m][r.code].push(a);
   });
-  const _smKeys = Object.keys(_sm).sort();
-  const _smLabels = _smKeys.map(m => parseInt(m.split('-')[1]) + '월');
+  const _smKeys = Object.keys(_smMonthMap).sort();
+  const _smMonthLabels = _smKeys.map(m => parseInt(m.split('-')[1]) + '월');
+  const _smCodeCounts = {};
+  STATE.sponges.forEach(r => { if (r.code) _smCodeCounts[r.code] = (_smCodeCounts[r.code] || 0) + 1; });
+  const _smTopCodes = Object.entries(_smCodeCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+  const _smChartLabels = spongeChartLabels(STATE.sponges);
   const imgTrend = _makeReportChartSync({
     type: 'line',
-    data: { labels: _smLabels, datasets: [
-      { label: 'OK', data: _smKeys.map(m => _sm[m].ok), borderColor: '#00b87a', backgroundColor: '#00b87a20', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
-      { label: 'NG', data: _smKeys.map(m => _sm[m].ng), borderColor: '#FF6C39', backgroundColor: '#FF6C3920', tension: 0.3, pointRadius: 4, borderWidth: 2, fill: false },
-    ]},
-    options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#E2E2EA' } } }, plugins: { legend: { display: true, position: 'top', align: 'end' }, datalabels: { display: false } } }
+    data: { labels: _smMonthLabels, datasets: _smTopCodes.map((code, i) => ({
+      label: _smChartLabels[code] || code,
+      data: _smKeys.map(m => { const v = (_smMonthMap[m] && _smMonthMap[m][code]) || []; return v.length ? +avg(v).toFixed(1) : null; }),
+      borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + '20',
+      tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true, fill: false
+    }))},
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: false, title: { display: true, text: '두께', font: { size: 10 } }, grid: { color: '#E2E2EA' } } },
+      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: false } }
+    }
   });
 
   // 2) 자재별 일자 기준 누적 추이 (오프스크린, 기준선 포함)
@@ -2913,7 +2938,7 @@ window.generateSpongeReport = function () {
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">2. 검사 결과</p>
 ${recHtml}
 <p style="font-weight: bold; font-size: 10pt; margin: 25px 0 8px 0;">3. 검사 결과 그래프</p>
-${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 월별 OK / NG 추이 (2026년 1월 누적)</p>
+${imgTrend ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">1) 자재별 경도 추이 (2026년 1월 누적 월 평균)</p>
 <img src="${imgTrend}" style="width:100%;margin:4px 0 20px 0;display:block;border:1px solid #ccc;">` : ''}
 ${_sMaterialCharts.length > 0 ? `<p style="margin: 3px 0 6px 15px; font-size: 10pt;">2) 자재별 두께 추이 (일자 기준 누적, 기준값 포함)</p>\n${_sMaterialHtml}` : ''}
 </body>
