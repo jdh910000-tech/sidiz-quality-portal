@@ -1586,6 +1586,12 @@ body.share-mode .section > .header .header-left p { display: none; }
         </button>
       </div>
     </div>
+    <!-- 로컬 데이터 마이그레이션 배너 -->
+    <div id="asMigrateBanner" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(0,43,210,0.07);border:1px solid rgba(0,43,210,0.25);border-radius:7px;font-size:12px;color:var(--text-primary);align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="flex:1">💾 이 브라우저에 저장된 로컬 데이터가 있습니다. 서버에 반영하시겠습니까?</span>
+      <button onclick="asMigrateLocal()" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">서버에 올리기</button>
+      <button onclick="asMigrateDismiss()" style="padding:5px 10px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-muted)">무시</button>
+    </div>
     <!-- 미저장 경고 -->
     <div id="asUnsavedNotice" style="display:none;margin-bottom:10px;padding:7px 12px;background:rgba(255,107,122,0.08);border:1px solid rgba(255,107,122,0.25);border-radius:7px;font-size:11.5px;color:#FF4757">⚠️ 저장하지 않은 변경 사항이 있습니다. [저장] 버튼을 눌러주세요.</div>
     <!-- 테이블 -->
@@ -8137,6 +8143,44 @@ async function _orgSaveJobDesc() {
     if (_panelPinned) _renderHistory();
   };
 
+  function _checkLocalMigration() {
+    const raw = localStorage.getItem('as_criteria_v1');
+    if (!raw) return;
+    try {
+      const local = JSON.parse(raw);
+      if (!local || !local.length) return;
+      const banner = document.getElementById('asMigrateBanner');
+      if (banner) { banner.style.display = 'flex'; banner.dataset.local = raw; }
+    } catch(e) {}
+  }
+
+  window.asMigrateLocal = async function() {
+    const banner = document.getElementById('asMigrateBanner');
+    if (!banner) return;
+    const local = JSON.parse(banner.dataset.local || '[]');
+    if (!local.length) return;
+    if (!confirm(`로컬에 저장된 ${local.length}개 항목을 서버에 덮어쓸까요?\n(현재 서버 데이터가 교체됩니다)`)) return;
+    banner.innerHTML = '<span style="color:var(--text-muted);font-size:13px">업로드 중…</span>';
+    try {
+      await fetch(`${SB_URL}/rest/v1/as_criteria`, {
+        method: 'POST',
+        headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(local.map((r, i) => ({ id: r.id, large: r.large||'', medium: r.medium||'', small: r.small||'', content: r.content||'', sort_order: i })))
+      });
+      localStorage.removeItem('as_criteria_v1');
+      banner.style.display = 'none';
+      await window.asInit();
+      alert('✅ 로컬 데이터를 서버에 저장했습니다.');
+    } catch(e) {
+      alert('업로드 실패: ' + e.message);
+    }
+  };
+
+  window.asMigrateDismiss = function() {
+    const banner = document.getElementById('asMigrateBanner');
+    if (banner) banner.style.display = 'none';
+  };
+
   window.asInit = async function() {
     await _load();
     _rebuildFilters();
@@ -8146,6 +8190,7 @@ async function _orgSaveJobDesc() {
     _dirty = false;
     const notice = document.getElementById('asUnsavedNotice');
     if (notice) notice.style.display = 'none';
+    _checkLocalMigration();
   };
 
   // showSection 훅
