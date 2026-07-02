@@ -7665,8 +7665,9 @@ async function _orgSaveJobDesc() {
 <script>
 // ===== AS 판정 기준 모듈 =====
 (function(){
-  const SK_DATA = 'as_criteria_v1';
-  const SK_HIST = 'as_criteria_history_v1';
+  const SB_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
+  const SB_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+  const SB_H   = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
   let _nextId = 200;
 
   const DEFAULT = [
@@ -7702,12 +7703,20 @@ async function _orgSaveJobDesc() {
 
   let _data = [], _history = [], _dirty = false, _prevSaved = [];
 
-  function _load() {
-    try { const d = localStorage.getItem(SK_DATA); _data = d ? JSON.parse(d) : JSON.parse(JSON.stringify(DEFAULT)); }
-    catch(e) { _data = JSON.parse(JSON.stringify(DEFAULT)); }
-    try { const h = localStorage.getItem(SK_HIST); _history = h ? JSON.parse(h) : []; }
-    catch(e) { _history = []; }
-    _nextId = Math.max(199, ..._data.map(r => r.id)) + 1;
+  async function _load() {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/as_criteria?select=*&order=sort_order.asc,id.asc`, { headers: SB_H });
+      if (!r.ok) throw new Error('fetch failed');
+      const rows = await r.json();
+      _data = rows.length ? rows : JSON.parse(JSON.stringify(DEFAULT));
+    } catch(e) { console.warn('AS 기준 로드 실패, 기본값 사용:', e); _data = JSON.parse(JSON.stringify(DEFAULT)); }
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/as_criteria_history?select=id,saved_at,row_count,changes&order=saved_at.desc&limit=30`, { headers: SB_H });
+      if (!r.ok) throw new Error();
+      const hist = await r.json();
+      _history = hist.map(h => ({ ts: h.saved_at ? new Date(h.saved_at).toLocaleString('ko-KR') : '', rowCount: h.row_count, changes: h.changes }));
+    } catch(e) { _history = []; }
+    _nextId = _data.length ? Math.max(199, ..._data.map(r => r.id)) + 1 : 200;
     _prevSaved = JSON.parse(JSON.stringify(_data));
   }
 
@@ -8077,28 +8086,45 @@ async function _orgSaveJobDesc() {
     }, 80);
   };
 
-  window.asSave = function() {
+  window.asSave = async function() {
     const changes = _detectChanges();
-    localStorage.setItem(SK_DATA, JSON.stringify(_data));
-    const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    _history.unshift({ ts, rowCount: _data.length, changes });
-    if (_history.length > 30) _history.pop();
-    localStorage.setItem(SK_HIST, JSON.stringify(_history));
-    _prevSaved = JSON.parse(JSON.stringify(_data));
-    _dirty = false;
-    const notice = document.getElementById('asUnsavedNotice');
-    if (notice) notice.style.display = 'none';
     const btn = document.getElementById('asSaveBtn');
-    if (btn) { const orig = btn.style.background; btn.textContent = '✅ 저장됨'; btn.style.background = '#2db87f'; setTimeout(() => { btn.textContent = '저장'; btn.style.background = orig; }, 1600); }
-    _updateBadge();
-    _renderHistory();
-    // 패널 열려있지 않으면 살짝 표시
-    const panel = document.getElementById('asHistoryPanel');
-    if (panel && panel.style.display === 'none') {
-      panel.style.display = 'block';
-      setTimeout(() => { if (!_panelPinned) panel.style.display = 'none'; }, 2500);
+    if (btn) { btn.textContent = '저장 중…'; btn.disabled = true; }
+    try {
+      await fetch(`${SB_URL}/rest/v1/as_criteria`, {
+        method: 'POST',
+        headers: { ...SB_H, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(_data.map((r, i) => ({ id: r.id, large: r.large||'', medium: r.medium||'', small: r.small||'', content: r.content||'', sort_order: i })))
+      });
+      if (changes.deleted.length) {
+        await fetch(`${SB_URL}/rest/v1/as_criteria?id=in.(${changes.deleted.map(r=>r.id).join(',')})`, { method: 'DELETE', headers: SB_H });
+      }
+      const now = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      await fetch(`${SB_URL}/rest/v1/as_criteria_history`, {
+        method: 'POST',
+        headers: { ...SB_H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ row_count: _data.length, changes })
+      });
+      _history.unshift({ ts, rowCount: _data.length, changes });
+      if (_history.length > 30) _history.pop();
+      _prevSaved = JSON.parse(JSON.stringify(_data));
+      _dirty = false;
+      const notice = document.getElementById('asUnsavedNotice');
+      if (notice) notice.style.display = 'none';
+      if (btn) { const orig = btn.style.background; btn.textContent = '✅ 저장됨'; btn.disabled = false; btn.style.background = '#2db87f'; setTimeout(() => { btn.textContent = '저장'; btn.style.background = orig; }, 1600); }
+      _updateBadge();
+      _renderHistory();
+      const panel = document.getElementById('asHistoryPanel');
+      if (panel && panel.style.display === 'none') {
+        panel.style.display = 'block';
+        setTimeout(() => { if (!_panelPinned) panel.style.display = 'none'; }, 2500);
+      }
+    } catch(e) {
+      console.error('AS 저장 실패:', e);
+      if (btn) { btn.textContent = '❌ 저장 실패'; btn.disabled = false; setTimeout(() => { btn.textContent = '저장'; }, 2000); }
+      alert('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -8111,8 +8137,8 @@ async function _orgSaveJobDesc() {
     if (_panelPinned) _renderHistory();
   };
 
-  window.asInit = function() {
-    _load();
+  window.asInit = async function() {
+    await _load();
     _rebuildFilters();
     _render();
     _renderHistory();
