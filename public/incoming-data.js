@@ -3421,9 +3421,12 @@ function _dlDetailRow(no, d) {
     + '<td style="' + td + '">' + _inp(d.inbound, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.return_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.pass_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
-    + '<td style="' + td + ';min-width:90px">' + _inpList(d.inspector, 'dl-inspector-list') + '</td>'
+    + '<td style="' + td + ';min-width:90px">' + _inpList(d.inspector || '김철우', 'dl-inspector-list') + '</td>'
     + '<td style="' + td + ';min-width:220px">' + _inp(d.defect_info, 'min-width:220px') + '</td>'
-    + '<td style="' + td + '">' + _inp(d.action) + '</td>'
+    + '<td style="' + td + ';min-width:70px"><select style="width:100%;padding:5px 7px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:12px;box-sizing:border-box">'
+    + '<option value="N"' + (d.action === 'Y' ? '' : ' selected') + '>N</option>'
+    + '<option value="Y"' + (d.action === 'Y' ? ' selected' : '') + '>Y</option>'
+    + '</select></td>'
     + '<td style="' + td + ';text-align:center;width:30px"><button onclick="dlRemRow(\'dldr-' + id + '\')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button></td>'
     + '</tr>';
 }
@@ -3474,7 +3477,7 @@ function _dlRender(date, sum, details, notes) {
     + '</div>'
     + '<datalist id="dl-inspector-list"><option value="김철우"><option value="이광원"></datalist>'
     + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:780px"><thead><tr>'
-    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사자','불합격정보(내용)','처리',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
+    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사자','불합격정보(내용)','특채사용 여부',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
     + '</tr></thead><tbody id="dl-detail-body">' + detailBody + '</tbody></table></div></div>';
 
   let notesBody = notes.length === 0
@@ -3531,7 +3534,7 @@ window.dlSave = async function () {
 
   const detailRows = [];
   document.querySelectorAll('#dl-detail-body tr:not(#dl-detail-empty)').forEach(function(tr, i) {
-    const inp = Array.from(tr.querySelectorAll('input'));
+    const inp = Array.from(tr.querySelectorAll('input,select'));
     if (inp.length < 6) return;
     const v = function(j) { return inp[j] ? inp[j].value.trim() : ''; };
     const nv = function(j) { return inp[j] ? (Number(inp[j].value) || 0) : 0; };
@@ -3597,6 +3600,7 @@ window.dlLoadPeriod = async function () {
   ]);
   STATE.dlPeriodData = { from: from, to: to, year: year, summaries: results[0], details: results[1], notes: results[2], yearSummaries: results[3] };
   STATE.dlCompanyFilter = null;
+  STATE.dlNoteTypeFilter = null;
   _dlRenderAll();
 };
 
@@ -3605,6 +3609,7 @@ function _dlRenderAll() {
   if (!d) return;
   _dlRenderKPI(d.from, d.to, d.summaries);
   _dlRenderCompanyFilter(d.details);
+  _dlRenderNoteTypeFilter(d.notes);
   _dlRenderCharts(d.summaries, d.details, d.year, d.yearSummaries);
   _dlRenderNotesSection(d.notes);
 }
@@ -3657,6 +3662,27 @@ window.dlSetCompany = function(company) {
   var d = STATE.dlPeriodData;
   if (!d) return;
   _dlRenderCharts(d.summaries, d.details, d.year, d.yearSummaries);
+};
+
+function _dlRenderNoteTypeFilter(notes) {
+  var sel = $('dl-note-type-select');
+  if (!sel) return;
+  var types = [], seen = {};
+  notes.forEach(function(n) { if (n.type && !seen[n.type]) { seen[n.type] = 1; types.push(n.type); } });
+  types.sort();
+  var cur = STATE.dlNoteTypeFilter;
+  sel.innerHTML = '<option value="">특이사항 전체</option>'
+    + types.map(function(t) {
+        return '<option value="' + escHtml(t) + '"' + (cur === t ? ' selected' : '') + '>' + escHtml(t) + '</option>';
+      }).join('');
+  if (cur && types.indexOf(cur) !== -1) sel.value = cur;
+}
+
+window.dlSetNoteType = function(val) {
+  STATE.dlNoteTypeFilter = val || null;
+  var d = STATE.dlPeriodData;
+  if (!d) return;
+  _dlRenderNotesSection(d.notes);
 };
 
 function _dlRenderCharts(summaries, details, year, yearSummaries) {
@@ -3751,10 +3777,13 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
 function _dlRenderNotesSection(notes) {
   var el = $('dl-notes-section');
   if (!el) return;
+  var filtered = STATE.dlNoteTypeFilter
+    ? notes.filter(function(n) { return n.type === STATE.dlNoteTypeFilter; })
+    : notes;
   var th = 'padding:8px 10px;background:var(--sidiz-dark2);color:var(--text-muted);font-size:11px;font-weight:600;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap';
   var td = 'padding:6px 8px;font-size:12px;border-bottom:1px solid var(--border)';
   var tdC = td + ';text-align:center';
-  var rows = notes.map(function(n) {
+  var rows = filtered.map(function(n) {
     return '<tr>'
       + '<td style="' + tdC + ';white-space:nowrap">' + (n.log_date ? n.log_date.substring(5) : '') + '</td>'
       + '<td style="' + tdC + '">' + (n.no || '') + '</td>'
@@ -3768,7 +3797,7 @@ function _dlRenderNotesSection(notes) {
   }).join('');
   el.innerHTML = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px">'
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">특이사항 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(업체 협의, 4M, 입고품변경 등)</span></div>'
-    + (notes.length === 0
+    + (filtered.length === 0
       ? '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px">특이사항이 없습니다.</div>'
       : '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr>'
         + ['날짜','NO','구분','제품','내용','공급처','일자','비고'].map(function(h){return '<th style="'+th+'">'+h+'</th>';}).join('')
@@ -3808,7 +3837,7 @@ window.dlUploadExcel = function(input) {
   if (!file) return;
   if (typeof XLSX === 'undefined') { alert('엑셀 라이브러리가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.'); input.value = ''; return; }
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const wb = XLSX.read(e.target.result, { type: 'array', codepage: 949 });
       let summarySheet = null, detailSheet = null;
@@ -3820,7 +3849,6 @@ window.dlUploadExcel = function(input) {
       if (!summarySheet && wb.SheetNames.length >= 1) summarySheet = wb.Sheets[wb.SheetNames[0]];
       if (!detailSheet && wb.SheetNames.length >= 2) detailSheet = wb.Sheets[wb.SheetNames[1]];
 
-      // 컬럼 매핑 (ERP 컬럼명 포함)
       const sColMap = {
         inbound: ['입고수량','입고','입하수량','입하'],
         inspect: ['검사수량','검사'],
@@ -3839,7 +3867,7 @@ window.dlUploadExcel = function(input) {
         pass_qty:    ['합격수량','합격'],
         inspector:   ['검사자','담당자','검사원'],
         defect_info: ['불합격정보','불량내용','부적합내용','불합격내용','내용','부적합'],
-        action:      ['처리','처리내용','조치','조치내용'],
+        action:      ['특채사용 여부','처리','처리내용','조치','조치내용'],
       };
 
       function mapDetail(row) {
@@ -3853,18 +3881,93 @@ window.dlUploadExcel = function(input) {
         return d;
       }
 
-      let summaryFilled = false, detailFilled = false;
-      var failRows = [];
-      const allRows = XLSX.utils.sheet_to_json(summarySheet, { defval: '', raw: true });
+      function parseExcelDate(val) {
+        if (!val && val !== 0) return null;
+        if (typeof val === 'number') {
+          var d2 = new Date(Math.round((val - 25569) * 86400 * 1000));
+          var y = d2.getUTCFullYear(), m = d2.getUTCMonth()+1, day = d2.getUTCDate();
+          return y + '-' + String(m).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+        }
+        var s = String(val).trim();
+        var m1 = s.match(/(\d{4})[\.\-\/](\d{1,2})[\.\-\/](\d{1,2})/);
+        if (m1) return m1[1] + '-' + String(m1[2]).padStart(2,'0') + '-' + String(m1[3]).padStart(2,'0');
+        return null;
+      }
 
-      // ERP 포맷 감지: 거래처명·합격여부·입하수량 컬럼 존재 여부
+      const allRows = XLSX.utils.sheet_to_json(summarySheet, { defval: '', raw: true });
       const firstRow = allRows[0] || {};
       const isERP = firstRow['거래처명'] !== undefined || firstRow['합격여부'] !== undefined || firstRow['입하수량'] !== undefined;
 
-      if (isERP) {
-        // ── ERP 1시트 형식 ──
+      // ── 일괄 등록 모드: '검사일' 컬럼이 있을 때 ──
+      if (firstRow['검사일'] !== undefined) {
+        const dateMap = {};
+        allRows.forEach(function(row) {
+          var dateStr = parseExcelDate(row['검사일']);
+          if (!dateStr) return;
+          if (!dateMap[dateStr]) dateMap[dateStr] = [];
+          dateMap[dateStr].push(row);
+        });
+        const dates = Object.keys(dateMap).sort();
+        if (dates.length === 0) { alert('검사일 데이터를 찾을 수 없습니다.'); input.value = ''; return; }
+        const ok = confirm(dates.length + '일치 데이터를 일괄 저장합니다.\n기간: ' + dates[0] + ' ~ ' + dates[dates.length-1] + '\n\n기존 데이터가 덮어쓰여집니다. 계속하시겠습니까?');
+        if (!ok) { input.value = ''; return; }
 
-        // 인수검사현황: TOTAL 행(번호·거래처명이 모두 빈, 마지막 숫자 행)의 값 직접 사용
+        const rp  = Object.assign({}, SB_HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
+        const rp2 = Object.assign({}, SB_HEADERS, { 'Prefer': 'return=minimal' });
+        const bulkSMap = { inbound_today: ['입하수량','입고수량','입고'], inspect_today: ['검사수량','검사'], defect_today: ['불량수량','불량','부적합수량'], return_today: ['반품수량','반품'], special_today: ['특채수량','특채'], pass_today: ['합격수량','합격'] };
+
+        for (var di = 0; di < dates.length; di++) {
+          var date = dates[di];
+          var rows = dateMap[date];
+          var dataRows = isERP ? rows.filter(function(r) { return String(r['거래처명']||'').trim() !== ''; }) : rows;
+
+          // 요약: 합계 행 있으면 사용, 없으면 데이터 행 합산
+          var sum = { log_date: date, inbound_today: 0, inspect_today: 0, defect_today: 0, return_today: 0, special_today: 0, pass_today: 0 };
+          var totalRow = rows.find(function(r) { return !String(r['번호']||'').trim() && !String(r['거래처명']||'').trim() && Number(r['입하수량']||0) > 0; });
+          if (totalRow) {
+            var etf = { inbound_today:'입하수량', inspect_today:'검사수량', defect_today:'불량수량', return_today:'반품수량', special_today:'특채수량', pass_today:'합격수량' };
+            Object.keys(etf).forEach(function(k) { sum[k] = Number(totalRow[etf[k]]||0); });
+          } else {
+            dataRows.forEach(function(row) {
+              Object.keys(bulkSMap).forEach(function(field) {
+                var found = false;
+                bulkSMap[field].forEach(function(col) { if (!found && row[col] !== undefined && row[col] !== '') { sum[field] += Number(row[col])||0; found = true; } });
+              });
+            });
+          }
+          await fetch(SB_URL + '/rest/v1/daily_log_summary?on_conflict=log_date', { method: 'POST', headers: rp, body: JSON.stringify(sum) });
+
+          // 불합격 내역
+          var failBulk = isERP ? dataRows.filter(function(r) {
+            var judge = String(r['합격여부']||r['판정']||'').trim();
+            return judge !== '합격' && judge !== '';
+          }) : dataRows;
+          var detailBulk = [];
+          failBulk.forEach(function(row, idx) {
+            var d = mapDetail(row);
+            if (d.company || d.name || d.code) {
+              var aVal = (String(d.action||'').trim().toUpperCase() === 'Y' || String(d.action||'').includes('예') || String(d.action||'').includes('특채')) ? 'Y' : 'N';
+              detailBulk.push({ log_date: date, no: idx+1, company: d.company||'', code: d.code||'', name: d.name||'', judge: d.judge||'', inbound: Number(d.inbound)||0, return_qty: Number(d.return_qty)||0, pass_qty: Number(d.pass_qty)||0, inspector: d.inspector||'김철우', defect_info: d.defect_info||'', action: aVal });
+            }
+          });
+          await fetch(SB_URL + '/rest/v1/daily_log_details?log_date=eq.' + date, { method: 'DELETE', headers: SB_HEADERS });
+          if (detailBulk.length) {
+            await fetch(SB_URL + '/rest/v1/daily_log_details', { method: 'POST', headers: rp2, body: JSON.stringify(detailBulk) });
+          }
+        }
+
+        alert('일괄 저장 완료 (' + dates.length + '일치)\n' + dates[0] + ' ~ ' + dates[dates.length-1]);
+        input.value = '';
+        if (typeof dlCloseWrite === 'function') dlCloseWrite();
+        if ($('dl-from-input') && $('dl-from-input').value) dlLoadPeriod();
+        return;
+      }
+
+      // ── 기존 단일날짜 폼 채우기 모드 ──
+      let summaryFilled = false, detailFilled = false;
+      var failRows = [];
+
+      if (isERP) {
         var totalRow = null;
         for (var ti = allRows.length - 1; ti >= 0; ti--) {
           var tr2 = allRows[ti];
@@ -3879,41 +3982,27 @@ window.dlUploadExcel = function(input) {
             if (col) { var el=$('dlt-'+f.id); if(el){el.value=Number(totalRow[col]||0);summaryFilled=true;} }
           });
         }
-
-        // 검사내역: 거래처명 있는 실제 데이터 행 중 불합격만
-        var dataRows = allRows.filter(function(row) {
-          return String(row['거래처명']||'').trim() !== '';
-        });
+        var dataRows = allRows.filter(function(row) { return String(row['거래처명']||'').trim() !== ''; });
         failRows = dataRows.filter(function(row) {
           var judge = String(row['합격여부']||row['판정']||'').trim();
           return judge !== '합격' && judge !== '';
         });
         var tbody = $('dl-detail-body');
         if (tbody) {
-          tbody.innerHTML = '';
-          STATE._dlDr = 0;
-          var cnt = 0;
+          tbody.innerHTML = ''; STATE._dlDr = 0; var cnt = 0;
           failRows.forEach(function(row) {
             var d = mapDetail(row);
-            if (d.company || d.name || d.code) {
-              tbody.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt, d));
-              detailFilled = true;
-            }
+            if (d.company || d.name || d.code) { tbody.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt, d)); detailFilled = true; }
           });
           if (!detailFilled) tbody.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다.</td></tr>';
         }
       } else {
-        // ── 표준 2시트 형식 ──
         if (allRows.length > 0) {
           var row0 = allRows[0];
           DL_FIELDS.forEach(function(f) {
             var keys = sColMap[f.id] || [];
             for(var i=0;i<keys.length;i++){
-              if(row0[keys[i]]!==undefined){
-                var el=$('dlt-'+f.id);
-                if(el){el.value=Number(row0[keys[i]])||0;summaryFilled=true;}
-                break;
-              }
+              if(row0[keys[i]]!==undefined){ var el=$('dlt-'+f.id); if(el){el.value=Number(row0[keys[i]])||0;summaryFilled=true;} break; }
             }
           });
         }
@@ -3921,21 +4010,15 @@ window.dlUploadExcel = function(input) {
           var dRows = XLSX.utils.sheet_to_json(detailSheet, { defval: '', raw: true });
           var tbody2 = $('dl-detail-body');
           if (tbody2 && dRows.length > 0) {
-            tbody2.innerHTML = '';
-            STATE._dlDr = 0;
-            var cnt2 = 0;
+            tbody2.innerHTML = ''; STATE._dlDr = 0; var cnt2 = 0;
             dRows.forEach(function(row) {
               var d = mapDetail(row);
-              if (d.company || d.name || d.code) {
-                tbody2.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt2, d));
-                detailFilled = true;
-              }
+              if (d.company || d.name || d.code) { tbody2.insertAdjacentHTML('beforeend', _dlDetailRow(++cnt2, d)); detailFilled = true; }
             });
             if (!detailFilled) tbody2.innerHTML = '<tr id="dl-detail-empty"><td colspan="12" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다. + 행 추가로 입력하세요.</td></tr>';
           }
         }
       }
-
       var msg = '엑셀 업로드 완료' + (isERP ? ' (ERP 포맷 인식)' : '') + '\n';
       if (summaryFilled) msg += '✅ 인수검사현황: ' + (isERP ? '합계 자동 계산' : '데이터 입력됨') + '\n';
       if (detailFilled) msg += '✅ 검사내역: ' + (isERP ? failRows.length + '건 (불합격) / 전체 ' + allRows.length + '건' : '데이터 입력됨') + '\n';
