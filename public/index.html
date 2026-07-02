@@ -1672,8 +1672,10 @@ body.share-mode .section > .header .header-left p { display: none; }
         <input type="date" id="dl-from-input" class="date-input" style="min-width:128px">
         <span style="color:var(--text-muted);font-size:13px">~</span>
         <input type="date" id="dl-to-input" class="date-input" style="min-width:128px">
-        <select id="dl-company-select" onchange="dlSetCompany(this.value === '' ? null : this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-primary);background:var(--sidiz-card);cursor:pointer;min-width:90px"><option value="">전체</option></select>
-        <select id="dl-note-type-select" onchange="dlSetNoteType(this.value === '' ? null : this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-primary);background:var(--sidiz-card);cursor:pointer;min-width:120px"><option value="">특이사항 전체</option></select>
+        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">업체</label>
+        <select id="dl-company-select" onchange="dlSetCompany(this.value === '' ? null : this.value)" class="date-input" style="min-width:128px"><option value="">전체</option></select>
+        <label style="font-size:12px;color:var(--text-muted);white-space:nowrap">특이사항</label>
+        <select id="dl-note-type-select" onchange="dlSetNoteType(this.value === '' ? null : this.value)" class="date-input" style="min-width:128px"><option value="">전체</option></select>
         <button onclick="dlLoadPeriod()" style="padding:7px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">조회</button>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">

@@ -3422,6 +3422,7 @@ function _dlDetailRow(no, d) {
     + '<td style="' + td + '">' + _inp(d.return_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.pass_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + ';min-width:90px">' + _inpList(d.inspector || '김철우', 'dl-inspector-list') + '</td>'
+    + '<td style="' + td + ';min-width:120px">' + _inpList(d.defect_type || '', 'dl-deftype-list', 'min-width:120px') + '</td>'
     + '<td style="' + td + ';min-width:220px">' + _inp(d.defect_info, 'min-width:220px') + '</td>'
     + '<td style="' + td + ';min-width:70px"><select style="width:100%;padding:5px 7px;background:var(--sidiz-dark2);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:12px;box-sizing:border-box">'
     + '<option value="N"' + (d.action === 'Y' ? '' : ' selected') + '>N</option>'
@@ -3476,8 +3477,9 @@ function _dlRender(date, sum, details, notes) {
     + '<button onclick="dlAddDetail()" style="padding:5px 14px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">+ 행 추가</button>'
     + '</div>'
     + '<datalist id="dl-inspector-list"><option value="김철우"><option value="이광원"></datalist>'
-    + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:780px"><thead><tr>'
-    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사자','불합격정보(내용)','특채사용 여부',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
+    + '<datalist id="dl-deftype-list"><option value="특채"><option value="누락"><option value="사상"><option value="오염"><option value="A\'ssy 불량"><option value="스크래치"><option value="표면 가스"><option value="작동 불량"><option value="강도 불량"><option value="치수 불량"><option value="가공 불량"><option value="성형 불량"><option value="색차 불량"><option value="주름 불량"><option value="도장 불량"><option value="도금 불량"><option value="그라스"><option value="미싱 불량"><option value="오입고"><option value="흑점"></datalist>'
+    + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:900px"><thead><tr>'
+    + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사자','불합격유형','불합격정보(내용)','특채사용 여부',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
     + '</tr></thead><tbody id="dl-detail-body">' + detailBody + '</tbody></table></div></div>';
 
   let notesBody = notes.length === 0
@@ -3539,7 +3541,7 @@ window.dlSave = async function () {
     const v = function(j) { return inp[j] ? inp[j].value.trim() : ''; };
     const nv = function(j) { return inp[j] ? (Number(inp[j].value) || 0) : 0; };
     if (!v(0) && !v(1) && !v(2)) return;
-    detailRows.push({ log_date: date, no: i + 1, company: v(0), code: v(1), name: v(2), judge: v(3), inbound: nv(4), return_qty: nv(5), pass_qty: nv(6), inspector: v(7), defect_info: v(8), action: v(9) });
+    detailRows.push({ log_date: date, no: i + 1, company: v(0), code: v(1), name: v(2), judge: v(3), inbound: nv(4), return_qty: nv(5), pass_qty: nv(6), inspector: v(7), defect_type: v(8), defect_info: v(9), action: v(10) });
   });
 
   const noteRows = [];
@@ -3712,11 +3714,15 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
 
   if (summaries.length) {
     var dLabels = summaries.map(function(s) { return s.log_date.substring(5); });
+    var dDefects = summaries.map(function(s) { return s.defect_today || 0; });
     var dRates = summaries.map(function(s) { return (s.inspect_today || 0) > 0 ? parseFloat((s.defect_today / s.inspect_today * 100).toFixed(2)) : 0; });
     _mkDlChart('dl-chart-daily', {
       type: 'bar',
-      data: { labels: dLabels, datasets: [{ label: '불량율(%)', data: dRates, backgroundColor: 'rgba(229,57,53,0.7)', barPercentage: 0.6 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', formatter: function(v) { return v.toFixed(2) + '%'; }, font: { size: 8 }, color: 'var(--text-muted)' } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, ticks: { color: 'var(--text-muted)', font: { size: 9 } } } } }
+      data: { labels: dLabels, datasets: [
+        { type: 'bar', label: '불합격수량', data: dDefects, backgroundColor: 'rgba(229,57,53,0.7)', barPercentage: 0.6, yAxisID: 'y', datalabels: { display: false } },
+        { type: 'line', label: '불량율(%)', data: dRates, borderColor: '#fb8c00', backgroundColor: 'rgba(251,140,0,0)', tension: 0.3, pointRadius: 3, yAxisID: 'y1', datalabels: { anchor: 'top', align: 'top', formatter: function(v) { return v.toFixed(2) + '%'; }, font: { size: 8 }, color: '#fb8c00' } }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#fb8c00', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
     });
   }
 
@@ -3734,23 +3740,29 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
     var m = monthlyMap[key];
     return (m && m.inspect > 0) ? parseFloat((m.defect / m.inspect * 100).toFixed(3)) : null;
   });
+  var mDefects = mLabels.map(function(lbl, i) {
+    var key = year + '-' + String(i + 1).padStart(2, '0');
+    var m = monthlyMap[key];
+    return m ? m.defect : 0;
+  });
   _mkDlChart('dl-chart-monthly', {
-    type: 'line',
+    type: 'bar',
     data: {
       labels: mLabels,
       datasets: [
-        { label: '불량율(%)', data: mRates, borderColor: '#1e88e5', backgroundColor: 'rgba(30,136,229,0.08)', tension: 0.3, fill: true, pointRadius: 4, spanGaps: false,
-          datalabels: { display: function(ctx) { return ctx.raw !== null; }, anchor: 'top', align: 'top', formatter: function(v) { return v !== null ? v.toFixed(2) + '%' : ''; }, font: { size: 8 }, color: '#1e88e5' } },
-        { label: '기준선(0.02%)', data: Array(12).fill(0.02), borderColor: 'rgba(229,57,53,0.4)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, datalabels: { display: false } }
+        { type: 'bar', label: '불합격수량', data: mDefects, backgroundColor: 'rgba(30,136,229,0.7)', barPercentage: 0.6, yAxisID: 'y', datalabels: { display: false } },
+        { type: 'line', label: '불량율(%)', data: mRates, borderColor: '#e53935', backgroundColor: 'rgba(229,57,53,0)', tension: 0.3, fill: false, pointRadius: 4, spanGaps: false, yAxisID: 'y1',
+          datalabels: { display: function(ctx) { return ctx.raw !== null; }, anchor: 'top', align: 'top', formatter: function(v) { return v !== null ? v.toFixed(2) + '%' : ''; }, font: { size: 8 }, color: '#e53935' } },
+        { type: 'line', label: '기준선(0.02%)', data: Array(12).fill(0.02), borderColor: 'rgba(229,57,53,0.4)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1', datalabels: { display: false } }
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, ticks: { color: 'var(--text-muted)', font: { size: 9 } } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#e53935', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
   });
 
   var fDetails = STATE.dlCompanyFilter ? details.filter(function(d) { return d.company === STATE.dlCompanyFilter; }) : details;
 
   var defTypeMap = {};
-  fDetails.forEach(function(d) { if (d.defect_info && d.judge !== '합격') defTypeMap[d.defect_info] = (defTypeMap[d.defect_info] || 0) + 1; });
+  fDetails.forEach(function(d) { var key = d.defect_type || d.defect_info; if (key && d.judge !== '합격') defTypeMap[key] = (defTypeMap[key] || 0) + 1; });
   var dtLabels = Object.keys(defTypeMap).sort(function(a,b){return defTypeMap[b]-defTypeMap[a];});
   var dtData = dtLabels.map(function(k){return defTypeMap[k];});
   if (dtLabels.length) {
@@ -3866,6 +3878,7 @@ window.dlUploadExcel = function(input) {
         return_qty:  ['반품수량','반품'],
         pass_qty:    ['합격수량','합격'],
         inspector:   ['검사자','담당자','검사원'],
+        defect_type: ['부적합유형','불합격유형','유형','불량유형'],
         defect_info: ['불합격정보','불량내용','부적합내용','불합격내용','내용','부적합'],
         action:      ['특채사용 여부','처리','처리내용','조치','조치내용'],
       };
@@ -3947,7 +3960,7 @@ window.dlUploadExcel = function(input) {
             var d = mapDetail(row);
             if (d.company || d.name || d.code) {
               var aVal = (String(d.action||'').trim().toUpperCase() === 'Y' || String(d.action||'').includes('예') || String(d.action||'').includes('특채')) ? 'Y' : 'N';
-              detailBulk.push({ log_date: date, no: idx+1, company: d.company||'', code: d.code||'', name: d.name||'', judge: d.judge||'', inbound: Number(d.inbound)||0, return_qty: Number(d.return_qty)||0, pass_qty: Number(d.pass_qty)||0, inspector: d.inspector||'김철우', defect_info: d.defect_info||'', action: aVal });
+              detailBulk.push({ log_date: date, no: idx+1, company: d.company||'', code: d.code||'', name: d.name||'', judge: d.judge||'', inbound: Number(d.inbound)||0, return_qty: Number(d.return_qty)||0, pass_qty: Number(d.pass_qty)||0, inspector: d.inspector||'김철우', defect_type: d.defect_type||'', defect_info: d.defect_info||'', action: aVal });
             }
           });
           await fetch(SB_URL + '/rest/v1/daily_log_details?log_date=eq.' + date, { method: 'DELETE', headers: SB_HEADERS });
