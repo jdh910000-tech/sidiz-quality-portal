@@ -1883,6 +1883,16 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="chart-card"><h3>위치별 평균 경도 (중앙/좌/우)</h3><div style="position:relative;height:240px"><canvas id="inq-sponge-position"></canvas></div></div>
       <div class="chart-card"><h3>기준 부적합 비율</h3><div style="position:relative;height:240px"><canvas id="inq-sponge-judge-pie"></canvas></div></div>
     </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3>경도 정규분포 분석</h3>
+        <div style="display:grid;grid-template-columns:1fr 1.7fr;gap:10px">
+          <div style="position:relative;height:220px"><canvas id="inq-sponge-norm-curve"></canvas></div>
+          <div style="position:relative;height:220px"><canvas id="inq-sponge-norm-hist"></canvas></div>
+        </div>
+        <div id="inq-sponge-norm-stats"></div>
+      </div>
+    </div>
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-sponge-count">0</span>건)</h3></div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
@@ -1957,6 +1967,16 @@ body.share-mode .section > .header .header-left p { display: none; }
       <div class="chart-card">
         <h3>불합격율 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">(전체 및 공급업체별)</span></h3>
         <div style="position:relative;height:280px"><canvas id="inq-reamer-judge-pie"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3>측정값 정규분포 분석</h3>
+        <div style="display:grid;grid-template-columns:1fr 1.7fr;gap:10px">
+          <div style="position:relative;height:220px"><canvas id="inq-reamer-norm-curve"></canvas></div>
+          <div style="position:relative;height:220px"><canvas id="inq-reamer-norm-hist"></canvas></div>
+        </div>
+        <div id="inq-reamer-norm-stats"></div>
       </div>
     </div>
     <div class="data-table-wrapper">
@@ -2035,6 +2055,16 @@ body.share-mode .section > .header .header-left p { display: none; }
         <div style="position:relative;height:280px"><canvas id="inq-rough-judge-pie"></canvas></div>
       </div>
     </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3>Ra 정규분포 분석</h3>
+        <div style="display:grid;grid-template-columns:1fr 1.7fr;gap:10px">
+          <div style="position:relative;height:220px"><canvas id="inq-rough-norm-curve"></canvas></div>
+          <div style="position:relative;height:220px"><canvas id="inq-rough-norm-hist"></canvas></div>
+        </div>
+        <div id="inq-rough-norm-stats"></div>
+      </div>
+    </div>
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>측정 이력 (<span id="inq-rough-count">0</span>건)</h3></div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
@@ -2092,6 +2122,24 @@ body.share-mode .section > .header .header-left p { display: none; }
     <div class="chart-row">
       <div class="chart-card"><h3>공급처별 검사 비율</h3><div style="position:relative;height:240px"><canvas id="inq-color-supplier-pie"></canvas></div></div>
       <div class="chart-card"><h3>판정 분포 (ΔE 기준 내/외)</h3><div style="position:relative;height:240px"><canvas id="inq-color-judge-pie"></canvas></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3>ΔE(마스터) 정규분포 분석</h3>
+        <div style="display:grid;grid-template-columns:1fr 1.7fr;gap:10px">
+          <div style="position:relative;height:220px"><canvas id="inq-color-norm-m-curve"></canvas></div>
+          <div style="position:relative;height:220px"><canvas id="inq-color-norm-m-hist"></canvas></div>
+        </div>
+        <div id="inq-color-norm-m-stats"></div>
+      </div>
+      <div class="chart-card">
+        <h3>ΔE(전lot) 정규분포 분석</h3>
+        <div style="display:grid;grid-template-columns:1fr 1.7fr;gap:10px">
+          <div style="position:relative;height:220px"><canvas id="inq-color-norm-p-curve"></canvas></div>
+          <div style="position:relative;height:220px"><canvas id="inq-color-norm-p-hist"></canvas></div>
+        </div>
+        <div id="inq-color-norm-p-stats"></div>
+      </div>
     </div>
     <div class="data-table-wrapper">
       <div class="data-table-header"><h3>검사 이력 (<span id="inq-color-count">0</span>건)</h3></div>

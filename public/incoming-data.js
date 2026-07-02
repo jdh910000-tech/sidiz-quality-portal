@@ -806,6 +806,11 @@ function renderSpongeCharts(rows) {
   const ng = rows.filter(r => spongeJudge(r) === 'NG').length;
   makeDoughnut('spongeJudge', $('inq-sponge-judge-pie').getContext('2d'),
     ['OK (적합)', 'NG (부적합)'], [ok, ng], [SIDIZ_COLORS.emerald, SIDIZ_COLORS.rose]);
+  const _sVals = rows.map(spongeAvg).filter(v => v !== null);
+  const _sTargets = [...new Set(rows.map(r => r.spec_target).filter(v => v != null))];
+  const _sTol = _sTargets.length === 1 ? (rows.find(r => r.spec_target === _sTargets[0])?.spec_tol ?? 5) : null;
+  _renderNormChart(_sVals, 'inq-sponge-norm-curve', 'inq-sponge-norm-hist', 'inq-sponge-norm-stats', '경도 평균',
+    '#e6a800', _sTargets.length === 1 ? _sTargets[0] - _sTol : null, _sTargets.length === 1 ? _sTargets[0] + _sTol : null);
 }
 function renderSpongeTable(rows) {
   $('inq-sponge-count').textContent = rows.length.toLocaleString();
@@ -2092,6 +2097,11 @@ function renderReamerCharts(rows) {
       }
     });
   }
+  const _rVals = rows.map(r => +r.value).filter(v => !isNaN(v));
+  const _rProds = [...new Set(rows.map(r => r.product_code).filter(Boolean))];
+  const _rSpec = _rProds.length === 1 && REAMER_SPECS[_rProds[0]] ? REAMER_SPECS[_rProds[0]] : null;
+  _renderNormChart(_rVals, 'inq-reamer-norm-curve', 'inq-reamer-norm-hist', 'inq-reamer-norm-stats', '측정값 (mm)',
+    '#3C7DFF', _rSpec ? _rSpec.lo : null, _rSpec ? _rSpec.hi : null);
 }
 function renderReamerTable(rows) {
   const cnt=$('inq-reamer-count'); if(cnt) cnt.textContent=rows.length.toLocaleString();
@@ -2421,6 +2431,8 @@ function renderRoughnessCharts(rows) {
       }
     });
   }
+  const _roughVals = rows.map(r => +r.value).filter(v => !isNaN(v) && v > 0);
+  _renderNormChart(_roughVals, 'inq-rough-norm-curve', 'inq-rough-norm-hist', 'inq-rough-norm-stats', 'Ra (μm)', '#00b87a', null, 1.0);
 }
 function renderRoughnessTable(rows) {
   const cnt=$('inq-rough-count'); if(cnt) cnt.textContent=rows.length.toLocaleString();
@@ -2573,6 +2585,10 @@ function renderColorimetryCharts(rows) {
     if(!ok&&!ng){lb.push('데이터없음');dt.push(1);cl.push(SIDIZ_COLORS.muted);}
     makeDoughnut('color-judge-pie',jCtx,lb,dt,cl);
   }
+  const _mVals = rows.map(r => +r.delta_e_master).filter(v => !isNaN(v) && v >= 0);
+  const _pVals = rows.map(r => +r.delta_e_prev).filter(v => !isNaN(v) && v >= 0);
+  _renderNormChart(_mVals, 'inq-color-norm-m-curve', 'inq-color-norm-m-hist', 'inq-color-norm-m-stats', 'ΔE (마스터)', '#002BD2', null, 1.0);
+  _renderNormChart(_pVals, 'inq-color-norm-p-curve', 'inq-color-norm-p-hist', 'inq-color-norm-p-stats', 'ΔE (전lot)', '#54DBC2', null, 1.0);
 }
 function renderColorimetryTable(rows) {
   const cnt=$('inq-color-count'); if(cnt) cnt.textContent=rows.length.toLocaleString();
