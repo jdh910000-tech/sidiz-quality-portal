@@ -1609,6 +1609,30 @@ body.share-mode .section > .header .header-left p { display: none; }
         <tbody id="asCriteriaBody"></tbody>
       </table>
     </div>
+
+    <!-- 논의 안건 -->
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,#FF9F43,#FF6C39);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">📋</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text-primary)">논의 안건</div>
+          <div style="font-size:11px;color:var(--text-muted)">판정 기준에 반영이 필요한 논의사항을 작성해주세요</div>
+        </div>
+        <span id="asAgendaBadge" style="display:none;margin-left:4px;background:#FF9F43;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px"></span>
+      </div>
+
+      <!-- 작성 폼 -->
+      <div style="background:var(--sidiz-dark2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+        <textarea id="asAgendaInput" placeholder="논의가 필요한 내용을 입력하세요..." rows="3" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--sidiz-card);outline:none;resize:vertical;box-sizing:border-box;line-height:1.55" onfocus="this.style.borderColor='var(--sidiz-blue)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <input id="asAgendaAuthor" type="text" placeholder="작성자 (선택)" maxlength="20" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;font-family:inherit;color:var(--text-primary);background:var(--sidiz-card);outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--sidiz-blue)'" onblur="this.style.borderColor='var(--border)'">
+          <button onclick="asAgendaAdd()" style="padding:6px 18px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">등록</button>
+        </div>
+      </div>
+
+      <!-- 안건 목록 -->
+      <div id="asAgendaList"></div>
+    </div>
   </div>
 </div>
 <div id="section-inspect" class="section">
@@ -8201,6 +8225,122 @@ async function _orgSaveJobDesc() {
       if (sec === 'as') setTimeout(window.asInit, 60);
     };
   }
+})();
+</script>
+
+<script>
+// ===== AS 논의 안건 모듈 =====
+(function(){
+  const SB_URL = 'https://cyxnbwczcvjeaqmrdzcb.supabase.co';
+  const SB_KEY = 'sb_publishable_i2Cw7SPjRn1BDa5XS-2NyA_qHNRC8Y5';
+  const SB_H   = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
+
+  let _items = [];
+
+  function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function _fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  async function _loadAgenda() {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/as_agenda?select=*&order=created_at.desc`, { headers: SB_H });
+      if (!r.ok) throw new Error();
+      _items = await r.json();
+    } catch(e) { _items = []; }
+    _renderAgenda();
+    _updateAgendaBadge();
+  }
+
+  function _renderAgenda() {
+    const el = document.getElementById('asAgendaList');
+    if (!el) return;
+    if (!_items.length) {
+      el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12.5px;border:1px dashed var(--border);border-radius:8px">등록된 안건이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = _items.map(item => {
+      const isDone = item.status === 'resolved';
+      return `<div style="background:var(--sidiz-card);border:1px solid ${isDone ? 'rgba(45,184,127,0.3)' : 'var(--border)'};border-radius:10px;padding:13px 15px;margin-bottom:8px;${isDone ? 'opacity:0.7' : ''}">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;${isDone ? 'text-decoration:line-through;color:var(--text-muted)' : ''}">${_esc(item.content)}</div>
+            <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              ${item.author ? `<span style="font-size:11px;color:var(--text-muted)">✍ ${_esc(item.author)}</span>` : ''}
+              <span style="font-size:11px;color:var(--text-muted)">${_fmtDate(item.created_at)}</span>
+              <span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;background:${isDone ? 'rgba(45,184,127,0.12)' : 'rgba(255,159,67,0.12)'};color:${isDone ? '#2db87f' : '#FF9F43'}">${isDone ? '반영됨' : '논의중'}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:5px;flex-shrink:0">
+            <button onclick="asAgendaToggle(${item.id},'${isDone ? 'pending' : 'resolved'}')" title="${isDone ? '논의중으로 되돌리기' : '반영됨으로 표시'}" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 8px;font-size:12px;color:var(--text-muted)">${isDone ? '↩' : '✓'}</button>
+            <button onclick="asAgendaDelete(${item.id})" title="삭제" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 8px;font-size:12px;color:var(--text-muted)">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function _updateAgendaBadge() {
+    const badge = document.getElementById('asAgendaBadge');
+    if (!badge) return;
+    const pending = _items.filter(i => i.status === 'pending').length;
+    if (pending > 0) { badge.textContent = `${pending}건 논의중`; badge.style.display = 'inline-block'; }
+    else badge.style.display = 'none';
+  }
+
+  window.asAgendaAdd = async function() {
+    const content = (document.getElementById('asAgendaInput')?.value || '').trim();
+    const author  = (document.getElementById('asAgendaAuthor')?.value || '').trim();
+    if (!content) { document.getElementById('asAgendaInput')?.focus(); return; }
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/as_agenda`, {
+        method: 'POST',
+        headers: { ...SB_H, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ content, author, status: 'pending' })
+      });
+      if (!r.ok) throw new Error();
+      const [newItem] = await r.json();
+      _items.unshift(newItem);
+      document.getElementById('asAgendaInput').value = '';
+      document.getElementById('asAgendaAuthor').value = '';
+      _renderAgenda();
+      _updateAgendaBadge();
+    } catch(e) { alert('등록 실패. 잠시 후 다시 시도해주세요.'); }
+  };
+
+  window.asAgendaToggle = async function(id, newStatus) {
+    try {
+      await fetch(`${SB_URL}/rest/v1/as_agenda?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...SB_H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: newStatus, updated_at: new Date().toISOString() })
+      });
+      const item = _items.find(i => i.id === id);
+      if (item) item.status = newStatus;
+      _renderAgenda();
+      _updateAgendaBadge();
+    } catch(e) { alert('변경 실패.'); }
+  };
+
+  window.asAgendaDelete = async function(id) {
+    if (!confirm('이 안건을 삭제할까요?')) return;
+    try {
+      await fetch(`${SB_URL}/rest/v1/as_agenda?id=eq.${id}`, { method: 'DELETE', headers: SB_H });
+      _items = _items.filter(i => i.id !== id);
+      _renderAgenda();
+      _updateAgendaBadge();
+    } catch(e) { alert('삭제 실패.'); }
+  };
+
+  // asInit에 연결
+  const _origInit = window.asInit;
+  window.asInit = async function() {
+    await _origInit();
+    await _loadAgenda();
+  };
 })();
 </script>
 
