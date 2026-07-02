@@ -478,44 +478,152 @@ function renderRodCharts(rows) {
     }
   });
 
-  // 3) 공급업체별 평균 테이퍼 (bar + line 기준선)
+  // 3) 공급업체별 평균 테이퍼 — 수평 막대, 기준선 대신 spec 경계 그리드 강조
   const hAvgsBar = sups.map(s => avg(rows.filter(r => r.supplier === s).map(rodH)));
   destroyChart('rodHeight');
   STATE.charts['rodHeight'] = new Chart($('inq-rod-height-bar').getContext('2d'), {
     type: 'bar',
-    data: { labels: sups, datasets: [
-      { label: '평균 테이퍼 높이', data: hAvgsBar, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6, type: 'bar' },
-      { label: '상한 (7.0)', data: sups.map(() => 7.0), type: 'line', borderColor: SIDIZ_COLORS.rose, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
-      { label: '하한 (5.0)', data: sups.map(() => 5.0), type: 'line', borderColor: SIDIZ_COLORS.rose, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
-    ]},
+    data: { labels: sups, datasets: [{
+      label: '평균 테이퍼',
+      data: hAvgsBar,
+      backgroundColor: hAvgsBar.map(v => v >= 5.0 && v <= 7.0 ? 'rgba(0,184,122,0.75)' : 'rgba(255,108,57,0.85)'),
+      borderColor: hAvgsBar.map(v => v >= 5.0 && v <= 7.0 ? '#00b87a' : '#FF6C39'),
+      borderWidth: 2, borderRadius: 8, barThickness: 28,
+    }]},
     options: {
-      responsive: true, maintainAspectRatio: false,
-      scales: { y: { beginAtZero: false, suggestedMin: 4, suggestedMax: 8, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } },
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: {
+          min: 4.0, max: 8.0,
+          ticks: { font: { size: 9 }, stepSize: 0.5, callback: v => v.toFixed(1) },
+          grid: {
+            color: ctx => (ctx.tick.value === 5.0 || ctx.tick.value === 7.0) ? SIDIZ_COLORS.rose : SIDIZ_COLORS.border,
+            lineWidth: ctx => (ctx.tick.value === 5.0 || ctx.tick.value === 7.0) ? 2 : 1
+          }
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 } } }
+      },
       plugins: {
-        legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
-        datalabels: { display: ctx => ctx.datasetIndex === 0, anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) }
+        legend: { display: false },
+        datalabels: { anchor: 'end', align: 'right', color: SIDIZ_COLORS.text, font: { weight: 700, size: 12 }, formatter: v => v == null ? '-' : v.toFixed(2) }
       }
     }
   });
 
-  // 4) 공급업체별 평균 와블 (bar + line 기준선)
+  // 4) 공급업체별 평균 와블 — 수평 막대, spec 경계 그리드 강조
   const wAvgs = sups.map(s => avg(rows.filter(r => r.supplier === s).map(r => r.wobble)));
   destroyChart('rodWobble');
   STATE.charts['rodWobble'] = new Chart($('inq-rod-wobble').getContext('2d'), {
     type: 'bar',
-    data: { labels: sups, datasets: [
-      { label: '평균 와블', data: wAvgs, backgroundColor: PALETTE.slice(0, sups.length), borderRadius: 6, type: 'bar' },
-      { label: '기준 ≤1.0', data: sups.map(() => 1.0), type: 'line', borderColor: SIDIZ_COLORS.rose, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
-    ]},
+    data: { labels: sups, datasets: [{
+      label: '평균 와블',
+      data: wAvgs,
+      backgroundColor: wAvgs.map(v => v <= 1.0 ? 'rgba(84,219,194,0.75)' : 'rgba(255,108,57,0.85)'),
+      borderColor: wAvgs.map(v => v <= 1.0 ? '#54DBC2' : '#FF6C39'),
+      borderWidth: 2, borderRadius: 8, barThickness: 28,
+    }]},
     options: {
-      responsive: true, maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: SIDIZ_COLORS.border } }, x: { grid: { display: false } } },
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: {
+          min: 0, max: 1.5,
+          ticks: { font: { size: 9 }, stepSize: 0.25, callback: v => v.toFixed(2) },
+          grid: {
+            color: ctx => ctx.tick.value === 1.0 ? SIDIZ_COLORS.rose : SIDIZ_COLORS.border,
+            lineWidth: ctx => ctx.tick.value === 1.0 ? 2 : 1
+          }
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 } } }
+      },
       plugins: {
-        legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
-        datalabels: { display: ctx => ctx.datasetIndex === 0, anchor: 'end', align: 'top', color: SIDIZ_COLORS.text, font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) }
+        legend: { display: false },
+        datalabels: { anchor: 'end', align: 'right', color: SIDIZ_COLORS.text, font: { weight: 700, size: 12 }, formatter: v => v == null ? '-' : v.toFixed(2) }
       }
     }
   });
+
+  // 5) 정규분포 분석
+  const heights = rows.map(rodH).filter(v => v !== null);
+  const wobbles = rows.map(r => r.wobble).filter(v => v != null && !isNaN(+v)).map(Number);
+  _renderNormChart(heights, 'inq-rod-norm-h-curve', 'inq-rod-norm-h-hist', 'inq-rod-norm-h-stats', '높이평균', '#002BD2', 5.0, 7.0);
+  _renderNormChart(wobbles, 'inq-rod-norm-w-curve', 'inq-rod-norm-w-hist', 'inq-rod-norm-w-stats', '와블', '#54DBC2', null, 1.0);
+}
+
+function _renderNormChart(values, curveId, histId, statsId, label, color, specLow, specHigh) {
+  if (values.length < 3) {
+    [curveId, histId].forEach(id => { destroyChart(id); const el = $(id); if (el) el.getContext('2d').clearRect(0, 0, el.width, el.height); });
+    const st = $(statsId); if (st) st.innerHTML = '<span style="color:var(--text-muted);font-size:12px">데이터 부족</span>';
+    return;
+  }
+  const n = values.length;
+  const mu = values.reduce((a, b) => a + b, 0) / n;
+  const sigma = Math.sqrt(values.reduce((a, b) => a + (b - mu) ** 2, 0) / n);
+  const minV = Math.min(...values), maxV = Math.max(...values);
+
+  // 벨 커브
+  const xMin = mu - 4.2 * sigma, xMax = mu + 4.2 * sigma;
+  const curveData = Array.from({ length: 120 }, (_, i) => {
+    const x = xMin + (xMax - xMin) * i / 119;
+    const y = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * ((x - mu) / sigma) ** 2);
+    return { x: +x.toFixed(4), y: +y.toFixed(6) };
+  });
+  destroyChart(curveId);
+  STATE.charts[curveId] = new Chart($(curveId).getContext('2d'), {
+    type: 'line',
+    data: { datasets: [{ data: curveData, borderColor: color, borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: color + '18', tension: 0.4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { type: 'linear', title: { display: true, text: label, font: { size: 9 } }, grid: { color: SIDIZ_COLORS.border }, ticks: { font: { size: 8 }, maxTicksLimit: 6 } },
+        y: { title: { display: true, text: '확률밀도', font: { size: 9 } }, grid: { color: SIDIZ_COLORS.border }, ticks: { font: { size: 8 }, maxTicksLimit: 5 } }
+      },
+      plugins: { legend: { display: false }, datalabels: { display: false } }
+    }
+  });
+
+  // 히스토그램 — σ 구간별 색상
+  const binCount = Math.min(20, Math.max(8, Math.ceil(Math.sqrt(n))));
+  const bw = (maxV - minV) / binCount || 0.01;
+  const bins = Array.from({ length: binCount }, (_, i) => ({ center: minV + (i + 0.5) * bw, count: 0 }));
+  values.forEach(v => { const idx = Math.min(Math.floor((v - minV) / bw), binCount - 1); if (idx >= 0) bins[idx].count++; });
+  const zoneColor = z => z <= 1 ? 'rgba(84,219,194,0.85)' : z <= 2 ? 'rgba(0,43,210,0.65)' : z <= 3 ? 'rgba(230,168,0,0.75)' : 'rgba(255,108,57,0.85)';
+
+  destroyChart(histId);
+  STATE.charts[histId] = new Chart($(histId).getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: bins.map(b => b.center.toFixed(2)),
+      datasets: [{
+        data: bins.map(b => b.count),
+        backgroundColor: bins.map(b => zoneColor(Math.abs((b.center - mu) / sigma))),
+        borderRadius: 2, barPercentage: 0.95, categoryPercentage: 1.0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: label, font: { size: 9 } }, grid: { display: false }, ticks: { font: { size: 8 }, maxRotation: 45, maxTicksLimit: 10 } },
+        y: { title: { display: true, text: 'Count', font: { size: 9 } }, beginAtZero: true, grid: { color: SIDIZ_COLORS.border }, ticks: { font: { size: 8 } } }
+      },
+      plugins: { legend: { display: false }, datalabels: { display: false } }
+    }
+  });
+
+  // 통계 요약
+  const p = pct => (values.filter(v => Math.abs(v - mu) <= pct * sigma).length / n * 100).toFixed(1);
+  const specLine = specLow != null && specHigh != null
+    ? `기준 ${specLow}~${specHigh}`
+    : specHigh != null ? `기준 ≤${specHigh}` : '';
+  $(statsId).innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;font-size:11px;color:var(--text-muted);padding-top:8px;border-top:1px solid var(--border);margin-top:8px">
+    <span>평균(μ) : <b style="color:var(--text)">${mu.toFixed(4)}</b></span>
+    <span>표준편차(σ) : <b style="color:var(--text)">${sigma.toFixed(4)}</b></span>
+    <span>최솟값 : ${minV.toFixed(2)} (평균에서 ${((minV-mu)/sigma).toFixed(2)}σ)</span>
+    <span>최댓값 : ${maxV.toFixed(2)} (평균에서 +${((maxV-mu)/sigma).toFixed(2)}σ)</span>
+    <span>±1σ 이내 : <b style="color:#54DBC2">${p(1)}%</b> <span style="opacity:.6">(기준 68.2%)</span></span>
+    <span>±2σ 이내 : <b style="color:#3C7DFF">${p(2)}%</b> <span style="opacity:.6">(기준 95.5%)</span></span>
+    <span>±3σ 이내 : <b style="color:#e6a800">${p(3)}%</b> <span style="opacity:.6">(기준 99.7%)</span></span>
+    ${specLine ? `<span style="color:var(--accent-rose)">${specLine}</span>` : ''}
+  </div>`;
 }
 function renderRodTable(rows) {
   $('inq-rod-count').textContent = rows.length.toLocaleString();
