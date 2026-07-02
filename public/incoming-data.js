@@ -2953,41 +2953,50 @@ window.generateRodReport = function () {
     }
   }, 900, 280);
 
-  // 3) 공급업체별 평균 테이퍼 (filtered rows, bar+line)
+  // 3) 공급업체별 평균 테이퍼 — 수평 막대, spec 경계 그리드 강조
   const _rsups = [...new Set(rows.map(r => r.supplier).filter(Boolean))].sort();
   const _rHavgs = _rsups.map(s => avg(rows.filter(r => r.supplier === s).map(rodH)));
   const imgSupplierH = _makeReportChartSync({
     type: 'bar',
-    data: { labels: _rsups, datasets: [
-      { label: '평균 테이퍼 높이', data: _rHavgs, backgroundColor: _rPalette.slice(0, _rsups.length), borderRadius: 6, type: 'bar' },
-      { label: '상한 (7.0)', data: _rsups.map(() => 7.0), type: 'line', borderColor: '#FF6C39', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false },
-      { label: '하한 (5.0)', data: _rsups.map(() => 5.0), type: 'line', borderColor: '#FF6C39', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false },
-    ]},
+    data: { labels: _rsups, datasets: [{
+      data: _rHavgs,
+      backgroundColor: _rHavgs.map(v => v >= 5.0 && v <= 7.0 ? 'rgba(0,184,122,0.75)' : 'rgba(255,108,57,0.85)'),
+      borderColor: _rHavgs.map(v => v >= 5.0 && v <= 7.0 ? '#00b87a' : '#FF6C39'),
+      borderWidth: 2, borderRadius: 8, barThickness: 32,
+    }]},
     options: {
+      indexAxis: 'y',
       scales: {
-        y: { beginAtZero: false, suggestedMin: 4, suggestedMax: 8, grid: { color: '#E2E2EA' } },
-        x: { grid: { display: false } }
+        x: { min: 4.0, max: 8.0, ticks: { font: { size: 10 }, stepSize: 0.5, callback: v => v.toFixed(1) },
+          grid: { color: ctx => (ctx.tick.value === 5.0 || ctx.tick.value === 7.0) ? '#FF6C39' : '#E2E2EA',
+                  lineWidth: ctx => (ctx.tick.value === 5.0 || ctx.tick.value === 7.0) ? 2 : 1 } },
+        y: { grid: { display: false }, ticks: { font: { size: 12, weight: 700 } } }
       },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: true, anchor: 'end', align: 'top', color: '#111111', font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'right', color: '#111111', font: { weight: 700, size: 12 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
     }
-  }, 900, 260);
+  }, 900, 180);
 
-  // 4) 공급업체별 평균 와블 (filtered rows, bar+line)
+  // 4) 공급업체별 평균 와블 — 수평 막대, spec 경계 그리드 강조
   const _rWavgs = _rsups.map(s => avg(rows.filter(r => r.supplier === s).map(r => r.wobble)));
   const imgSupplierW = _makeReportChartSync({
     type: 'bar',
-    data: { labels: _rsups, datasets: [
-      { label: '평균 와블', data: _rWavgs, backgroundColor: _rPalette.slice(0, _rsups.length), borderRadius: 6, type: 'bar' },
-      { label: '기준 ≤1.0', data: _rsups.map(() => 1.0), type: 'line', borderColor: '#FF6C39', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false },
-    ]},
+    data: { labels: _rsups, datasets: [{
+      data: _rWavgs,
+      backgroundColor: _rWavgs.map(v => v <= 1.0 ? 'rgba(84,219,194,0.75)' : 'rgba(255,108,57,0.85)'),
+      borderColor: _rWavgs.map(v => v <= 1.0 ? '#54DBC2' : '#FF6C39'),
+      borderWidth: 2, borderRadius: 8, barThickness: 32,
+    }]},
     options: {
+      indexAxis: 'y',
       scales: {
-        y: { beginAtZero: true, suggestedMax: 1.5, grid: { color: '#E2E2EA' } },
-        x: { grid: { display: false } }
+        x: { min: 0, max: 1.5, ticks: { font: { size: 10 }, stepSize: 0.25, callback: v => v.toFixed(2) },
+          grid: { color: ctx => ctx.tick.value === 1.0 ? '#FF6C39' : '#E2E2EA',
+                  lineWidth: ctx => ctx.tick.value === 1.0 ? 2 : 1 } },
+        y: { grid: { display: false }, ticks: { font: { size: 12, weight: 700 } } }
       },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { display: true, anchor: 'end', align: 'top', color: '#111111', font: { weight: 700, size: 11 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
+      plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'right', color: '#111111', font: { weight: 700, size: 12 }, formatter: v => v == null ? '-' : v.toFixed(2) } }
     }
-  }, 900, 260);
+  }, 900, 180);
 
   const html = `<!DOCTYPE html>
 <html>
