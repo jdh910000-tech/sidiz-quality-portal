@@ -423,18 +423,22 @@ function renderRodKPI(rows) {
   const ngRate = rows.length ? (ng / rows.length * 100) : 0;
   const codes = uniq(rows.map(r => r.code));
   const sups = uniq(rows.map(r => r.supplier).filter(Boolean)).sort();
-  const supCards = sups.flatMap(s => {
+  // 행1: 테이퍼 카드, 행2: 와블 카드 — 공급업체별 열로 정렬
+  const taperCards = sups.map(s => {
     const h = avg(rows.filter(r => r.supplier === s).map(rodH));
-    const w = avg(rows.filter(r => r.supplier === s).map(r => r.wobble));
-    return [
-      `<div class="kpi-card"><div class="kpi-label">${escHtml(s)} 평균 테이퍼</div><div class="kpi-value">${fmt(h, 2)}</div><div class="kpi-change">기준 5.0~7.0</div></div>`,
-      `<div class="kpi-card"><div class="kpi-label">${escHtml(s)} 평균 와블</div><div class="kpi-value">${fmt(w, 2)}</div><div class="kpi-change">기준 ≤1.0</div></div>`
-    ];
+    return `<div class="kpi-card"><div class="kpi-label">${escHtml(s)} 평균 테이퍼</div><div class="kpi-value">${fmt(h, 2)}</div><div class="kpi-change">기준 5.0~7.0</div></div>`;
   }).join('');
-  $('inq-rod-kpi').innerHTML = `
+  const wobbleCards = sups.map(s => {
+    const w = avg(rows.filter(r => r.supplier === s).map(r => r.wobble));
+    return `<div class="kpi-card"><div class="kpi-label">${escHtml(s)} 평균 와블</div><div class="kpi-value">${fmt(w, 2)}</div><div class="kpi-change">기준 ≤1.0</div></div>`;
+  }).join('');
+  const el = $('inq-rod-kpi');
+  el.style.gridTemplateColumns = `repeat(${sups.length + 1}, 1fr)`;
+  el.innerHTML = `
     <div class="kpi-card"><div class="kpi-label">총 측정 건수</div><div class="kpi-value">${rows.length.toLocaleString()}</div><div class="kpi-change">자재 ${codes.length}종</div></div>
-    ${supCards}
+    ${taperCards}
     <div class="kpi-card"><div class="kpi-label">기준 부적합</div><div class="kpi-value" style="background:linear-gradient(135deg,${ng>0?SIDIZ_COLORS.rose:SIDIZ_COLORS.emerald},${ng>0?'#ffb347':SIDIZ_COLORS.cyan});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${ng}</div><div class="kpi-change ${ng>0?'up':'down'}">${ngRate.toFixed(1)}% NG율</div></div>
+    ${wobbleCards}
   `;
 }
 function renderRodCharts(rows) {
