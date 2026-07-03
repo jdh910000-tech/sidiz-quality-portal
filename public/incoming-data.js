@@ -3743,10 +3743,10 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
     _mkDlChart('dl-chart-daily', {
       type: 'bar',
       data: { labels: dLabels, datasets: [
-        { type: 'bar', label: '불합격수량', data: dDefects, backgroundColor: 'rgba(251,140,0,0.85)', barPercentage: 0.6, yAxisID: 'y', datalabels: { display: function(ctx) { return ctx.raw > 0; }, anchor: 'end', align: 'top', formatter: function(v) { return v; }, font: { size: 10, weight: 'bold' }, color: '#fb8c00' } },
-        { type: 'line', label: '불량율(%)', data: dRates, borderColor: '#e53935', borderDash: [5,3], backgroundColor: 'rgba(0,0,0,0)', tension: 0.3, pointRadius: 3, yAxisID: 'y1', datalabels: { anchor: 'top', align: 'top', formatter: function(v) { return v.toFixed(2) + '%'; }, font: { size: 11, weight: 'bold' }, color: '#e53935' } }
+        { type: 'bar', label: '불합격수량', data: dDefects, backgroundColor: 'rgba(251,140,0,0.85)', barPercentage: 0.6, yAxisID: 'y' },
+        { type: 'line', label: '불량율(%)', data: dRates, borderColor: '#e53935', borderDash: [5,3], backgroundColor: 'rgba(0,0,0,0)', tension: 0.3, pointRadius: 3, yAxisID: 'y1' }
       ]},
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, suggestedMax: Math.ceil(Math.max.apply(null, dDefects.concat([1])) * 1.35), ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, suggestedMax: Math.max.apply(null, dRates.concat([0.01])) * 1.5, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#e53935', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } }, datalabels: { display: function(ctx) { return ctx.raw > 0; }, anchor: function(ctx) { return ctx.datasetIndex === 0 ? 'end' : 'top'; }, align: 'top', formatter: function(v, ctx) { return ctx.datasetIndex === 0 ? v : v.toFixed(2) + '%'; }, font: function(ctx) { return { size: ctx.datasetIndex === 0 ? 10 : 11, weight: 'bold' }; }, color: function(ctx) { return ctx.datasetIndex === 0 ? '#fb8c00' : '#e53935'; } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, suggestedMax: Math.ceil(Math.max.apply(null, dDefects.concat([1])) * 1.35), ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, suggestedMax: Math.max.apply(null, dRates.concat([0.01])) * 1.5, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#e53935', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
     });
   }
 
@@ -3774,13 +3774,12 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
     data: {
       labels: mLabels,
       datasets: [
-        { type: 'bar', label: '불합격수량', data: mDefects, backgroundColor: mDefects.map(function(v, i) { var cur = new Date().getMonth(); return i === cur ? 'rgba(251,140,0,0.9)' : 'rgba(170,170,170,0.55)'; }), barPercentage: 0.6, yAxisID: 'y', datalabels: { display: function(ctx) { return ctx.raw > 0; }, anchor: 'end', align: 'top', formatter: function(v) { return v; }, font: { size: 10, weight: 'bold' }, color: '#fb8c00' } },
-        { type: 'line', label: '불량율(%)', data: mRates, borderColor: '#e53935', borderDash: [5,3], backgroundColor: 'rgba(0,0,0,0)', tension: 0.3, fill: false, pointRadius: 4, spanGaps: false, yAxisID: 'y1',
-          datalabels: { display: function(ctx) { return ctx.raw !== null; }, anchor: 'top', align: 'top', formatter: function(v) { return v !== null ? v.toFixed(2) + '%' : ''; }, font: { size: 11, weight: 'bold' }, color: '#e53935' } },
-        { type: 'line', label: '기준선(0.02%)', data: Array(12).fill(0.02), borderColor: 'rgba(229,57,53,0.4)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1', datalabels: { display: false } }
+        { type: 'bar', label: '불합격수량', data: mDefects, backgroundColor: mDefects.map(function(v, i) { var cur = new Date().getMonth(); return i === cur ? 'rgba(251,140,0,0.9)' : 'rgba(170,170,170,0.55)'; }), barPercentage: 0.6, yAxisID: 'y' },
+        { type: 'line', label: '불량율(%)', data: mRates, borderColor: '#e53935', borderDash: [5,3], backgroundColor: 'rgba(0,0,0,0)', tension: 0.3, fill: false, pointRadius: 4, spanGaps: false, yAxisID: 'y1' },
+        { type: 'line', label: '기준선(0.02%)', data: Array(12).fill(0.02), borderColor: 'rgba(229,57,53,0.4)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' }
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, suggestedMax: Math.ceil(Math.max.apply(null, mDefects.concat([1])) * 1.35), ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, suggestedMax: Math.max.apply(null, mRates.filter(function(v){return v!==null;}).concat([0.01])) * 1.5, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#e53935', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } }, datalabels: { display: function(ctx) { if (ctx.datasetIndex === 2) return false; return ctx.raw !== null && ctx.raw > 0; }, anchor: function(ctx) { return ctx.datasetIndex === 0 ? 'end' : 'top'; }, align: 'top', formatter: function(v, ctx) { return ctx.datasetIndex === 0 ? v : v !== null ? v.toFixed(2) + '%' : ''; }, font: function(ctx) { return { size: ctx.datasetIndex === 0 ? 10 : 11, weight: 'bold' }; }, color: function(ctx) { return ctx.datasetIndex === 0 ? '#fb8c00' : '#e53935'; } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, suggestedMax: Math.ceil(Math.max.apply(null, mDefects.concat([1])) * 1.35), ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, suggestedMax: Math.max.apply(null, mRates.filter(function(v){return v!==null;}).concat([0.01])) * 1.5, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#e53935', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
   });
 
   var fDetails = STATE.dlCompanyFilter ? details.filter(function(d) { return d.company === STATE.dlCompanyFilter; }) : details;
@@ -3899,7 +3898,7 @@ window.dlUploadExcel = function(input) {
         name:        ['자재명','품명','자재'],
         judge:       ['판정','합불','결과','검사결과','합격여부'],
         inbound:     ['입고수량','입고','수량','입하수량','입하'],
-        return_qty:  ['반품수량','반품'],
+        return_qty:  ['반품수량','반품','반품수량▼'],
         pass_qty:    ['합격수량','합격'],
         inspector:   ['검사자','담당자','검사원'],
         defect_type: ['부적합유형','불합격유형','유형','불량유형'],
@@ -3951,7 +3950,7 @@ window.dlUploadExcel = function(input) {
 
         const rp  = Object.assign({}, SB_HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
         const rp2 = Object.assign({}, SB_HEADERS, { 'Prefer': 'return=minimal' });
-        const bulkSMap = { inbound_today: ['입하수량','입고수량','입고'], inspect_today: ['검사수량','검사'], defect_today: ['불량수량','불량','부적합수량'], return_today: ['반품수량','반품'], special_today: ['특채수량','특채'], pass_today: ['합격수량','합격'] };
+        const bulkSMap = { inbound_today: ['입하수량','입고수량','입고'], inspect_today: ['검사수량','검사'], defect_today: ['불량수량','불량','부적합수량'], return_today: ['반품수량','반품','반품수량▼'], special_today: ['특채수량','특채'], pass_today: ['합격수량','합격'] };
 
         for (var di = 0; di < dates.length; di++) {
           var date = dates[di];
@@ -3964,6 +3963,7 @@ window.dlUploadExcel = function(input) {
           if (totalRow) {
             var etf = { inbound_today:'입하수량', inspect_today:'검사수량', defect_today:'불량수량', return_today:'반품수량', special_today:'특채수량', pass_today:'합격수량' };
             Object.keys(etf).forEach(function(k) { sum[k] = Number(totalRow[etf[k]]||0); });
+            if (!sum.return_today) sum.return_today = Number(totalRow['반품수량▼']||0);
           } else {
             dataRows.forEach(function(row) {
               Object.keys(bulkSMap).forEach(function(field) {
@@ -4255,18 +4255,7 @@ window.dlGenerateReport = async function () {
     + '<p style="' + pSec + '">2. 검사 결과</p>'
     + '<p style="' + pRow + (parseFloat(defRate) >= 0.05 ? 'color:#FF3A4A;' : '') + '">: 불량율 ' + defRate + '% — ' + defMsg + '</p>'
 
-    + '<p style="' + pSec + '">3. 일별 인수검사 현황</p>'
-    + '<table style="width:100%;border-collapse:collapse;"><thead><tr>' + thCols + '</tr></thead><tbody>' + sRows
-    + '<tr><td style="' + tdC + ';font-weight:700;background:#EDEDED;">합계</td>'
-    + '<td style="' + tdR + ';font-weight:700;background:#EDEDED;">' + N(totInbound) + '</td>'
-    + '<td style="' + tdR + ';font-weight:700;background:#EDEDED;">' + N(totInspect) + '</td>'
-    + '<td style="' + tdR + ';font-weight:700;background:#EDEDED;' + (totDefect>0?'color:#FF3A4A;':'') + '">' + N(totDefect) + '</td>'
-    + '<td style="' + tdR + ';font-weight:700;background:#EDEDED;">' + N(totReturn) + '</td>'
-    + '<td style="' + tdR + ';font-weight:700;background:#EDEDED;">' + N(totSpecial) + '</td>'
-    + '<td style="' + tdR + ';font-weight:700;background:#EDEDED;color:#002BD2;">' + N(totPass) + '</td>'
-    + '</tr></tbody></table>'
-
-    + '<p style="' + pSec + '">4. 검사 결과 그래프</p>'
+    + '<p style="' + pSec + '">3. 검사 결과 그래프</p>'
     + '<p style="' + pGrp + '">1) 일 불합격 발생율 (조회 기간)</p>'
     + (imgDaily ? '<img src="' + imgDaily + '" style="' + imgS + '">' : '<p style="' + pRow + '">데이터 없음</p>')
     + defDayTable
@@ -4277,7 +4266,7 @@ window.dlGenerateReport = async function () {
     + '<p style="' + pGrp + '">4) 업체별 불합격 발생현황</p>'
     + (imgCompany ? '<img src="' + imgCompany + '" style="' + imgS + '">' : '<p style="' + pRow + '">불합격 내역 없음</p>')
 
-    + '<p style="' + pSec + '">5. 특이사항</p>'
+    + '<p style="' + pSec + '">4. 특이사항</p>'
     + (allNotes.length === 0
       ? '<p style="' + pRow + '">: 특이사항이 없습니다.</p>'
       : '<table style="width:100%;border-collapse:collapse;"><thead><tr>' + thNotes + '</tr></thead><tbody>' + nRows + '</tbody></table>')
