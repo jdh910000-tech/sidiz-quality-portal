@@ -3627,6 +3627,8 @@ window.dlLoadPeriod = async function () {
   STATE.dlPeriodData = { from: from, to: to, year: year, summaries: results[0], details: results[1], notes: results[2], yearSummaries: results[3] };
   STATE.dlCompanyFilter = null;
   STATE.dlNoteTypeFilter = null;
+  STATE.dlNgCompanyFilter = '';
+  STATE.dlNgTypeFilter = '';
   _dlRenderAll();
 };
 
@@ -3637,6 +3639,7 @@ function _dlRenderAll() {
   _dlRenderCompanyFilter(d.details);
   _dlRenderNoteTypeFilter(d.notes);
   _dlRenderCharts(d.summaries, d.details, d.year, d.yearSummaries);
+  _dlRenderNgSection(d.details);
   _dlRenderNotesSection(d.notes);
 }
 
@@ -3839,6 +3842,85 @@ function _dlRenderNotesSection(notes) {
         + '</tr></thead><tbody>' + rows + '</tbody></table></div>')
     + '</div>';
 }
+
+function _dlRenderNgSection(details) {
+  var el = $('dl-ng-section');
+  if (!el) return;
+
+  // 불합격(NG) 행만 추출
+  var ngAll = details.filter(function(d) { return d.judge && d.judge !== '합격'; });
+
+  // 필터 옵션 목록 생성
+  var compSeen = {}, typeSeen = {};
+  ngAll.forEach(function(d) {
+    if (d.company) compSeen[d.company] = 1;
+    if (d.defect_type) typeSeen[d.defect_type] = 1;
+  });
+  var companies = Object.keys(compSeen).sort();
+  var types = Object.keys(typeSeen).sort();
+
+  var cf = STATE.dlNgCompanyFilter || '';
+  var tf = STATE.dlNgTypeFilter || '';
+  var filtered = ngAll.filter(function(d) {
+    if (cf && d.company !== cf) return false;
+    if (tf && d.defect_type !== tf) return false;
+    return true;
+  });
+
+  var selStyle = 'background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:6px 10px;font-size:12px;min-width:130px;cursor:pointer';
+  var compOpts = '<option value="">업체 전체</option>' + companies.map(function(c) { return '<option value="' + escHtml(c) + '"' + (cf === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; }).join('');
+  var typeOpts = '<option value="">유형 전체</option>' + types.map(function(t) { return '<option value="' + escHtml(t) + '"' + (tf === t ? ' selected' : '') + '>' + escHtml(t) + '</option>'; }).join('');
+
+  var filterBar = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+    + '<select style="' + selStyle + '" onchange="dlSetNgFilter(\'company\',this.value)">' + compOpts + '</select>'
+    + '<select style="' + selStyle + '" onchange="dlSetNgFilter(\'type\',this.value)">' + typeOpts + '</select>'
+    + '<button onclick="dlSetNgFilter(\'reset\',\'\')" style="padding:6px 14px;background:var(--text-muted);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">초기화</button>'
+    + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'
+    + (filtered.length !== ngAll.length ? filtered.length + ' / ' : '') + ngAll.length + '건'
+    + '</span>'
+    + '</div>';
+
+  var th = 'padding:8px 10px;background:var(--sidiz-dark2);color:var(--text-muted);font-size:11px;font-weight:600;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap';
+  var td = 'padding:7px 10px;font-size:12px;border-bottom:1px solid var(--border)';
+  var tdC = td + ';text-align:center';
+
+  var rows = filtered.map(function(d) {
+    var dtColor = d.defect_type ? 'color:#e53935;font-weight:600' : 'color:var(--text-muted)';
+    return '<tr>'
+      + '<td style="' + tdC + ';white-space:nowrap">' + escHtml(d.log_date ? d.log_date.substring(5) : '') + '</td>'
+      + '<td style="' + tdC + '">' + escHtml(d.company || '') + '</td>'
+      + '<td style="' + tdC + ';font-family:\'JetBrains Mono\',monospace;font-size:11px">' + escHtml(d.code || '') + '</td>'
+      + '<td style="' + td + '">' + escHtml(d.name || '') + '</td>'
+      + '<td style="' + tdC + ';' + dtColor + '">' + escHtml(d.defect_type || '-') + '</td>'
+      + '<td style="' + td + ';min-width:200px">' + escHtml(d.defect_info || '') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var body = filtered.length === 0
+    ? '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다.</div>'
+    : '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr>'
+      + ['날짜','업체명','자재코드','자재명','부적합유형','불합격정보(내용)'].map(function(h){return '<th style="'+th+'">'+h+'</th>';}).join('')
+      + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+
+  el.innerHTML = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">1-1) 불합격 내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(발생일 기준)</span></div>'
+    + filterBar
+    + body
+    + '</div>';
+}
+
+window.dlSetNgFilter = function(key, val) {
+  if (key === 'reset') {
+    STATE.dlNgCompanyFilter = '';
+    STATE.dlNgTypeFilter = '';
+  } else if (key === 'company') {
+    STATE.dlNgCompanyFilter = val || '';
+  } else if (key === 'type') {
+    STATE.dlNgTypeFilter = val || '';
+  }
+  var d = STATE.dlPeriodData;
+  if (d) _dlRenderNgSection(d.details);
+};
 
 window.dlOpenWrite = function() {
   if ($('dl-write-overlay')) return;
