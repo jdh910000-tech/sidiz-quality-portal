@@ -8342,10 +8342,11 @@ async function _orgSaveJobDesc() {
     }
     el.innerHTML = _items.map(item => {
       const isDone = item.status === 'resolved';
-      return `<div style="background:var(--sidiz-card);border:1px solid ${isDone ? 'rgba(45,184,127,0.3)' : 'var(--border)'};border-radius:10px;padding:13px 15px;margin-bottom:8px;${isDone ? 'opacity:0.7' : ''}">
+      const btnBase = 'background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 8px;font-size:12px;color:var(--text-muted)';
+      return `<div id="agenda-item-${item.id}" style="background:var(--sidiz-card);border:1px solid ${isDone ? 'rgba(45,184,127,0.3)' : 'var(--border)'};border-radius:10px;padding:13px 15px;margin-bottom:8px;${isDone ? 'opacity:0.7' : ''}">
         <div style="display:flex;align-items:flex-start;gap:10px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;${isDone ? 'text-decoration:line-through;color:var(--text-muted)' : ''}">${_esc(item.content)}</div>
+            <div id="agenda-content-${item.id}" style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;${isDone ? 'text-decoration:line-through;color:var(--text-muted)' : ''}">${_esc(item.content)}</div>
             <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               ${item.author ? `<span style="font-size:11px;color:var(--text-muted)">✍ ${_esc(item.author)}</span>` : ''}
               <span style="font-size:11px;color:var(--text-muted)">${_fmtDate(item.created_at)}</span>
@@ -8353,8 +8354,9 @@ async function _orgSaveJobDesc() {
             </div>
           </div>
           <div style="display:flex;gap:5px;flex-shrink:0">
-            <button onclick="asAgendaToggle(${item.id},'${isDone ? 'pending' : 'resolved'}')" title="${isDone ? '논의중으로 되돌리기' : '반영됨으로 표시'}" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 8px;font-size:12px;color:var(--text-muted)">${isDone ? '↩' : '✓'}</button>
-            <button onclick="asAgendaDelete(${item.id})" title="삭제" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 8px;font-size:12px;color:var(--text-muted)">✕</button>
+            <button onclick="asAgendaEdit(${item.id})" title="내용 수정" style="${btnBase}">✏</button>
+            <button onclick="asAgendaToggle(${item.id},'${isDone ? 'pending' : 'resolved'}')" title="${isDone ? '논의중으로 되돌리기' : '반영됨으로 표시'}" style="${btnBase}">${isDone ? '↩' : '✓'}</button>
+            <button onclick="asAgendaDelete(${item.id})" title="삭제" style="${btnBase}">✕</button>
           </div>
         </div>
       </div>`;
@@ -8411,6 +8413,45 @@ async function _orgSaveJobDesc() {
       _renderAgenda();
       _updateAgendaBadge();
     } catch(e) { alert('삭제 실패.'); }
+  };
+
+  window.asAgendaEdit = function(id) {
+    const contentEl = document.getElementById(`agenda-content-${id}`);
+    if (!contentEl) return;
+    const item = _items.find(i => i.id === id);
+    if (!item) return;
+    // 이미 편집 중이면 무시
+    if (contentEl.querySelector('textarea')) return;
+
+    const original = item.content || '';
+    contentEl.innerHTML = `
+      <textarea id="agenda-edit-ta-${id}" rows="4" style="width:100%;border:1px solid var(--sidiz-blue);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--sidiz-dark2);outline:none;resize:vertical;box-sizing:border-box;line-height:1.55">${_esc(original)}</textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button onclick="asAgendaSaveEdit(${id})" style="padding:5px 16px;background:var(--sidiz-blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">저장</button>
+        <button onclick="asAgendaCancelEdit(${id})" style="padding:5px 12px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-muted)">취소</button>
+      </div>`;
+    document.getElementById(`agenda-edit-ta-${id}`)?.focus();
+  };
+
+  window.asAgendaSaveEdit = async function(id) {
+    const ta = document.getElementById(`agenda-edit-ta-${id}`);
+    if (!ta) return;
+    const newContent = ta.value.trim();
+    if (!newContent) { ta.focus(); return; }
+    try {
+      await fetch(`${SB_URL}/rest/v1/as_agenda?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...SB_H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ content: newContent, updated_at: new Date().toISOString() })
+      });
+      const item = _items.find(i => i.id === id);
+      if (item) item.content = newContent;
+      _renderAgenda();
+    } catch(e) { alert('수정 실패.'); }
+  };
+
+  window.asAgendaCancelEdit = function(id) {
+    _renderAgenda();
   };
 
   // asInit에 연결

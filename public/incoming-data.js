@@ -3627,8 +3627,10 @@ window.dlLoadPeriod = async function () {
   STATE.dlPeriodData = { from: from, to: to, year: year, summaries: results[0], details: results[1], notes: results[2], yearSummaries: results[3] };
   STATE.dlCompanyFilter = null;
   STATE.dlNoteTypeFilter = null;
-  STATE.dlNgCompanyFilter = '';
-  STATE.dlNgTypeFilter = '';
+  STATE.dlNgCompanyFilter = ''; STATE.dlNgTypeFilter = '';
+  STATE.dlNgDateFrom = ''; STATE.dlNgDateTo = '';
+  STATE.dlNfDateFrom = ''; STATE.dlNfDateTo = '';
+  STATE.dlNfType = ''; STATE.dlNfProduct = ''; STATE.dlNfSupplier = '';
   _dlRenderAll();
 };
 
@@ -3815,9 +3817,57 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
 function _dlRenderNotesSection(notes) {
   var el = $('dl-notes-section');
   if (!el) return;
-  var filtered = STATE.dlNoteTypeFilter
-    ? notes.filter(function(n) { return n.type === STATE.dlNoteTypeFilter; })
-    : notes;
+
+  var nfFrom  = STATE.dlNfDateFrom  || '';
+  var nfTo    = STATE.dlNfDateTo    || '';
+  var nfType  = STATE.dlNfType      || '';
+  var nfProd  = STATE.dlNfProduct   || '';
+  var nfSup   = STATE.dlNfSupplier  || '';
+
+  // 옵션 목록 (전체 기준)
+  var typeSeen = {}, prodSeen = {}, supSeen = {};
+  notes.forEach(function(n) {
+    if (n.type)     typeSeen[n.type]     = 1;
+    if (n.product)  prodSeen[n.product]  = 1;
+    if (n.supplier) supSeen[n.supplier]  = 1;
+  });
+  var typeOpts = ['구분 전체'].concat(Object.keys(typeSeen).sort());
+  var prodOpts = ['제품 전체'].concat(Object.keys(prodSeen).sort());
+  var supOpts  = ['공급처 전체'].concat(Object.keys(supSeen).sort());
+
+  var filtered = notes.filter(function(n) {
+    if (nfFrom && (n.log_date || '') < nfFrom) return false;
+    if (nfTo   && (n.log_date || '') > nfTo)   return false;
+    if (nfType && n.type !== nfType)            return false;
+    if (nfProd && n.product !== nfProd)         return false;
+    if (nfSup  && n.supplier !== nfSup)         return false;
+    return true;
+  });
+
+  var dateInp = 'background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:5px 8px;font-size:12px;width:120px';
+  var selSt   = 'background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:6px 8px;font-size:12px;min-width:110px;cursor:pointer';
+  var mkSel   = function(opts, cur, key) {
+    return '<select style="' + selSt + '" onchange="dlSetNotesFilter(\'' + key + '\',this.value)">'
+      + opts.map(function(o, i) {
+          var val = i === 0 ? '' : o;
+          return '<option value="' + escHtml(val) + '"' + (cur === val ? ' selected' : '') + '>' + escHtml(o) + '</option>';
+        }).join('')
+      + '</select>';
+  };
+
+  var filterBar = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+    + '<input type="date" style="' + dateInp + '" value="' + escHtml(nfFrom) + '" onchange="dlSetNotesFilter(\'dateFrom\',this.value)">'
+    + '<span style="font-size:12px;color:var(--text-muted)">~</span>'
+    + '<input type="date" style="' + dateInp + '" value="' + escHtml(nfTo) + '" onchange="dlSetNotesFilter(\'dateTo\',this.value)">'
+    + mkSel(typeOpts, nfType, 'type')
+    + mkSel(prodOpts, nfProd, 'product')
+    + mkSel(supOpts,  nfSup,  'supplier')
+    + '<button onclick="dlSetNotesFilter(\'reset\',\'\')" style="padding:6px 12px;background:var(--text-muted);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">초기화</button>'
+    + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'
+    + (filtered.length !== notes.length ? filtered.length + ' / ' : '') + notes.length + '건'
+    + '</span>'
+    + '</div>';
+
   var th = 'padding:8px 10px;background:var(--sidiz-dark2);color:var(--text-muted);font-size:11px;font-weight:600;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap';
   var td = 'padding:6px 8px;font-size:12px;border-bottom:1px solid var(--border)';
   var tdC = td + ';text-align:center';
@@ -3833,8 +3883,10 @@ function _dlRenderNotesSection(notes) {
       + '<td style="' + td + '">' + escHtml(n.note || '') + '</td>'
       + '</tr>';
   }).join('');
+
   el.innerHTML = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px">'
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">특이사항 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(업체 협의, 4M, 입고품변경 등)</span></div>'
+    + filterBar
     + (filtered.length === 0
       ? '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px">특이사항이 없습니다.</div>'
       : '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr>'
@@ -3843,38 +3895,58 @@ function _dlRenderNotesSection(notes) {
     + '</div>';
 }
 
+window.dlSetNotesFilter = function(key, val) {
+  if (key === 'reset') {
+    STATE.dlNfDateFrom = ''; STATE.dlNfDateTo = '';
+    STATE.dlNfType = ''; STATE.dlNfProduct = ''; STATE.dlNfSupplier = '';
+  } else if (key === 'dateFrom')  { STATE.dlNfDateFrom  = val || ''; }
+  else if (key === 'dateTo')      { STATE.dlNfDateTo    = val || ''; }
+  else if (key === 'type')        { STATE.dlNfType      = val || ''; }
+  else if (key === 'product')     { STATE.dlNfProduct   = val || ''; }
+  else if (key === 'supplier')    { STATE.dlNfSupplier  = val || ''; }
+  var d = STATE.dlPeriodData;
+  if (d) _dlRenderNotesSection(d.notes);
+};
+
 function _dlRenderNgSection(details) {
   var el = $('dl-ng-section');
   if (!el) return;
 
-  // 불합격(NG) 행만 추출
   var ngAll = details.filter(function(d) { return d.judge && d.judge !== '합격'; });
 
-  // 필터 옵션 목록 생성
   var compSeen = {}, typeSeen = {};
   ngAll.forEach(function(d) {
-    if (d.company) compSeen[d.company] = 1;
+    if (d.company)     compSeen[d.company]     = 1;
     if (d.defect_type) typeSeen[d.defect_type] = 1;
   });
   var companies = Object.keys(compSeen).sort();
-  var types = Object.keys(typeSeen).sort();
+  var types     = Object.keys(typeSeen).sort();
 
-  var cf = STATE.dlNgCompanyFilter || '';
-  var tf = STATE.dlNgTypeFilter || '';
+  var cf   = STATE.dlNgCompanyFilter || '';
+  var tf   = STATE.dlNgTypeFilter    || '';
+  var dfr  = STATE.dlNgDateFrom      || '';
+  var dto  = STATE.dlNgDateTo        || '';
+
   var filtered = ngAll.filter(function(d) {
-    if (cf && d.company !== cf) return false;
-    if (tf && d.defect_type !== tf) return false;
+    if (cf  && d.company     !== cf)  return false;
+    if (tf  && d.defect_type !== tf)  return false;
+    if (dfr && (d.log_date || '') < dfr) return false;
+    if (dto && (d.log_date || '') > dto) return false;
     return true;
   });
 
-  var selStyle = 'background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:6px 10px;font-size:12px;min-width:130px;cursor:pointer';
+  var dateInp = 'background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:5px 8px;font-size:12px;width:120px';
+  var selSt   = 'background:var(--sidiz-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:6px 8px;font-size:12px;min-width:110px;cursor:pointer';
   var compOpts = '<option value="">업체 전체</option>' + companies.map(function(c) { return '<option value="' + escHtml(c) + '"' + (cf === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; }).join('');
   var typeOpts = '<option value="">유형 전체</option>' + types.map(function(t) { return '<option value="' + escHtml(t) + '"' + (tf === t ? ' selected' : '') + '>' + escHtml(t) + '</option>'; }).join('');
 
   var filterBar = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
-    + '<select style="' + selStyle + '" onchange="dlSetNgFilter(\'company\',this.value)">' + compOpts + '</select>'
-    + '<select style="' + selStyle + '" onchange="dlSetNgFilter(\'type\',this.value)">' + typeOpts + '</select>'
-    + '<button onclick="dlSetNgFilter(\'reset\',\'\')" style="padding:6px 14px;background:var(--text-muted);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">초기화</button>'
+    + '<input type="date" style="' + dateInp + '" value="' + escHtml(dfr) + '" onchange="dlSetNgFilter(\'dateFrom\',this.value)">'
+    + '<span style="font-size:12px;color:var(--text-muted)">~</span>'
+    + '<input type="date" style="' + dateInp + '" value="' + escHtml(dto) + '" onchange="dlSetNgFilter(\'dateTo\',this.value)">'
+    + '<select style="' + selSt + '" onchange="dlSetNgFilter(\'company\',this.value)">' + compOpts + '</select>'
+    + '<select style="' + selSt + '" onchange="dlSetNgFilter(\'type\',this.value)">' + typeOpts + '</select>'
+    + '<button onclick="dlSetNgFilter(\'reset\',\'\')" style="padding:6px 12px;background:var(--text-muted);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">초기화</button>'
     + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">'
     + (filtered.length !== ngAll.length ? filtered.length + ' / ' : '') + ngAll.length + '건'
     + '</span>'
@@ -3903,7 +3975,7 @@ function _dlRenderNgSection(details) {
       + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 
   el.innerHTML = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">1-1) 불합격 내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(발생일 기준)</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">불합격 내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(발생일 기준)</span></div>'
     + filterBar
     + body
     + '</div>';
@@ -3911,13 +3983,12 @@ function _dlRenderNgSection(details) {
 
 window.dlSetNgFilter = function(key, val) {
   if (key === 'reset') {
-    STATE.dlNgCompanyFilter = '';
-    STATE.dlNgTypeFilter = '';
-  } else if (key === 'company') {
-    STATE.dlNgCompanyFilter = val || '';
-  } else if (key === 'type') {
-    STATE.dlNgTypeFilter = val || '';
-  }
+    STATE.dlNgCompanyFilter = ''; STATE.dlNgTypeFilter = '';
+    STATE.dlNgDateFrom = ''; STATE.dlNgDateTo = '';
+  } else if (key === 'company')  { STATE.dlNgCompanyFilter = val || ''; }
+  else if (key === 'type')       { STATE.dlNgTypeFilter    = val || ''; }
+  else if (key === 'dateFrom')   { STATE.dlNgDateFrom      = val || ''; }
+  else if (key === 'dateTo')     { STATE.dlNgDateTo        = val || ''; }
   var d = STATE.dlPeriodData;
   if (d) _dlRenderNgSection(d.details);
 };
