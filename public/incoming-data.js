@@ -3557,8 +3557,8 @@ window.dlSave = async function () {
   DL_FIELDS.forEach(function(f) {
     summaryData[f.tk] = getN('dlt-' + f.id);
   });
-  // 비즈니스 룰: 합격수량 = 입고수량 (반품은 별도 관리, 합격에서 차감 안 함)
-  summaryData.pass_today = summaryData.inbound_today;
+  // 합격수량 = 입고수량 - 반품수량
+  summaryData.pass_today = Math.max(0, summaryData.inbound_today - summaryData.return_today);
 
   const detailRows = [];
   document.querySelectorAll('#dl-detail-body tr:not(#dl-detail-empty)').forEach(function(tr, i) {
@@ -3660,7 +3660,7 @@ function _dlRenderKPI(from, to, summaries) {
     { label: '불량수량', val: total.defect_today, color: total.defect_today > 0 ? '#e53935' : null },
     { label: '반품수량', val: total.return_today, color: null },
     { label: '특채수량', val: total.special_today, color: null },
-    { label: '합격수량', val: total.inbound_today, color: '#1e88e5' },
+    { label: '합격수량', val: total.pass_today, color: '#1e88e5' },
   ];
   var card = function(def) {
     return '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px">'
@@ -4127,8 +4127,8 @@ window.dlUploadExcel = function(input) {
               });
             });
           }
-          // 비즈니스 룰: 합격수량 = 입고수량 (반품은 별도 관리, 합격에서 차감 안 함)
-          sum.pass_today = sum.inbound_today;
+          // 합격수량 = 입고수량 - 반품수량
+          sum.pass_today = Math.max(0, sum.inbound_today - sum.return_today);
           await fetch(SB_URL + '/rest/v1/daily_log_summary?on_conflict=log_date', { method: 'POST', headers: rp, body: JSON.stringify(sum) });
 
           // 불합격 내역
@@ -4175,9 +4175,9 @@ window.dlUploadExcel = function(input) {
             var col = erp2f[f.id];
             if (col) { var el=$('dlt-'+f.id); if(el){el.value=Number(totalRow[col]||0);summaryFilled=true;} }
           });
-          // 비즈니스 룰: 합격수량 = 입고수량
-          var passEl=$('dlt-pass'), inbEl=$('dlt-inbound');
-          if(passEl && inbEl) passEl.value = inbEl.value;
+          // 합격수량 = 입고수량 - 반품수량
+          var passEl=$('dlt-pass'), inbEl=$('dlt-inbound'), retEl=$('dlt-ret');
+          if(passEl && inbEl) passEl.value = Math.max(0, Number(inbEl.value) - Number(retEl ? retEl.value : 0));
         }
         var dataRows = allRows.filter(function(row) { return String(row['거래처명']||'').trim() !== ''; });
         failRows = dataRows.filter(function(row) {
