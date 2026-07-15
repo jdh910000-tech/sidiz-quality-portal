@@ -3783,7 +3783,7 @@ function _dlRenderCharts(summaries, details, year, yearSummaries) {
       datasets: [
         { type: 'bar', label: '불합격수량', data: mDefects, backgroundColor: mDefects.map(function(v, i) { var cur = new Date().getMonth(); return i === cur ? 'rgba(251,140,0,0.9)' : 'rgba(170,170,170,0.55)'; }), barPercentage: 0.6, yAxisID: 'y' },
         { type: 'line', label: '불량율(%)', data: mRates, borderColor: '#e53935', borderDash: [5,3], backgroundColor: 'rgba(0,0,0,0)', tension: 0.3, fill: false, pointRadius: 4, spanGaps: false, yAxisID: 'y1' },
-        { type: 'line', label: '기준선(0.02%)', data: Array(12).fill(0.02), borderColor: 'rgba(229,57,53,0.4)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' }
+        { type: 'line', label: '기준선(0.5%)', data: Array(12).fill(0.5), borderColor: 'rgba(229,57,53,0.4)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'var(--text-primary)', font: { size: 10 }, boxWidth: 12 } }, datalabels: { display: function(ctx) { if (ctx.datasetIndex === 2) return false; return ctx.raw !== null && ctx.raw > 0; }, anchor: function(ctx) { return ctx.datasetIndex === 0 ? 'end' : 'top'; }, align: 'top', formatter: function(v, ctx) { return ctx.datasetIndex === 0 ? v : v !== null ? v.toFixed(2) + '%' : ''; }, font: function(ctx) { return { size: ctx.datasetIndex === 0 ? 10 : 11, weight: 'bold' }; }, color: function(ctx) { return ctx.datasetIndex === 0 ? '#fb8c00' : '#e53935'; } } }, scales: { x: { ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y: { min: 0, suggestedMax: Math.ceil(Math.max.apply(null, mDefects.concat([1])) * 1.35), ticks: { color: 'var(--text-muted)', font: { size: 9 } } }, y1: { min: 0, suggestedMax: Math.max.apply(null, mRates.filter(function(v){return v!==null;}).concat([0.01])) * 1.5, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#e53935', font: { size: 9 }, callback: function(v) { return v + '%'; } } } } }
@@ -4259,8 +4259,8 @@ window.dlGenerateReport = async function () {
   summaries.forEach(function(s) { totInbound += s.inbound_today||0; totInspect += s.inspect_today||0; totDefect += s.defect_today||0; totReturn += s.return_today||0; totSpecial += s.special_today||0; totPass += s.pass_today||0; });
   const defRate = totInspect > 0 ? (totDefect / totInspect * 100).toFixed(3) : '0.000';
   const defMsg  = parseFloat(defRate) === 0 ? '불합격 발생 없음 — 양호.'
-                : parseFloat(defRate) < 0.02 ? '기준치(0.02%) 이하 — 관리 중.'
-                : parseFloat(defRate) < 0.05 ? '기준치(0.02%) 초과 — 주의 요망.'
+                : parseFloat(defRate) < 0.5 ? '기준치(0.5%) 이하 — 관리 중.'
+                : parseFloat(defRate) < 1.0 ? '기준치(0.5%) 초과 — 주의 요망.'
                 : '불량율 이상 — 원인 분석 및 개선 조치 필요.';
 
   // ── 스타일 상수 (시디즈 브랜드)
@@ -4341,7 +4341,7 @@ window.dlGenerateReport = async function () {
     data:{labels:mLabels,datasets:[
       {type:'bar',label:'불합격수량',data:mDefects,backgroundColor:mDefects.map(function(v,i){return i===curMo?'rgba(255,108,57,0.9)':'rgba(206,207,209,0.7)';}),barPercentage:0.6,yAxisID:'y',datalabels:{display:function(ctx){return ctx.raw>0;},anchor:'end',align:'top',formatter:function(v){return v;},font:{size:9,weight:'bold'},color:'#FF6C39'}},
       {type:'line',label:'불량율(%)',data:mRates,borderColor:'#FF3A4A',borderDash:[5,3],backgroundColor:'rgba(0,0,0,0)',tension:0.3,fill:false,pointRadius:4,spanGaps:false,yAxisID:'y1',datalabels:{display:function(ctx){return ctx.raw!==null;},anchor:'top',align:'top',formatter:function(v){return v!==null?v.toFixed(2)+'%':'';},font:{size:10,weight:'bold'},color:'#FF3A4A'}},
-      {type:'line',label:'기준선(0.02%)',data:Array(12).fill(0.02),borderColor:'rgba(255,58,74,0.35)',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false,yAxisID:'y1',datalabels:{display:false}}
+      {type:'line',label:'기준선(0.5%)',data:Array(12).fill(0.5),borderColor:'rgba(255,58,74,0.35)',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false,yAxisID:'y1',datalabels:{display:false}}
     ]},
     options:{responsive:false,plugins:{legend:{labels:{font:{size:10},boxWidth:12}}},scales:{x:{ticks:{font:{size:9}}},y:{min:0,suggestedMax:Math.ceil(Math.max.apply(null,mDefects.concat([1]))*1.35),ticks:{font:{size:9}}},y1:{min:0,suggestedMax:Math.max.apply(null,mRates.filter(function(v){return v!==null;}).concat([0.01]))*1.5,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9},callback:function(v){return v+'%';}}}}}
   }, 860, 260);
