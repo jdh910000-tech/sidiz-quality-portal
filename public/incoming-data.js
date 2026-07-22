@@ -4296,7 +4296,6 @@ window.dlGenerateReport = async function () {
       + '<td style="' + tdSt + '">' + String(n.content||'').replace(/\n/g,'<br>') + '</td>'
       + '<td style="' + tdSt + ';white-space:nowrap">' + (n.supplier||'') + '</td>'
       + '<td style="' + tdSt + ';white-space:nowrap">' + (n.note_date||'') + '</td>'
-      + '<td style="' + tdSt + '">' + String(n.note||'').replace(/\n/g,'<br>') + '</td>'
       + '</tr>';
   }).join('');
 
@@ -4399,7 +4398,7 @@ window.dlGenerateReport = async function () {
   const thCols = ['날짜','입고수량','검사수량','불량수량','반품수량','특채수량','합격수량'].map(function(t){return '<th style="'+thS+'">'+t+'</th>';}).join('');
   const thNotesData = [
     {label:'날짜', w:'7%'}, {label:'구분', w:'10%'}, {label:'제품', w:'10%'},
-    {label:'내용', w:'38%'}, {label:'공급처', w:'8%'}, {label:'날짜', w:'7%'}, {label:'비고', w:'20%'}
+    {label:'내용', w:'58%'}, {label:'공급처', w:'8%'}, {label:'날짜', w:'7%'}
   ];
   const thNotes = thNotesData.map(function(c){return '<th style="'+thS+';width:'+c.w+'">'+c.label+'</th>';}).join('');
 
