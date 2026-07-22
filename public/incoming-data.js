@@ -3965,6 +3965,7 @@ function _dlRenderNgSection(details) {
       + '<td style="' + tdC + '">' + escHtml(d.company || '') + '</td>'
       + '<td style="' + tdC + ';font-family:\'JetBrains Mono\',monospace;font-size:11px">' + escHtml(d.code || '') + '</td>'
       + '<td style="' + td + '">' + escHtml(d.name || '') + '</td>'
+      + '<td style="' + tdC + '">' + (d.inbound != null ? Number(d.inbound).toLocaleString() : '-') + '</td>'
       + '<td style="' + tdC + ';' + dtColor + '">' + escHtml(d.defect_type || '-') + '</td>'
       + '<td style="' + td + ';min-width:200px">' + escHtml(d.defect_info || '') + '</td>'
       + '</tr>';
@@ -3973,11 +3974,11 @@ function _dlRenderNgSection(details) {
   var body = filtered.length === 0
     ? '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px">불합격 내역이 없습니다.</div>'
     : '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr>'
-      + ['날짜','업체명','자재코드','자재명','부적합유형','불합격정보(내용)'].map(function(h){return '<th style="'+th+'">'+h+'</th>';}).join('')
+      + ['날짜','업체명','자재코드','자재명','수량','부적합유형','불합격정보(내용)'].map(function(h){return '<th style="'+th+'">'+h+'</th>';}).join('')
       + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 
   el.innerHTML = '<div style="background:var(--sidiz-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">불합격 내역 <span style="font-size:11px;color:var(--text-muted);font-weight:400">(발생일 기준)</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px">불합격 내역</div>'
     + filterBar
     + body
     + '</div>';
@@ -4347,19 +4348,23 @@ window.dlGenerateReport = async function () {
 
   var imgDefType = null;
   if (dtSorted.length) {
+    var _dtVals = dtSorted.map(function(k){return defTypeMap[k];});
+    var _dtMax = Math.ceil(Math.max.apply(null, _dtVals) * 1.35) + 1;
     imgDefType = _makeReportChartSync({
       type:'bar',
-      data:{labels:dtSorted,datasets:[{label:'건수',data:dtSorted.map(function(k){return defTypeMap[k];}),backgroundColor:RC.slice(0,dtSorted.length),barPercentage:0.6}]},
-      options:{responsive:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{min:0,ticks:{font:{size:9}}}}}
-    }, 860, 230);
+      data:{labels:dtSorted,datasets:[{label:'건수',data:_dtVals,backgroundColor:RC.slice(0,dtSorted.length),barPercentage:0.6}]},
+      options:{responsive:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',font:{size:11,weight:'bold'},color:'#333333'}},scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{min:0,suggestedMax:_dtMax,ticks:{font:{size:9}}}}}
+    }, 860, 260);
   }
 
   var imgCompany = null;
   if (compSorted.length) {
+    var _cVals = compSorted.map(function(k){return companyMap[k];});
+    var _cMax = Math.ceil(Math.max.apply(null, _cVals) * 1.35) + 1;
     imgCompany = _makeReportChartSync({
       type:'bar',
-      data:{labels:compSorted,datasets:[{label:'불합격 건수',data:compSorted.map(function(k){return companyMap[k];}),backgroundColor:RC,barPercentage:0.6}]},
-      options:{responsive:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{min:0,ticks:{font:{size:9}}}}}
+      data:{labels:compSorted,datasets:[{label:'불합격 건수',data:_cVals,backgroundColor:RC,barPercentage:0.6}]},
+      options:{responsive:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'top',font:{size:11,weight:'bold'},color:'#333333'}},scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{min:0,suggestedMax:_cMax,ticks:{font:{size:9}}}}}
     }, 860, 230);
   }
 
@@ -4381,15 +4386,16 @@ window.dlGenerateReport = async function () {
         + '<td style="' + tdSt + '">' + (d.company||'') + '</td>'
         + '<td style="' + tdSt + ';font-size:9pt">' + (d.code||'') + '</td>'
         + '<td style="' + tdSt + '">' + (d.name||'') + '</td>'
+        + '<td style="' + tdC + '">' + (d.inbound != null ? Number(d.inbound).toLocaleString() : '-') + '</td>'
         + '<td style="' + tdC + ';color:#FF3A4A;font-weight:600">' + (d.defect_type||'-') + '</td>'
         + '<td style="' + tdSt + '">' + String(d.defect_info||'').replace(/\n/g,'<br>') + '</td>'
         + '</tr>';
     });
   });
   var defDayTable = defDayKeys.length > 0
-    ? '<p style="' + pGrp + '">1-1) 불합격 내역 (발생일 기준)</p>'
+    ? '<p style="' + pGrp + '">1-1) 불합격 내역</p>'
       + '<table style="width:100%;border-collapse:collapse;"><thead><tr>'
-      + ['날짜','업체명','자재코드','자재명','부적합유형','불합격정보(내용)'].map(function(t){return '<th style="'+thS+'">'+t+'</th>';}).join('')
+      + ['날짜','업체명','자재코드','자재명','수량','부적합유형','불합격정보(내용)'].map(function(t){return '<th style="'+thS+'">'+t+'</th>';}).join('')
       + '</tr></thead><tbody>' + defDayRows + '</tbody></table>'
     : '';
 
@@ -4419,10 +4425,10 @@ window.dlGenerateReport = async function () {
     + '<p style="' + pRow + (parseFloat(defRate) >= 0.05 ? 'color:#FF3A4A;' : '') + '">: 불량율 ' + defRate + '% — ' + defMsg + '</p>'
 
     + '<p style="' + pSec + '">3. 검사 결과 그래프</p>'
-    + '<p style="' + pGrp + '">1) 일 불합격 발생율 (조회 기간)</p>'
+    + '<p style="' + pGrp + '">1) 일 불합격 발생율</p>'
     + (imgDaily ? '<img src="' + imgDaily + '" style="' + imgS + '">' : '<p style="' + pRow + '">데이터 없음</p>')
     + defDayTable
-    + '<p style="' + pGrp + '">2) ' + year + '년 월별 불량률 현황 (연간 누적 · 기간 무관)</p>'
+    + '<p style="' + pGrp + '">2) ' + year + '년 월별 불량률 현황</p>'
     + (imgMonthly ? '<img src="' + imgMonthly + '" style="' + imgS + '">' : '<p style="' + pRow + '">데이터 없음</p>')
     + '<p style="' + pGrp + '">3) 부적합 발생유형</p>'
     + (imgDefType ? '<img src="' + imgDefType + '" style="' + imgS + '">' : '<p style="' + pRow + '">부적합 내역 없음</p>')
