@@ -3415,10 +3415,10 @@ function _dlDetailRow(no, d) {
   const td = 'padding:4px 5px;border-bottom:1px solid var(--border)';
   return '<tr id="dldr-' + id + '">'
     + '<td style="' + td + ';text-align:center;color:var(--text-muted);font-size:11px;width:34px">' + no + '</td>'
-    + '<td style="' + td + '">' + _inpList(d.company || '', 'dl-company-list') + '</td>'
-    + '<td style="' + td + '">' + _inpList(d.code || '', 'dl-code-list', 'font-family:monospace;font-size:11px') + '</td>'
-    + '<td style="' + td + '">' + _inpList(d.name || '', 'dl-name-list') + '</td>'
-    + '<td style="' + td + '">' + _inp(d.judge, 'text-align:center;max-width:70px') + '</td>'
+    + '<td style="' + td + ';min-width:220px">' + _inpList(d.company || '', 'dl-company-list') + '</td>'
+    + '<td style="' + td + ';min-width:160px">' + _inpList(d.code || '', 'dl-code-list', 'font-family:monospace;font-size:11px') + '</td>'
+    + '<td style="' + td + ';min-width:280px">' + _inpList(d.name || '', 'dl-name-list') + '</td>'
+    + '<td style="' + td + ';min-width:65px">' + _inp(d.judge, 'text-align:center') + '</td>'
     + '<td style="' + td + '">' + _inp(d.inbound, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.return_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
     + '<td style="' + td + '">' + _inp(d.pass_qty, 'text-align:right;max-width:65px', 'number') + '</td>'
@@ -3502,7 +3502,7 @@ function _dlRender(date, sum, details, notes) {
     + '<datalist id="dl-name-list"></datalist>'
     + '<datalist id="dl-inspector-list"><option value="김철우"><option value="이광원"></datalist>'
     + '<datalist id="dl-deftype-list"><option value="특채"><option value="누락"><option value="사상"><option value="오염"><option value="A\'ssy 불량"><option value="스크래치"><option value="표면 가스"><option value="작동 불량"><option value="강도 불량"><option value="치수 불량"><option value="가공 불량"><option value="성형 불량"><option value="색차 불량"><option value="주름 불량"><option value="도장 불량"><option value="도금 불량"><option value="그라스"><option value="미싱 불량"><option value="오입고"><option value="흑점"></datalist>'
-    + '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:900px"><thead><tr>'
+    + '<div style="overflow-x:auto;width:100%"><table style="border-collapse:collapse;width:100%;min-width:1500px"><thead><tr>'
     + ['NO','업체명','자재코드','자재명','판정','입고','반품','합격','검사자','불합격유형','불합격정보(내용)','특채사용 여부',''].map(function(h) { return '<th style="' + th + '">' + h + '</th>'; }).join('')
     + '</tr></thead><tbody id="dl-detail-body">' + detailBody + '</tbody></table></div></div>';
 
@@ -4002,7 +4002,7 @@ window.dlOpenWrite = function() {
   overlay.id = 'dl-write-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:2000;display:flex;align-items:center;justify-content:center;';
   overlay.addEventListener('click', function(e) { if (e.target === overlay) dlCloseWrite(); });
-  overlay.innerHTML = '<div style="background:var(--sidiz-card);border-radius:16px;padding:24px 28px;width:94%;max-width:1000px;max-height:88vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
+  overlay.innerHTML = '<div style="background:var(--sidiz-card);border-radius:16px;padding:24px 28px;width:96%;max-width:1300px;max-height:88vh;overflow-y:auto;overflow-x:hidden;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
     + '<div style="font-size:15px;font-weight:700">✏️ 인수검사 일보 작성 / 조회</div>'
     + '<button onclick="dlCloseWrite()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:22px;line-height:1;padding:2px 8px;border-radius:6px" title="닫기">✕</button>'
@@ -4397,7 +4397,11 @@ window.dlGenerateReport = async function () {
   // ── HTML 조립 (레퍼런스 형식 — 인라인 스타일, <style> 블록 없음)
   const periodTitle = from + (from !== to ? ' ~ ' + to : '');
   const thCols = ['날짜','입고수량','검사수량','불량수량','반품수량','특채수량','합격수량'].map(function(t){return '<th style="'+thS+'">'+t+'</th>';}).join('');
-  const thNotes = ['날짜','구분','제품','내용','공급처','날짜','비고'].map(function(t){return '<th style="'+thS+'">'+t+'</th>';}).join('');
+  const thNotesData = [
+    {label:'날짜', w:'7%'}, {label:'구분', w:'10%'}, {label:'제품', w:'10%'},
+    {label:'내용', w:'38%'}, {label:'공급처', w:'8%'}, {label:'날짜', w:'7%'}, {label:'비고', w:'20%'}
+  ];
+  const thNotes = thNotesData.map(function(c){return '<th style="'+thS+';width:'+c.w+'">'+c.label+'</th>';}).join('');
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>인수검사 현황 보고서</title></head>'
     + '<body style="font-family:\'맑은 고딕\',\'Malgun Gothic\',sans-serif;font-size:10pt;line-height:1.8;color:#000000;">'
